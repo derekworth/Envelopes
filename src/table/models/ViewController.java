@@ -19,7 +19,6 @@ public class ViewController {
     private final AccountsTableModel     accountsTM     = new AccountsTableModel();
     private final TransactionsTableModel transactionsTM = new TransactionsTableModel(this);
     private final EmailTableModel        emailTM        = new EmailTableModel();
-    private final EventsTableModel       eventsTM       = new EventsTableModel(this);
     
     public ViewController(Console console) {
         con = console;
@@ -64,10 +63,6 @@ public class ViewController {
             for(int i = 0; i < con.emailTable.getColumnCount(); i++) {
                 con.emailTable.getColumnModel().getColumn(i).setCellRenderer(emailTM.getRenderer());
             }
-            // initialize events table
-            con.eventsTable.setModel(eventsTM);
-            con.eventsTable.getColumnModel().getColumn(0).setMaxWidth(130);
-            con.eventsTable.getColumnModel().getColumn(0).setPreferredWidth(130);
     }
     
     public final void updateAccountTable() {
@@ -120,18 +115,7 @@ public class ViewController {
                 con.emailTable.updateUI();
             }
         });
-    }
-    
-    public final void updateEventTable() {
-        eventsTM.refresh();
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                con.eventsTable.updateUI();
-            }
-        });
-    }
-    
+    }    
     
     public final void updateSelectedAmount(char type, String acctSelected, String envSelected) {
         // set selection; type: a = account; thisConsole = category; e = envelope; u = user; n = none

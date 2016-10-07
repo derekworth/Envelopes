@@ -84,7 +84,6 @@ public class Console extends javax.swing.JFrame {
             initComponents();
             // initilize database if not already initialized
             DBMS.initializeDatabase();
-            DBMS.newEvent("Console starting up...");
             // set gmail credentials
             gmail = DBMS.getGmail();
             if(Gmail.isValidCredentials(gmail.getUsername(), gmail.getPassword())) {
@@ -96,7 +95,6 @@ public class Console extends javax.swing.JFrame {
                 serverIsOn = true;
                 exec = Executors.newSingleThreadExecutor();
                 exec.submit(gmailServer);
-                DBMS.newEvent("Gmail Server is now ON");
                 serverToggleButton.setText("Stop Server");
                 gmailServerStatus.setText("Gmail server is now ON.");
                 serverLoginFailCount = 0;
@@ -109,9 +107,6 @@ public class Console extends javax.swing.JFrame {
             transFromField.setText(Utilities.getDatestamp(-28));
             transToField.setText(Utilities.getDatestamp(0));
             transactionDateField.setText(Utilities.getDatestamp(0));
-            // populate event date fields
-            eventsFromField.setText(Utilities.getDatestamp(-1));
-            eventsToField.setText(Utilities.getDatestamp(0));
             // add interval options
             intervalTypeDropdown.removeAllItems();
             intervalTypeDropdown.addItem("monthly");
@@ -123,7 +118,6 @@ public class Console extends javax.swing.JFrame {
             this.setTitle(TITLE);
             // disable all login components 
             enabledLoginComponents(false);
-            DBMS.newEvent("Console is up and running.");
         } catch (IOException ex) {
             System.exit(0);
         }
@@ -141,7 +135,6 @@ public class Console extends javax.swing.JFrame {
         vc.updateTransactionTable();
         updateSelectedAmount('n');
         vc.updateEmailTable();
-        vc.updateEventTable();
     }
     
     /****UPDATE DROPDOWNS****/
@@ -323,81 +316,6 @@ public class Console extends javax.swing.JFrame {
         }
     }
     
-    public final void validateEventFields() {
-        String dateError = "date must be in the format yyyy-mm-dd";
-        String histError = "history count must be an integer";
-                
-        boolean error1 = false, error2 = false;
-            
-        // validate from date
-        if(eventsFromField.getText().length()>0) {
-            String fromDate = Utilities.validateDate(eventsFromField.getText());
-            if(fromDate.length()==10) {
-                eventsFromField.setText(fromDate);
-                fromLabel1.setForeground(Color.BLACK);
-                fromLabel1.setText("From:");
-            } else {
-                fromLabel1.setForeground(Color.RED);
-                fromLabel1.setText("*From:");
-                error1 = true;
-            }
-        }
-        
-        // validate to date
-        if(eventsToField.getText().length()>0) {
-            String toDate = Utilities.validateDate(eventsToField.getText());
-            if(toDate.length()==10) {
-                eventsToField.setText(toDate);
-                toLabel1.setForeground(Color.BLACK);
-                toLabel1.setText("To:");
-            } else {
-                toLabel1.setForeground(Color.RED);
-                toLabel1.setText("*To:");
-                error2 = true;
-            }
-        }
-        
-        if(error1 || error2) {
-            addErrorMsg1(dateError);
-        } else {
-            removeErrorMsg1(dateError);
-        }
-        
-        // validate transaction history count
-        String origQty = eventsCountField.getText();
-        String newQty = "";
-        // remove spaces from original qty
-        for(int i = 0; i < origQty.length(); i++) {
-            if(origQty.charAt(i)==' ' || origQty.charAt(i)=='\t') {
-                // do nothing
-            } else {
-                newQty += origQty.charAt(i);
-            }
-        }
-        origQty = newQty;
-        if(origQty.length()==0) {
-            origQty = "0";
-        }
-        eventsCountField.setText(origQty);
-        newQty = "";
-        // remove non-digit characters from qty
-        for(int i = 0; i < origQty.length(); i++) {
-            if(origQty.charAt(i)>='0' && origQty.charAt(i)<='9') {
-                newQty += origQty.charAt(i);
-            }
-        }
-        if(newQty.length()==0 && origQty.length()>0) {
-            eventsLabel.setForeground(Color.RED);
-            eventsLabel.setText("*Events");
-            addErrorMsg1(histError);
-        } else {
-            eventsCountField.setText(newQty);
-            eventsLabel.setForeground(Color.BLACK);
-            eventsLabel.setText("Events");
-            removeErrorMsg1(histError);
-        }
-    }
-    
     public final void addErrorMsg(String msg) {
         // add error message if it does not already exist
         if(!errorMsg.contains(msg)){
@@ -433,44 +351,6 @@ public class Console extends javax.swing.JFrame {
             }
             // sets new message
             message.setText(fullMsg);
-        }
-    }
-    
-    public final void addErrorMsg1(String msg) {
-        // add error message if it does not already exist
-        if(!errorMsg1.contains(msg)){
-            errorMsg1.add(msg);
-            String fullMsg = "ERROR: ";
-            // builds new message
-            for(String m : errorMsg1) {
-                fullMsg += m + "; ";
-            }
-            // removes last "new line"
-            fullMsg = fullMsg.substring(0, fullMsg.length()-2);
-            // sets new message
-            message1.setText(fullMsg);
-        }
-    }
-    
-    public final void removeErrorMsg1(String msg) {
-        // removes error message if it exist
-        if(errorMsg1.contains(msg)){
-            errorMsg1.remove(msg);
-            String fullMsg = "ERROR: ";
-            if(errorMsg1.size()==0) {
-                fullMsg = "";
-            }
-            
-            // builds new message
-            for(String m : errorMsg1) {
-                fullMsg += m + '\n';
-            }
-            // removes last "new line"
-            if(fullMsg.length()<0) {
-                fullMsg = fullMsg.substring(0, fullMsg.length()-1);
-            }
-            // sets new message
-            message1.setText(fullMsg);
         }
     }
     
@@ -674,18 +554,6 @@ public class Console extends javax.swing.JFrame {
         intervalTagLabel = new javax.swing.JLabel();
         reportProgressBar = new javax.swing.JProgressBar();
         budgetWorksheetButton = new javax.swing.JButton();
-        eventLogTab = new javax.swing.JPanel();
-        jScrollPane4 = new javax.swing.JScrollPane();
-        eventsTable = new javax.swing.JTable();
-        eventsCountField = new javax.swing.JTextField();
-        eventsLabel = new javax.swing.JLabel();
-        dateRangeCheckBox1 = new javax.swing.JCheckBox();
-        fromLabel1 = new javax.swing.JLabel();
-        eventsFromField = new javax.swing.JTextField();
-        toLabel1 = new javax.swing.JLabel();
-        eventsToField = new javax.swing.JTextField();
-        message1 = new javax.swing.JLabel();
-        eventsRefreshButton = new javax.swing.JButton();
         jLabel30 = new javax.swing.JLabel();
         loginUserDropdown = new javax.swing.JComboBox();
         jLabel31 = new javax.swing.JLabel();
@@ -1879,103 +1747,6 @@ public class Console extends javax.swing.JFrame {
 
         jTabbedPane.addTab("Admin", adminTab);
 
-        eventsTable.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null}
-            },
-            new String [] {
-                "Title 1", "Title 2", "Title 3", "Title 4"
-            }
-        ));
-        eventsTable.setFillsViewportHeight(true);
-        jScrollPane4.setViewportView(eventsTable);
-
-        eventsCountField.setHorizontalAlignment(javax.swing.JTextField.RIGHT);
-        eventsCountField.setText("35");
-
-        eventsLabel.setText("Events");
-
-        dateRangeCheckBox1.setText("By Date Range");
-        dateRangeCheckBox1.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                dateRangeCheckBox1ActionPerformed(evt);
-            }
-        });
-
-        fromLabel1.setText("From:");
-
-        eventsFromField.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        eventsFromField.setEnabled(false);
-
-        toLabel1.setText("To:");
-
-        eventsToField.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        eventsToField.setEnabled(false);
-
-        message1.setForeground(new java.awt.Color(255, 0, 0));
-
-        eventsRefreshButton.setText("Refresh");
-        eventsRefreshButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                eventsRefreshButtonActionPerformed(evt);
-            }
-        });
-
-        javax.swing.GroupLayout eventLogTabLayout = new javax.swing.GroupLayout(eventLogTab);
-        eventLogTab.setLayout(eventLogTabLayout);
-        eventLogTabLayout.setHorizontalGroup(
-            eventLogTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(eventLogTabLayout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(eventLogTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jScrollPane4, javax.swing.GroupLayout.DEFAULT_SIZE, 1028, Short.MAX_VALUE)
-                    .addGroup(eventLogTabLayout.createSequentialGroup()
-                        .addGroup(eventLogTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(message1)
-                            .addGroup(eventLogTabLayout.createSequentialGroup()
-                                .addComponent(eventsCountField, javax.swing.GroupLayout.PREFERRED_SIZE, 57, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(eventsLabel)
-                                .addGap(18, 18, 18)
-                                .addComponent(dateRangeCheckBox1)
-                                .addGap(18, 18, 18)
-                                .addComponent(fromLabel1)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(eventsFromField, javax.swing.GroupLayout.PREFERRED_SIZE, 85, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                .addComponent(toLabel1)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(eventsToField, javax.swing.GroupLayout.PREFERRED_SIZE, 85, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                .addComponent(eventsRefreshButton)))
-                        .addGap(0, 0, Short.MAX_VALUE)))
-                .addContainerGap())
-        );
-        eventLogTabLayout.setVerticalGroup(
-            eventLogTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(eventLogTabLayout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(message1)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(eventLogTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(eventsCountField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(eventsLabel)
-                    .addComponent(dateRangeCheckBox1)
-                    .addComponent(eventsFromField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(fromLabel1)
-                    .addComponent(eventsToField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(toLabel1)
-                    .addComponent(eventsRefreshButton))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane4, javax.swing.GroupLayout.DEFAULT_SIZE, 630, Short.MAX_VALUE)
-                .addContainerGap())
-        );
-
-        jTabbedPane.addTab("Log", eventLogTab);
-
         jLabel30.setText("U/N:");
 
         loginUserDropdown.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
@@ -2095,7 +1866,6 @@ public class Console extends javax.swing.JFrame {
                 pw += c;
             }
             if(usr.getPassword().equals(Utilities.getHash(pw))) { // successful login
-                DBMS.newEvent("User (" + un + ") has successfully signed in.");
                 loginToggleButton.setSelected(true);
                 transactionDateField.setText(Utilities.getDatestamp(0));
                 currentUser = usr;
@@ -2106,7 +1876,6 @@ public class Console extends javax.swing.JFrame {
                 loginStatus.setText("Welcome " + currentUser.getUsername() + "! You are now signed in.");
                 updateUserDropdowns();
             } else { // failed login
-                DBMS.newEvent("User (" + un + ") login attempt failed.");
                 // set sign in settings
                 loginToggleButton.setSelected(false);
                 loginStatus.setText("Error(" + ++consoleLoginFailCount + "): incorrect password.");
@@ -2123,7 +1892,6 @@ public class Console extends javax.swing.JFrame {
                 pw += c;
             }
             if(usr.getPassword().equals(Utilities.getHash(pw))) { // successful login
-                DBMS.newEvent("User (" + un + ") has successfully signed in.");
                 transactionDateField.setText(Utilities.getDatestamp(0));
                 currentUser = usr;
                 enabledLoginComponents(true);
@@ -2133,14 +1901,12 @@ public class Console extends javax.swing.JFrame {
                 loginStatus.setText("Welcome " + currentUser.getUsername() + "! You are now signed in.");
                 updateUserDropdowns();
             } else { // failed login
-                DBMS.newEvent("User (" + un + ") login attempt failed.");
                 // set sign in settings
                 loginToggleButton.setSelected(false);
                 userPassword.setText("");
                 loginStatus.setText("Error(" + ++consoleLoginFailCount + "): incorrect password.");
             }
         } else { // log user out
-            DBMS.newEvent("User (" + un + ") successfully signed out.");
             currentUser = null;
             enabledLoginComponents(false);
             // set sign in settings
@@ -2178,7 +1944,6 @@ public class Console extends javax.swing.JFrame {
         int yes = 0;
         int opt = JOptionPane.showConfirmDialog(this, msg, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
         if(opt == yes) {
-            DBMS.newEvent("Console closing down...");
             System.exit(0);
         }
     }//GEN-LAST:event_exitMenuItemActionPerformed
@@ -2225,27 +1990,137 @@ public class Console extends javax.swing.JFrame {
         this.updateAllTables();
     }//GEN-LAST:event_refreshTablesMenuItemActionPerformed
 
-    private void eventsRefreshButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_eventsRefreshButtonActionPerformed
-        validateEventFields();
-        vc.updateEventTable();
-    }//GEN-LAST:event_eventsRefreshButtonActionPerformed
+    private void budgetWorksheetButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_budgetWorksheetButtonActionPerformed
+        Runnable budgetWorksheet = new Runnable() {
+            @Override
+            public void run() {
+                JFileChooser fc = new JFileChooser();
+                fc.setSelectedFile(new File("budget_" + Utilities.getDatestamp(0)));
+                int returnVal = fc.showSaveDialog(thisConsole);
+                String fileName;
+                if (returnVal == JFileChooser.APPROVE_OPTION) {
+                    File file = fc.getSelectedFile();
+                    fileName = file.getAbsolutePath();
 
-    private void dateRangeCheckBox1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dateRangeCheckBox1ActionPerformed
-        if(dateRangeCheckBox1.isSelected()) {
-            eventsFromField.setEnabled(true);
-            eventsToField.setEnabled(true);
-            eventsCountField.setEnabled(false);
-        } else {
-            eventsFromField.setEnabled(false);
-            eventsToField.setEnabled(false);
-            eventsCountField.setEnabled(true);
+                    // remove file extension so we can add it after incremental append to duplicates
+                    if(fileName.endsWith(".csv")) {
+                        fileName = fileName.substring(0, fileName.length()-4);
+                    }
+                    File f = new File(fileName + ".csv");
+                    int count = 1;
+                    while(f.exists()) {
+                        f = new File(fileName + "(" + count++ + ")" + ".csv");
+                    }
+
+                    // disable report buttons so only one report is run at once
+                    snapshotButton.setEnabled(false);
+                    allTransactionsButton.setEnabled(false);
+                    runTrendReportButton.setEnabled(false);
+                    budgetWorksheetButton.setEnabled(false);
+
+                    // intialize variables
+                    LinkedList<Category> cats = DBMS.getCategories(true);
+                    LinkedList<Envelope> envs = DBMS.getEnvelopes(true);
+                    int row = 5;
+                    String C = "=", D = "=", E = "=";
+
+                    // setup for progress bar value
+                    reportProgressBar.setValue(0);
+                    int catCount = cats.size();
+                    int envCount = envs.size();
+                    int max = 5+catCount+envCount;
+                    int curr = 3;
+
+                    // write budget worksheet to file
+                    try (FileWriter writer = new FileWriter(f)) {
+                        // write header info to file
+                        writer.write("Budget prepared on " + Utilities.getDatestamp(0) + "\n\n");
+                        writer.write(",Left Over,=-C" + (cats.size() + envs.size() + 7) + "\n\n");
+                        writer.write("Envelope,,Budget Amt,Current Amt,New Amt\n");
+                        reportProgressBar.setValue(curr*100/max);
+                        // write categorized envelopes to file
+                        for (Category cat : cats) {
+                            curr++;
+                            reportProgressBar.setValue(curr*100/max);
+                            row++;
+                            envs = DBMS.getEnvelopes(cat, true);
+                            int a = row + 1, b = row + envs.size();
+                            C += "C" + row + "+";
+                            D += "D" + row + "+";
+                            E += "E" + row + "+";
+                            writer.write(cat.getName().toUpperCase() + ",,=SUM(C" + a + ":C" + b + "),=SUM(D" + a + ":D" + b + "),=SUM(E" + a + ":E" + b + ")\n");
+                            for (Envelope env : envs) {
+                                curr++;
+                                reportProgressBar.setValue(curr*100/max);
+                                row++;
+                                writer.write("," + env.getName() + ",," + Utilities.roundAmount(env.getAmt()) + ",=C" + row + "+D" + row + "\n");
+                            }
+                        }
+
+                        // write uncategorized envelopes to file
+                        envs = DBMS.getUncategorizedEnvelopes(true);
+                        if(envs.size()>0) {
+                            curr++;
+                            reportProgressBar.setValue(curr*100/max);
+                            row++;
+                            int a = row + 1, b = row + envs.size();
+                            C += "C" + row + "+";
+                            D += "D" + row + "+";
+                            E += "E" + row + "+";
+                            writer.write("OTHER,,=SUM(C" + a + ":C" + b + "),=SUM(D" + a + ":D" + b + "),=SUM(E" + a + ":E" + b + ")\n");
+                            for (Envelope env : envs) {
+                                curr++;
+                                reportProgressBar.setValue(curr*100/max);
+                                row++;
+                                writer.write("," + env.getName() + ",," + Utilities.roundAmount(env.getAmt()) + ",=C" + row + "+D" + row + "\n");
+                            }
+                        }
+
+                        // write totals to file
+                        if(C.length()>0 && C.charAt(C.length()-1)=='+') {
+                            C = C.substring(0, C.length()-1);
+                            D = D.substring(0, D.length()-1);
+                            E = E.substring(0, E.length()-1);
+                            writer.write("TOTAL,," + C + "," + D + "," + E + "\n");
+                        } else {
+                            writer.write("TOTAL,," + 0 + "," + 0 + "," + 0 + "\n");
+                        }
+                        curr++;
+                        reportProgressBar.setValue(curr*100/max);
+
+                        writer.flush();
+                    } catch (IOException ex) {
+                    }
+
+                    reportProgressBar.setValue(0);
+                    snapshotButton.setEnabled(true);
+                    allTransactionsButton.setEnabled(true);
+                    runTrendReportButton.setEnabled(true);
+                    budgetWorksheetButton.setEnabled(true);
+                }
+            }
+
+        };
+        new Thread(budgetWorksheet).start();
+    }//GEN-LAST:event_budgetWorksheetButtonActionPerformed
+
+    private void trendTextFieldFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_trendTextFieldFocusLost
+        trendTextField.setText(DBMS.validateTrendInput(trendTextField.getText()));
+        if(trendTextField.getText().contains("[")) {
+            trendReportDirectionsLabel.setText("Names within [brackets] are invalid, please fix before continuing:");
+            trendReportDirectionsLabel.setForeground(Color.red);
         }
-    }//GEN-LAST:event_dateRangeCheckBox1ActionPerformed
+    }//GEN-LAST:event_trendTextFieldFocusLost
+
+    private void trendTextFieldFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_trendTextFieldFocusGained
+        trendReportDirectionsLabel.setText("For trend report, enter desired accounts and/or envelopes (comma separated):");
+        trendReportDirectionsLabel.setForeground(Color.BLACK);
+    }//GEN-LAST:event_trendTextFieldFocusGained
 
     private void snapshotButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_snapshotButtonActionPerformed
-        Runnable snapshotReport = new Runnable() {    
+        Runnable snapshotReport = new Runnable() {
             @Override
-            public void run() {                
+            public void run() {
                 JFileChooser fc = new JFileChooser();
                 fc.setSelectedFile(new File("snapshot_" + Utilities.getDatestamp(0)));
                 int returnVal = fc.showSaveDialog(thisConsole);
@@ -2253,7 +2128,7 @@ public class Console extends javax.swing.JFrame {
                 if (returnVal == JFileChooser.APPROVE_OPTION) {
                     File file = fc.getSelectedFile();
                     fileName = file.getAbsolutePath();
-                    
+
                     // remove file extension so we can add it after incremental append to duplicates
                     if(fileName.endsWith(".csv")) {
                         fileName = fileName.substring(0, fileName.length()-4);
@@ -2332,11 +2207,11 @@ public class Console extends javax.swing.JFrame {
                         curr++;
                         reportProgressBar.setValue(curr*100/max);
                     }
-                    
+
                     // write snapshot to file
                     try (FileWriter writer = new FileWriter(f)) {
                         writer.write("Snapshot as of " + Utilities.getDatestamp(0));
-                        
+
                         // WRITE ACCOUNTS TO FILE
                         writer.write("\n\nAccounts");
                         // write date header for each month, 'Mmm YY' format
@@ -2393,9 +2268,7 @@ public class Console extends javax.swing.JFrame {
                             reportProgressBar.setValue(curr*100/max);
                         }
                         writer.flush();
-                        DBMS.newEvent("Snapshot exported successfully to CSV.");
                     } catch (IOException ex) {
-                        DBMS.newEvent("ERROR: " + ex.getMessage());
                     }
                     reportProgressBar.setValue(0);
                     snapshotButton.setEnabled(true);
@@ -2404,7 +2277,7 @@ public class Console extends javax.swing.JFrame {
                     budgetWorksheetButton.setEnabled(true);
                 }
             }
-            
+
         };
         new Thread(snapshotReport).start();
     }//GEN-LAST:event_snapshotButtonActionPerformed
@@ -2456,7 +2329,6 @@ public class Console extends javax.swing.JFrame {
                             }
                         }
                     } catch (ClassNotFoundException | SQLException e) {
-                        DBMS.newEvent("ERROR: " + e.getMessage());
                     }
                     // write transactions to file
                     try (FileWriter writer = new FileWriter(f)) {
@@ -2471,21 +2343,21 @@ public class Console extends javax.swing.JFrame {
                                 Transaction trans = transactions.pollLast();
                                 runTot -= diff;
                                 if(trans.getAcct().getId()!=-1 && trans.getEnv().getId()!=-1) // both env and acct specified = not a transfer (Tx)
-                                    tx = "";
+                                tx = "";
                                 else
-                                    tx = "X";
+                                tx = "X";
                                 date = trans.getDate();
                                 desc = trans.getDesc();
                                 amt = Utilities.roundAmount(trans.getAmt());
                                 rt = Utilities.roundAmount(runTot);
                                 if(trans.getAcct().getId()!=-1)
-                                    acct = trans.getAcct().getName();
+                                acct = trans.getAcct().getName();
                                 else
-                                    acct = "";
+                                acct = "";
                                 if(trans.getEnv().getId()!=-1)
-                                    env = trans.getEnv().getName();
+                                env = trans.getEnv().getName();
                                 else
-                                    env = "";
+                                env = "";
                                 usr = trans.getUser().getUsername();
                                 writer.write("\n" + tx + "," + date + "," + desc + "," + amt + "," + rt + "," + acct + "," + env + "," + usr);
                                 curr++;
@@ -2497,9 +2369,7 @@ public class Console extends javax.swing.JFrame {
                             writer.write("<No transactions...>");
                         }
                         writer.flush();
-                        DBMS.newEvent("Transactions exported successfully to CSV.");
                     } catch (IOException ex) {
-                        DBMS.newEvent("ERROR: " + ex.getMessage());
                     }
                     // enable reports buttons now that transaction pull is complete
                     reportProgressBar.setValue(0);
@@ -2576,9 +2446,7 @@ public class Console extends javax.swing.JFrame {
                                 reportProgressBar.setValue(curr*100/max);
                             }
                             writer.flush();
-                            DBMS.newEvent("Trend report exported successfully to CSV.");
                         } catch (IOException ex) {
-                            DBMS.newEvent("ERROR: " + ex.getMessage());
                         }
                         // enable reports buttons now that transaction pull is complete
                         reportProgressBar.setValue(0);
@@ -2592,6 +2460,67 @@ public class Console extends javax.swing.JFrame {
         };
         new Thread(runTrendReport).start();
     }//GEN-LAST:event_runTrendReportButtonActionPerformed
+
+    private void intervalCountTextFieldFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_intervalCountTextFieldFocusLost
+        // removes non-digit characters
+        String input = intervalCountTextField.getText();
+        String tmp = "";
+        for(int i = 0; i < input.length(); i++) {
+            if(input.charAt(i)>='0' && input.charAt(i)<='9') {
+                tmp += input.charAt(i);
+            }
+        }
+
+        int dur;
+        // checks for numbers too big for integer to hold
+        try {
+            dur = Integer.parseInt(tmp);
+        } catch (NumberFormatException ex) {
+            dur = 36500;
+        }
+
+        if(intervalTypeDropdown.getSelectedIndex()==0) { // monthly
+            // enforces 6 to 1200 months
+            if(dur<6) {
+                intervalCountTextField.setText("6");
+            } else if(dur>1200) {
+                intervalCountTextField.setText("1200");
+            } else {
+                intervalCountTextField.setText(Integer.toString(dur));
+            }
+        } else if(intervalTypeDropdown.getSelectedIndex()==1) { // weekly (every 7 days)
+            // enforces 4 to 5200 weeks
+            if(dur<4) {
+                intervalCountTextField.setText("4");
+            } else if(dur>5200) {
+                intervalCountTextField.setText("5200");
+            } else {
+                intervalCountTextField.setText(Integer.toString(dur));
+            }
+        } else { // daily
+            // enforces 7 to 36500 days
+            if(dur<7) {
+                intervalCountTextField.setText("7");
+            } else if(dur>36500) {
+                intervalCountTextField.setText("36500");
+            } else {
+                intervalCountTextField.setText(Integer.toString(dur));
+            }
+        }
+    }//GEN-LAST:event_intervalCountTextFieldFocusLost
+
+    private void intervalTypeDropdownActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_intervalTypeDropdownActionPerformed
+        if(intervalTypeDropdown.getSelectedIndex()==0) { // monthly
+            intervalTagLabel.setText("months");
+            intervalCountTextField.setText("12");
+        } else if(intervalTypeDropdown.getSelectedIndex()==1) { // weekly (every 7 days)
+            intervalTagLabel.setText("weeks");
+            intervalCountTextField.setText("52");
+        } else { // daily
+            intervalTagLabel.setText("days");
+            intervalCountTextField.setText("365");
+        }
+    }//GEN-LAST:event_intervalTypeDropdownActionPerformed
 
     private void serverToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_serverToggleButtonActionPerformed
         if(serverToggleButton.isSelected()) {
@@ -2609,7 +2538,6 @@ public class Console extends javax.swing.JFrame {
                 serverIsOn = true;
                 exec = Executors.newSingleThreadExecutor();
                 exec.submit(gmailServer);
-                DBMS.newEvent("Gmail Server is now ON");
                 serverToggleButton.setText("Stop Server");
                 gmailServerStatus.setText("Gmail server is now ON.");
                 serverLoginFailCount = 0;
@@ -2622,7 +2550,6 @@ public class Console extends javax.swing.JFrame {
         } else {
             serverIsOn = false;
             exec.shutdownNow();
-            DBMS.newEvent("Gmail Server is now OFF");
             serverToggleButton.setText("Start Server");
             gmailServerStatus.setText("Gmail server is now OFF.");
             gmailUsername.setEnabled(true);
@@ -2791,6 +2718,114 @@ public class Console extends javax.swing.JFrame {
         }
         vc.updateEmailTable();
     }//GEN-LAST:event_blockEmailActionPerformed
+
+    private void transactionQtyButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_transactionQtyButtonActionPerformed
+        String text = transactionQtyButton.getText();
+        if(text.equalsIgnoreCase("25")) {
+            transactionQtyButton.setText("50");
+        } else if(text.equalsIgnoreCase("50")) {
+            transactionQtyButton.setText("100");
+        } else {
+            transactionQtyButton.setText("25");
+        }
+        validateTransactionFields();
+        vc.updateTransactionTable();
+    }//GEN-LAST:event_transactionQtyButtonActionPerformed
+
+    private void moreTransactionsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_moreTransactionsButtonActionPerformed
+        validateTransactionFields();
+        vc.updateTransactionTableWithMoreTransactions();
+    }//GEN-LAST:event_moreTransactionsButtonActionPerformed
+
+    private void mergeEnvelopesButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_mergeEnvelopesButtonActionPerformed
+        String mergeFromEnvName = (String) transEnvelopeDropdown.getSelectedItem();
+        String mergeToEnvName = (String) mergeEnvelopesList.getSelectedItem();
+        if(mergeFromEnvName!=null && mergeToEnvName!=null && !mergeFromEnvName.equalsIgnoreCase(mergeToEnvName) && !mergeFromEnvName.equalsIgnoreCase("-all-")) {
+            Envelope mergeFromEnv = DBMS.getEnvelope(mergeFromEnvName, true);
+            Envelope mergeToEnv = DBMS.getEnvelope(mergeToEnvName, true);
+            // give user second chance to back out of the merger
+            String msg = "WARNING: merging two envelopes CANNOT be undone.\n"
+            + "Are you sure you want to move all transactions\n"
+            + "from '" + mergeFromEnvName + "' into '" + mergeToEnvName + "',\n"
+            + "and then remove '" + mergeFromEnvName + "'?";
+            String title = "Merge Envelopes";
+            int yes = 0;
+            int opt = JOptionPane.showConfirmDialog(this, msg, title, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if(opt == yes) {
+                DBMS.mergeEnvelopes(mergeFromEnv, mergeToEnv);
+                vc.updateEnvelopeTable();
+                updateEnvelopeDropdowns();
+            }
+        }
+    }//GEN-LAST:event_mergeEnvelopesButtonActionPerformed
+
+    private void setCategoryButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setCategoryButtonActionPerformed
+        String envName = (String) transEnvelopeDropdown.getSelectedItem();
+        String catName = (String) transCategoryDropdown.getSelectedItem();
+        if(envName!=null && catName!=null && !envName.equalsIgnoreCase("-all-")) {
+            Envelope env = DBMS.getEnvelope(envName, true);
+            Category cat = DBMS.getCategory(catName, true);
+            env.setCategory(cat);
+            vc.updateEnvelopeTable();
+            vc.updateTransactionTable();
+        }
+    }//GEN-LAST:event_setCategoryButtonActionPerformed
+
+    private void removeCategoryButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeCategoryButtonActionPerformed
+        String catName = (String) transCategoryDropdown.getSelectedItem();
+        if(catName!=null && !catName.equalsIgnoreCase("-none-")) {
+            Category cat = DBMS.getCategory(catName, true);
+            LinkedList<Envelope> envs = DBMS.getEnvelopes(cat, true);
+            // remove category from envelopes
+            for(Envelope env : envs) {
+                env.setCategory(null);
+            }
+            cat.setEnabled(false);
+            vc.updateEnvelopeTable();
+            updateCategoryDropdowns();
+        }
+    }//GEN-LAST:event_removeCategoryButtonActionPerformed
+
+    private void removeCategoryButtonFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_removeCategoryButtonFocusLost
+        message.setText("");
+    }//GEN-LAST:event_removeCategoryButtonFocusLost
+
+    private void removeAccountButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeAccountButtonActionPerformed
+        String acctName = (String) transAccountDropdown.getSelectedItem();
+        if(acctName!=null && !acctName.equalsIgnoreCase("-all-")) {
+            Account acct = DBMS.getAccount(acctName, true);
+            if(Utilities.roundAmount(acct.getAmt()).equalsIgnoreCase("0.00")) {
+                acct.setEnabled(false);
+                vc.updateAccountTable();
+                updateAccountDropdowns();
+            } else {
+                message.setText("ERROR: '" + acctName + "' must have a zero balance before it can be removed");
+            }
+        }
+    }//GEN-LAST:event_removeAccountButtonActionPerformed
+
+    private void removeAccountButtonFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_removeAccountButtonFocusLost
+        message.setText("");
+    }//GEN-LAST:event_removeAccountButtonFocusLost
+
+    private void removeEnvelopeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeEnvelopeButtonActionPerformed
+        String envName = (String) transEnvelopeDropdown.getSelectedItem();
+        if(envName!=null && !envName.equalsIgnoreCase("-all-")) {
+            Envelope env = DBMS.getEnvelope(envName, true);
+            if(DBMS.getTransactionCount(env)==0) {
+                env.setCategory(null);
+                env.setEnabled(false);
+                vc.updateEnvelopeTable();
+                updateEnvelopeDropdowns();
+            } else {
+                message.setText("ERROR: '" + envName + "' must not have any transactions before it can be removed--please move transactions manually or by using the merge button");
+            }
+        }
+    }//GEN-LAST:event_removeEnvelopeButtonActionPerformed
+
+    private void removeEnvelopeButtonFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_removeEnvelopeButtonFocusLost
+        message.setText("");
+    }//GEN-LAST:event_removeEnvelopeButtonFocusLost
 
     private void envTransferDescriptionFieldFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_envTransferDescriptionFieldFocusLost
         if(!Utilities.isValidDescription(envTransferDescriptionField.getText())) {
@@ -3025,25 +3060,6 @@ public class Console extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_dateRangeCheckBoxActionPerformed
 
-    private void removeCategoryButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeCategoryButtonActionPerformed
-        String catName = (String) transCategoryDropdown.getSelectedItem();
-        if(catName!=null && !catName.equalsIgnoreCase("-none-")) {
-            Category cat = DBMS.getCategory(catName, true);
-            LinkedList<Envelope> envs = DBMS.getEnvelopes(cat, true);
-            // remove category from envelopes
-            for(Envelope env : envs) {
-                env.setCategory(null);
-            }
-            cat.setEnabled(false);
-            vc.updateEnvelopeTable();
-            updateCategoryDropdowns();
-        }
-    }//GEN-LAST:event_removeCategoryButtonActionPerformed
-
-    private void removeCategoryButtonFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_removeCategoryButtonFocusLost
-        message.setText("");
-    }//GEN-LAST:event_removeCategoryButtonFocusLost
-
     private void addCategoryButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addCategoryButtonActionPerformed
         // get name from textfield
         String newCatName = newCategoryField.getText();
@@ -3184,25 +3200,6 @@ public class Console extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_newCategoryFieldKeyPressed
 
-    private void removeEnvelopeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeEnvelopeButtonActionPerformed
-        String envName = (String) transEnvelopeDropdown.getSelectedItem();
-        if(envName!=null && !envName.equalsIgnoreCase("-all-")) {
-            Envelope env = DBMS.getEnvelope(envName, true);
-            if(DBMS.getTransactionCount(env)==0) {
-                env.setCategory(null);
-                env.setEnabled(false);
-                vc.updateEnvelopeTable();
-                updateEnvelopeDropdowns();
-            } else {
-                message.setText("ERROR: '" + envName + "' must not have any transactions before it can be removed--please move transactions manually or by using the merge button");
-            }
-        }
-    }//GEN-LAST:event_removeEnvelopeButtonActionPerformed
-
-    private void removeEnvelopeButtonFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_removeEnvelopeButtonFocusLost
-        message.setText("");
-    }//GEN-LAST:event_removeEnvelopeButtonFocusLost
-
     private void addEnvelopeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addEnvelopeButtonActionPerformed
         // get name from textfield
         String newEnvName = newEnvelopeField.getText();
@@ -3328,7 +3325,7 @@ public class Console extends javax.swing.JFrame {
                             Envelope env = DBMS.getEnvelope(newEnvName, false);
                             env.setEnabled(true);
                         }
-                        DBMS.newEnvelope(newEnvName);                                                    
+                        DBMS.newEnvelope(newEnvName);
                         vc.updateEnvelopeTable();
                         updateEnvelopeDropdowns();
                         newEnvelopeField.setText("");
@@ -3348,41 +3345,10 @@ public class Console extends javax.swing.JFrame {
         envelopesTable.updateUI();
     }//GEN-LAST:event_categorizedCheckBoxActionPerformed
 
-    private void removeAccountButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeAccountButtonActionPerformed
-        String acctName = (String) transAccountDropdown.getSelectedItem();
-        if(acctName!=null && !acctName.equalsIgnoreCase("-all-")) {
-            Account acct = DBMS.getAccount(acctName, true);
-            if(Utilities.roundAmount(acct.getAmt()).equalsIgnoreCase("0.00")) {
-                acct.setEnabled(false);
-                vc.updateAccountTable();
-                updateAccountDropdowns();
-            } else {
-                message.setText("ERROR: '" + acctName + "' must have a zero balance before it can be removed");
-            }
-        }
-    }//GEN-LAST:event_removeAccountButtonActionPerformed
-
-    private void removeAccountButtonFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_removeAccountButtonFocusLost
-        message.setText("");
-    }//GEN-LAST:event_removeAccountButtonFocusLost
-
-    private void setCategoryButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setCategoryButtonActionPerformed
-        String envName = (String) transEnvelopeDropdown.getSelectedItem();
-        String catName = (String) transCategoryDropdown.getSelectedItem();
-        if(envName!=null && catName!=null && !envName.equalsIgnoreCase("-all-")) {
-            Envelope env = DBMS.getEnvelope(envName, true);
-            Category cat = DBMS.getCategory(catName, true);
-            env.setCategory(cat);
-            vc.updateEnvelopeTable();
-            vc.updateTransactionTable();
-        }
-
-    }//GEN-LAST:event_setCategoryButtonActionPerformed
-
     private void envelopesTablePropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_envelopesTablePropertyChange
         if(evt.getPropertyName().equalsIgnoreCase("tableCellEditor") && evt.getNewValue()==null) {
             updateEnvelopeDropdowns();
-            vc.updateEnvelopeTable();        
+            vc.updateEnvelopeTable();
             updateCategoryDropdowns();
         }
     }//GEN-LAST:event_envelopesTablePropertyChange
@@ -3538,237 +3504,6 @@ public class Console extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_accountsTablePropertyChange
 
-    private void intervalTypeDropdownActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_intervalTypeDropdownActionPerformed
-        if(intervalTypeDropdown.getSelectedIndex()==0) { // monthly
-            intervalTagLabel.setText("months");
-            intervalCountTextField.setText("12");
-        } else if(intervalTypeDropdown.getSelectedIndex()==1) { // weekly (every 7 days)
-            intervalTagLabel.setText("weeks");
-            intervalCountTextField.setText("52");
-        } else { // daily
-            intervalTagLabel.setText("days");
-            intervalCountTextField.setText("365");
-        }
-    }//GEN-LAST:event_intervalTypeDropdownActionPerformed
-
-    private void intervalCountTextFieldFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_intervalCountTextFieldFocusLost
-        // removes non-digit characters
-        String input = intervalCountTextField.getText();
-        String tmp = "";
-        for(int i = 0; i < input.length(); i++) {
-            if(input.charAt(i)>='0' && input.charAt(i)<='9') {
-                tmp += input.charAt(i);
-            }
-        }
-        
-        int dur;
-        // checks for numbers too big for integer to hold
-        try {
-            dur = Integer.parseInt(tmp);
-        } catch (NumberFormatException ex) {
-            dur = 36500;
-        }
-        
-        if(intervalTypeDropdown.getSelectedIndex()==0) { // monthly
-            // enforces 6 to 1200 months
-            if(dur<6) {
-                intervalCountTextField.setText("6");
-            } else if(dur>1200) {
-                intervalCountTextField.setText("1200");
-            } else {
-                intervalCountTextField.setText(Integer.toString(dur));
-            }
-        } else if(intervalTypeDropdown.getSelectedIndex()==1) { // weekly (every 7 days)
-            // enforces 4 to 5200 weeks
-            if(dur<4) {
-                intervalCountTextField.setText("4");
-            } else if(dur>5200) {
-                intervalCountTextField.setText("5200");
-            } else {
-                intervalCountTextField.setText(Integer.toString(dur));
-            }
-        } else { // daily
-            // enforces 7 to 36500 days
-            if(dur<7) {
-                intervalCountTextField.setText("7");
-            } else if(dur>36500) {
-                intervalCountTextField.setText("36500");
-            } else {
-                intervalCountTextField.setText(Integer.toString(dur));
-            }
-        }
-        
-    }//GEN-LAST:event_intervalCountTextFieldFocusLost
-
-    private void trendTextFieldFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_trendTextFieldFocusLost
-        trendTextField.setText(DBMS.validateTrendInput(trendTextField.getText()));
-        if(trendTextField.getText().contains("[")) {
-            trendReportDirectionsLabel.setText("Names within [brackets] are invalid, please fix before continuing:");
-            trendReportDirectionsLabel.setForeground(Color.red);
-        }
-    }//GEN-LAST:event_trendTextFieldFocusLost
-
-    private void trendTextFieldFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_trendTextFieldFocusGained
-        trendReportDirectionsLabel.setText("For trend report, enter desired accounts and/or envelopes (comma separated):");
-        trendReportDirectionsLabel.setForeground(Color.BLACK);
-    }//GEN-LAST:event_trendTextFieldFocusGained
-
-    private void mergeEnvelopesButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_mergeEnvelopesButtonActionPerformed
-        String mergeFromEnvName = (String) transEnvelopeDropdown.getSelectedItem();
-        String mergeToEnvName = (String) mergeEnvelopesList.getSelectedItem();
-        if(mergeFromEnvName!=null && mergeToEnvName!=null && !mergeFromEnvName.equalsIgnoreCase(mergeToEnvName) && !mergeFromEnvName.equalsIgnoreCase("-all-")) {
-            Envelope mergeFromEnv = DBMS.getEnvelope(mergeFromEnvName, true);
-            Envelope mergeToEnv = DBMS.getEnvelope(mergeToEnvName, true);
-            // give user second chance to back out of the merger
-            String msg = "WARNING: merging two envelopes CANNOT be undone.\n"
-                       + "Are you sure you want to move all transactions\n"
-                       + "from '" + mergeFromEnvName + "' into '" + mergeToEnvName + "',\n"
-                       + "and then remove '" + mergeFromEnvName + "'?";
-            String title = "Merge Envelopes";
-            int yes = 0;
-            int opt = JOptionPane.showConfirmDialog(this, msg, title, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-            if(opt == yes) {
-                DBMS.mergeEnvelopes(mergeFromEnv, mergeToEnv);
-                vc.updateEnvelopeTable();
-                updateEnvelopeDropdowns();                
-            }
-        }
-    }//GEN-LAST:event_mergeEnvelopesButtonActionPerformed
-
-    private void budgetWorksheetButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_budgetWorksheetButtonActionPerformed
-        Runnable budgetWorksheet = new Runnable() {    
-            @Override
-            public void run() {                
-                JFileChooser fc = new JFileChooser();
-                fc.setSelectedFile(new File("budget_" + Utilities.getDatestamp(0)));
-                int returnVal = fc.showSaveDialog(thisConsole);
-                String fileName;
-                if (returnVal == JFileChooser.APPROVE_OPTION) {
-                    File file = fc.getSelectedFile();
-                    fileName = file.getAbsolutePath();
-                    
-                    // remove file extension so we can add it after incremental append to duplicates
-                    if(fileName.endsWith(".csv")) {
-                        fileName = fileName.substring(0, fileName.length()-4);
-                    }
-                    File f = new File(fileName + ".csv");
-                    int count = 1;
-                    while(f.exists()) {
-                        f = new File(fileName + "(" + count++ + ")" + ".csv");
-                    }
-                    
-                    // disable report buttons so only one report is run at once
-                    snapshotButton.setEnabled(false);
-                    allTransactionsButton.setEnabled(false);
-                    runTrendReportButton.setEnabled(false);
-                    budgetWorksheetButton.setEnabled(false);
-                    
-                    // intialize variables
-                    LinkedList<Category> cats = DBMS.getCategories(true);
-                    LinkedList<Envelope> envs = DBMS.getEnvelopes(true);
-                    int row = 5;
-                    String C = "=", D = "=", E = "=";
-                    
-                    // setup for progress bar value
-                    reportProgressBar.setValue(0);
-                    int catCount = cats.size();
-                    int envCount = envs.size();
-                    int max = 5+catCount+envCount;
-                    int curr = 3;
-                    
-                    // write budget worksheet to file
-                    try (FileWriter writer = new FileWriter(f)) {
-                        // write header info to file
-                        writer.write("Budget prepared on " + Utilities.getDatestamp(0) + "\n\n");
-                        writer.write(",Left Over,=-C" + (cats.size() + envs.size() + 7) + "\n\n");
-                        writer.write("Envelope,,Budget Amt,Current Amt,New Amt\n");
-                        reportProgressBar.setValue(curr*100/max);
-                        // write categorized envelopes to file
-                        for (Category cat : cats) {
-                            curr++;
-                            reportProgressBar.setValue(curr*100/max);
-                            row++;
-                            envs = DBMS.getEnvelopes(cat, true);
-                            int a = row + 1, b = row + envs.size();
-                            C += "C" + row + "+";
-                            D += "D" + row + "+";
-                            E += "E" + row + "+";
-                            writer.write(cat.getName().toUpperCase() + ",,=SUM(C" + a + ":C" + b + "),=SUM(D" + a + ":D" + b + "),=SUM(E" + a + ":E" + b + ")\n");
-                            for (Envelope env : envs) {
-                                curr++;
-                                reportProgressBar.setValue(curr*100/max);
-                                row++;
-                                writer.write("," + env.getName() + ",," + Utilities.roundAmount(env.getAmt()) + ",=C" + row + "+D" + row + "\n");
-                            }
-                        }
-                        
-                        // write uncategorized envelopes to file
-                        envs = DBMS.getUncategorizedEnvelopes(true);
-                        if(envs.size()>0) {
-                            curr++;
-                            reportProgressBar.setValue(curr*100/max);
-                            row++;
-                            int a = row + 1, b = row + envs.size();
-                            C += "C" + row + "+";
-                            D += "D" + row + "+";
-                            E += "E" + row + "+";
-                            writer.write("OTHER,,=SUM(C" + a + ":C" + b + "),=SUM(D" + a + ":D" + b + "),=SUM(E" + a + ":E" + b + ")\n");
-                            for (Envelope env : envs) {
-                                curr++;
-                                reportProgressBar.setValue(curr*100/max);
-                                row++;
-                                writer.write("," + env.getName() + ",," + Utilities.roundAmount(env.getAmt()) + ",=C" + row + "+D" + row + "\n");
-                            }
-                        }
-                        
-                        // write totals to file
-                        if(C.length()>0 && C.charAt(C.length()-1)=='+') {
-                            C = C.substring(0, C.length()-1);
-                            D = D.substring(0, D.length()-1);
-                            E = E.substring(0, E.length()-1);
-                            writer.write("TOTAL,," + C + "," + D + "," + E + "\n");
-                        } else {
-                            writer.write("TOTAL,," + 0 + "," + 0 + "," + 0 + "\n");
-                        }
-                        curr++;
-                        reportProgressBar.setValue(curr*100/max);
-                        
-                        writer.flush();
-                        DBMS.newEvent("Budget worksheet exported successfully as CSV.");
-                    } catch (IOException ex) {
-                        DBMS.newEvent("ERROR: " + ex.getMessage());
-                    }
-                    
-                    reportProgressBar.setValue(0);
-                    snapshotButton.setEnabled(true);
-                    allTransactionsButton.setEnabled(true);
-                    runTrendReportButton.setEnabled(true);
-                    budgetWorksheetButton.setEnabled(true);
-                }
-            }
-            
-        };
-        new Thread(budgetWorksheet).start();
-    }//GEN-LAST:event_budgetWorksheetButtonActionPerformed
-
-    private void moreTransactionsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_moreTransactionsButtonActionPerformed
-        validateTransactionFields();
-        vc.updateTransactionTableWithMoreTransactions();        
-    }//GEN-LAST:event_moreTransactionsButtonActionPerformed
-
-    private void transactionQtyButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_transactionQtyButtonActionPerformed
-        String text = transactionQtyButton.getText();
-        if(text.equalsIgnoreCase("25")) {
-            transactionQtyButton.setText("50");
-        } else if(text.equalsIgnoreCase("50")) {
-            transactionQtyButton.setText("100");
-        } else {
-            transactionQtyButton.setText("25");
-        }
-        validateTransactionFields();
-        vc.updateTransactionTable();
-    }//GEN-LAST:event_transactionQtyButtonActionPerformed
-
     /**
      * @param args the command line arguments
      */
@@ -3824,7 +3559,6 @@ public class Console extends javax.swing.JFrame {
     public javax.swing.JCheckBox categorizedCheckBox;
     private javax.swing.JLabel dateLabel;
     public javax.swing.JCheckBox dateRangeCheckBox;
-    public javax.swing.JCheckBox dateRangeCheckBox1;
     public javax.swing.JComboBox emailAddressDropdown;
     private javax.swing.JPanel emailPane;
     public javax.swing.JTable emailTable;
@@ -3836,18 +3570,10 @@ public class Console extends javax.swing.JFrame {
     public javax.swing.JComboBox envTransferTo;
     private javax.swing.JPanel envelopesTab;
     public javax.swing.JTable envelopesTable;
-    private javax.swing.JPanel eventLogTab;
-    public javax.swing.JTextField eventsCountField;
-    public javax.swing.JTextField eventsFromField;
-    private javax.swing.JLabel eventsLabel;
-    private javax.swing.JButton eventsRefreshButton;
-    public javax.swing.JTable eventsTable;
-    public javax.swing.JTextField eventsToField;
     private javax.swing.JMenuItem exitMenuItem;
     private javax.swing.JButton exportTransactionsButton;
     private javax.swing.JMenu fileMenu;
     private javax.swing.JLabel fromLabel;
-    private javax.swing.JLabel fromLabel1;
     private javax.swing.JPasswordField gmailPassword;
     private javax.swing.JLabel gmailServerStatus;
     private javax.swing.JTextField gmailUsername;
@@ -3893,7 +3619,6 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JPopupMenu jPopupMenu1;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
-    private javax.swing.JScrollPane jScrollPane4;
     private javax.swing.JPopupMenu.Separator jSeparator3;
     private javax.swing.JTabbedPane jTabbedPane;
     private javax.swing.JLabel loginStatus;
@@ -3903,7 +3628,6 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JButton mergeEnvelopesButton;
     public javax.swing.JComboBox mergeEnvelopesList;
     private javax.swing.JLabel message;
-    private javax.swing.JLabel message1;
     private javax.swing.JButton moreTransactionsButton;
     private javax.swing.JTextField newAccountField;
     private javax.swing.JTextField newCategoryField;
@@ -3930,7 +3654,6 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JPanel summaryPanel;
     private javax.swing.JScrollPane summaryScrollPane;
     private javax.swing.JLabel toLabel;
-    private javax.swing.JLabel toLabel1;
     public javax.swing.JComboBox transAccountDropdown;
     public javax.swing.JComboBox transCategoryDropdown;
     public javax.swing.JComboBox transEnvelopeDropdown;

@@ -33,7 +33,6 @@ public class DBMS {
             "CREATE TABLE cats  (created TEXT NOT NULL, modified TEXT NOT NULL, enabled INTEGER NOT NULL, id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL UNIQUE)",
             "CREATE TABLE envs  (created TEXT NOT NULL, modified TEXT NOT NULL, enabled INTEGER NOT NULL, id INTEGER NOT NULL PRIMARY KEY, catid INTEGER NOT NULL, name TEXT NOT NULL UNIQUE, FOREIGN KEY (catid) REFERENCES cats (id))",
             "CREATE TABLE trans (created TEXT NOT NULL, modified TEXT NOT NULL, id INTEGER NOT NULL PRIMARY KEY, acctid INTEGER NOT NULL, envid INTEGER NOT NULL, userid INTEGER NOT NULL, date TEXT NOT NULL, desc TEXT NOT NULL, amt REAL NOT NULL, tx INTEGER DEFAULT -1, FOREIGN KEY (acctid) REFERENCES accts (id), FOREIGN KEY (envid) REFERENCES envs (id), FOREIGN KEY (userid) REFERENCES users (id))",
-            "CREATE TABLE log   (created TEXT NOT NULL, id INTEGER NOT NULL PRIMARY KEY, event TEXT NOT NULL)",
             "CREATE TABLE users (created TEXT NOT NULL, modified TEXT NOT NULL, enabled INTEGER NOT NULL, id INTEGER NOT NULL PRIMARY KEY, type INTEGER NOT NULL, un TEXT NOT NULL UNIQUE, pw TEXT NOT NULL)",
             "CREATE TABLE email (created TEXT NOT NULL, modified TEXT NOT NULL, attempt INTEGER NOT NULL, id INTEGER NOT NULL PRIMARY KEY, userid INTEGER NOT NULL, addr TEXT NOT NULL UNIQUE, FOREIGN KEY (userid) REFERENCES users (id))",
             
@@ -54,7 +53,6 @@ public class DBMS {
             "DROP TABLE IF EXISTS cats",
             "DROP TABLE IF EXISTS envs",
             "DROP TABLE IF EXISTS trans",
-            "DROP TABLE IF EXISTS log",
             "DROP TABLE IF EXISTS users",
             "DROP TABLE IF EXISTS email"};
         updateDatabase(queries);
@@ -247,17 +245,6 @@ public class DBMS {
             return new User(username, password);
         }
         return null;
-    }
-    
-    /**
-     * Adds a new event to the event log. The log will be used to track all
-     * changes and queries in the system. It can also be used to track and fix
-     * bugs in the system.
-     * @param event A short description of the event
-     * @return Event if successfully added, null otherwise
-     */
-    public static Event newEvent(String event) {
-        return new Event(event);
     }
     
     /**
@@ -1600,69 +1587,6 @@ public class DBMS {
             }
         } catch (ClassNotFoundException | SQLException e) {
             return -1;
-        }
-    }
-    
-    /**
-     * Retrieves the most recent specified quantity of events from database and 
-     * stores them in a linked list
-     * @param quantity Number of events to retrieve
-     * @return Linked list of events
-     */
-    public static LinkedList<Event> getEvents(int quantity) {
-        try {
-            // register the driver
-            Class.forName("org.sqlite.JDBC");
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute query
-                ResultSet rs = stmt.executeQuery("SELECT id FROM log ORDER BY id DESC LIMIT " + quantity);
-                LinkedList<Event> events = new LinkedList();
-                while(rs.next()) {
-                    events.addFirst(new Event(rs.getInt("id")));
-                }
-                return events;
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-            return null;
-        }
-    }
-    
-    /**
-     * Retrieves all events in the given date range from database and stores 
-     * them in a linked list
-     * @param from Start date of the date range in format: YYYY-MM-DD
-     * @param to End date of the date range in format: YYYY-MM-DD
-     * @return Linked list of events
-     */
-    public static LinkedList<Event> getEvents(String from, String to) {
-        if (!Utilities.isDate(from) || !Utilities.isDate(to)) {
-            return null;
-        }
-        try {
-            // register the driver
-            Class.forName("org.sqlite.JDBC");
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute query
-                
-                String query;
-                if (from.compareToIgnoreCase(to)>1) {
-                    query = "SELECT id FROM log WHERE created<='" + from + "-' and created>='" + to + "' ORDER BY id";
-                } else {
-                    query = "SELECT id FROM log WHERE created>='" + from + "' and created<='" + to + "-' ORDER BY id";
-                }
-                ResultSet rs = stmt.executeQuery(query);
-                LinkedList<Event> events = new LinkedList();
-                while(rs.next()) {
-                    events.add(new Event(rs.getInt("id")));
-                }
-                return events;
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-            return null;
         }
     }
     

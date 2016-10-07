@@ -46,7 +46,7 @@ public final class TransactionsTableModel implements TableModel {
             hideTx = false;
             qty = 35;
         } else {
-            byDateRange = vc.con.dateRangeCheckBox1.isSelected();
+            byDateRange = vc.con.dateRangeCheckBox.isSelected();
             hideTx = vc.con.hideTransfersToggleButton.isSelected();
             try{
                 qty = Integer.parseInt(vc.con.transactionQtyButton.getText());
@@ -254,9 +254,7 @@ public final class TransactionsTableModel implements TableModel {
                 writer.write("\n" + date + "," + desc + "," + amt + "," + acct + "," + cat + "," + env + "," + usr);
             }
             writer.flush();
-            DBMS.newEvent("Transactions exported successfully to CSV.");
         } catch (IOException ex) {
-            DBMS.newEvent("ERROR: " + ex.getMessage());
         } 
     }
     

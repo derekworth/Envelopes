@@ -2,7 +2,6 @@ package server.remote;
 
 import database.DBMS;
 import database.Email;
-import database.Event;
 import database.User;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -111,13 +110,10 @@ public class Gmail {
                 if(msg.length()>500) {
                     msgLength = 500;
                 }
-                Event e = DBMS.newEvent("To: " + recipient + " | Msg: " + msg.substring(0, msgLength));
                 // End mail session
                 transport.close();
             } catch (NoSuchProviderException ex) {
-                DBMS.newEvent("Gmail sending error: " + ex);
             } catch (MessagingException ex) {
-                DBMS.newEvent("Gmail sending error: " + ex);
             }
         }
     }
@@ -171,7 +167,6 @@ public class Gmail {
                     msgLength = 500;
                 }
                 // process commands
-                DBMS.newEvent("From: " + addr + " | Msg: " + msg.substring(0, msgLength));
                 if (isAuthorized(addr)) {
                     Commands commands = new Commands(DBMS.getEmail(addr).getUser(), date, msg);
                     send(addr, commands.executeCommands());
@@ -209,7 +204,6 @@ public class Gmail {
             }
             return false;
         } catch (Exception ex) {
-            DBMS.newEvent("Gmail temporarily unavailable.");
             return false;
         }
     }
