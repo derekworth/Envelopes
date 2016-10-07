@@ -259,6 +259,86 @@ public class Console extends javax.swing.JFrame {
         }
     }
     
+    /****Login and Logout****/
+    
+    private boolean attemptUserLogin() {
+        User usr = DBMS.getUser(loginUserDropdown.getSelectedItem().toString(), true);
+        String pw = "";
+        for(char c : userPassword.getPassword()) {
+            pw += c;
+        }
+        if(usr.getPassword().equals(Utilities.getHash(pw))) { // successful login
+            loginToggleButton.setSelected(true);
+            transactionDateField.setText(Utilities.getDatestamp(0));
+            currentUser = usr;
+            enabledLoginComponents(true);
+            consoleLoginFailCount = 0;
+            userPassword.setText("");
+            loginToggleButton.setText("Sign Out");
+            loginStatus.setText("Welcome " + currentUser.getUsername() + "! You are now signed in.");
+            updateUserDropdowns();
+            // turn OFF server while user is logged in
+            serverLogout();
+            serverToggleButton.setEnabled(false);
+            return true;
+        } else { // failed login
+            // set sign in settings
+            loginToggleButton.setSelected(false);
+            loginStatus.setText("Error(" + ++consoleLoginFailCount + "): incorrect password.");
+            return false;
+        }
+    }
+    
+    private void userLogout() {
+        currentUser = null;
+        enabledLoginComponents(false);
+        // set sign in settings
+        loginToggleButton.setText("Sign In");
+        loginStatus.setText("You are now signed out.");
+        histIndex = -1;
+        cmdHistory.clear();
+        updateUserDropdowns();
+        // turn server on after user logs out
+        attemptServerLogin();
+        serverToggleButton.setEnabled(true);
+    }
+    
+    private boolean attemptServerLogin() {
+        // retrieve username and password from the text fields
+        String srvUn, srvPw = "";
+        srvUn = gmailUsername.getText();
+        for(char c : gmailPassword.getPassword()) {
+            srvPw += c;
+        }
+        // check if un & pw are valid
+        if(Gmail.isValidCredentials(srvUn, srvPw)) {
+            gmail = DBMS.getGmail();
+            gmail.setUsername(srvUn);
+            gmail.setPassword(srvPw);
+            serverIsOn = true;
+            exec = Executors.newSingleThreadExecutor();
+            exec.submit(gmailServer);
+            serverToggleButton.setText("Stop Server");
+            serverToggleButton.setSelected(true);
+            gmailServerStatus.setText("Gmail server is now ON.");
+            serverLoginFailCount = 0;
+            gmailUsername.setEnabled(false);
+            gmailPassword.setEnabled(false);
+            return true;
+        }
+        return false;
+    }
+    
+    private void serverLogout() {
+        serverIsOn = false;
+        exec.shutdownNow();
+        serverToggleButton.setSelected(false);
+        serverToggleButton.setText("Start Server");
+        gmailServerStatus.setText("Gmail server is now OFF.");
+        gmailUsername.setEnabled(true);
+        gmailPassword.setEnabled(true);
+    }
+    
     /****MISC****/
     
     public final void validateTransactionFields() {
@@ -337,7 +417,7 @@ public class Console extends javax.swing.JFrame {
         if(errorMsg.contains(msg)){
             errorMsg.remove(msg);
             String fullMsg = "ERROR: ";
-            if(errorMsg.size()==0) {
+            if(errorMsg.isEmpty()) {
                 fullMsg = "";
             }
             
@@ -1859,62 +1939,15 @@ public class Console extends javax.swing.JFrame {
 
     private void userPasswordKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_userPasswordKeyPressed
         if(evt.getKeyCode()==10) {
-            User usr = DBMS.getUser(loginUserDropdown.getSelectedItem().toString(), true);
-            String un = usr.getUsername();
-            String pw = "";
-            for(char c : userPassword.getPassword()) {
-                pw += c;
-            }
-            if(usr.getPassword().equals(Utilities.getHash(pw))) { // successful login
-                loginToggleButton.setSelected(true);
-                transactionDateField.setText(Utilities.getDatestamp(0));
-                currentUser = usr;
-                enabledLoginComponents(true);
-                consoleLoginFailCount = 0;
-                userPassword.setText("");
-                loginToggleButton.setText("Sign Out");
-                loginStatus.setText("Welcome " + currentUser.getUsername() + "! You are now signed in.");
-                updateUserDropdowns();
-            } else { // failed login
-                // set sign in settings
-                loginToggleButton.setSelected(false);
-                loginStatus.setText("Error(" + ++consoleLoginFailCount + "): incorrect password.");
-            }
+            attemptUserLogin();
         }
     }//GEN-LAST:event_userPasswordKeyPressed
 
     private void loginToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loginToggleButtonActionPerformed
-        User usr = DBMS.getUser(loginUserDropdown.getSelectedItem().toString(), true);
-        String un = usr.getUsername();
-        String pw = "";
         if(loginToggleButton.isSelected()) { // attempt to log user in
-            for(char c : userPassword.getPassword()) {
-                pw += c;
-            }
-            if(usr.getPassword().equals(Utilities.getHash(pw))) { // successful login
-                transactionDateField.setText(Utilities.getDatestamp(0));
-                currentUser = usr;
-                enabledLoginComponents(true);
-                consoleLoginFailCount = 0;
-                userPassword.setText("");
-                loginToggleButton.setText("Sign Out");
-                loginStatus.setText("Welcome " + currentUser.getUsername() + "! You are now signed in.");
-                updateUserDropdowns();
-            } else { // failed login
-                // set sign in settings
-                loginToggleButton.setSelected(false);
-                userPassword.setText("");
-                loginStatus.setText("Error(" + ++consoleLoginFailCount + "): incorrect password.");
-            }
+            attemptUserLogin();
         } else { // log user out
-            currentUser = null;
-            enabledLoginComponents(false);
-            // set sign in settings
-            loginToggleButton.setText("Sign In");
-            loginStatus.setText("You are now signed out.");
-            histIndex = -1;
-            cmdHistory.clear();
-            updateUserDropdowns();
+            userLogout();
         }
     }//GEN-LAST:event_loginToggleButtonActionPerformed
 
@@ -2178,30 +2211,43 @@ public class Console extends javax.swing.JFrame {
                             mth--;      // decrease month, same year
                         }
                         twelveMths[i][0] = date;
-                        if(Integer.parseInt(date.substring(5,7))==2) {
-                            twelveMths[i][1] = "(Jan";
-                        } else if(Integer.parseInt(date.substring(5,7))==3) {
-                            twelveMths[i][1] = "(Feb";
-                        } else if(Integer.parseInt(date.substring(5,7))==4) {
-                            twelveMths[i][1] = "(Mar";
-                        } else if(Integer.parseInt(date.substring(5,7))==5) {
-                            twelveMths[i][1] = "(Apr";
-                        } else if(Integer.parseInt(date.substring(5,7))==6) {
-                            twelveMths[i][1] = "(May";
-                        } else if(Integer.parseInt(date.substring(5,7))==7) {
-                            twelveMths[i][1] = "(Jun";
-                        } else if(Integer.parseInt(date.substring(5,7))==8) {
-                            twelveMths[i][1] = "(Jul";
-                        } else if(Integer.parseInt(date.substring(5,7))==9) {
-                            twelveMths[i][1] = "(Aug";
-                        } else if(Integer.parseInt(date.substring(5,7))==10) {
-                            twelveMths[i][1] = "(Sep";
-                        } else if(Integer.parseInt(date.substring(5,7))==11) {
-                            twelveMths[i][1] = "(Oct";
-                        } else if(Integer.parseInt(date.substring(5,7))==12) {
-                            twelveMths[i][1] = "(Nov";
-                        } else {
-                            twelveMths[i][1] = "(Dec";
+                        switch (Integer.parseInt(date.substring(5,7))) {
+                            case 2:
+                                twelveMths[i][1] = "(Jan";
+                                break;
+                            case 3:
+                                twelveMths[i][1] = "(Feb";
+                                break;
+                            case 4:
+                                twelveMths[i][1] = "(Mar";
+                                break;
+                            case 5:
+                                twelveMths[i][1] = "(Apr";
+                                break;
+                            case 6:
+                                twelveMths[i][1] = "(May";
+                                break;
+                            case 7:
+                                twelveMths[i][1] = "(Jun";
+                                break;
+                            case 8:
+                                twelveMths[i][1] = "(Jul";
+                                break;
+                            case 9:
+                                twelveMths[i][1] = "(Aug";
+                                break;
+                            case 10:
+                                twelveMths[i][1] = "(Sep";
+                                break;
+                            case 11:
+                                twelveMths[i][1] = "(Oct";
+                                break;
+                            case 12:
+                                twelveMths[i][1] = "(Nov";
+                                break;
+                            default:
+                                twelveMths[i][1] = "(Dec";
+                                break;
                         }
                         twelveMths[i][1] += " " + date.substring(2, 4) + ")";
                         curr++;
@@ -2283,7 +2329,8 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_snapshotButtonActionPerformed
 
     private void allTransactionsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_allTransactionsButtonActionPerformed
-        Runnable exportAllTransactions = new Runnable() {
+        Runnable exportAllTransactions;
+        exportAllTransactions = new Runnable() {
             @Override
             public void run() {
                 JFileChooser fc = new JFileChooser();
@@ -2343,21 +2390,21 @@ public class Console extends javax.swing.JFrame {
                                 Transaction trans = transactions.pollLast();
                                 runTot -= diff;
                                 if(trans.getAcct().getId()!=-1 && trans.getEnv().getId()!=-1) // both env and acct specified = not a transfer (Tx)
-                                tx = "";
+                                    tx = "";
                                 else
-                                tx = "X";
+                                    tx = "X";
                                 date = trans.getDate();
                                 desc = trans.getDesc();
                                 amt = Utilities.roundAmount(trans.getAmt());
                                 rt = Utilities.roundAmount(runTot);
                                 if(trans.getAcct().getId()!=-1)
-                                acct = trans.getAcct().getName();
+                                    acct = trans.getAcct().getName();
                                 else
-                                acct = "";
+                                    acct = "";
                                 if(trans.getEnv().getId()!=-1)
-                                env = trans.getEnv().getName();
+                                    env = trans.getEnv().getName();
                                 else
-                                env = "";
+                                    env = "";
                                 usr = trans.getUser().getUsername();
                                 writer.write("\n" + tx + "," + date + "," + desc + "," + amt + "," + rt + "," + acct + "," + env + "," + usr);
                                 curr++;
@@ -2479,81 +2526,68 @@ public class Console extends javax.swing.JFrame {
             dur = 36500;
         }
 
-        if(intervalTypeDropdown.getSelectedIndex()==0) { // monthly
-            // enforces 6 to 1200 months
-            if(dur<6) {
-                intervalCountTextField.setText("6");
-            } else if(dur>1200) {
-                intervalCountTextField.setText("1200");
-            } else {
-                intervalCountTextField.setText(Integer.toString(dur));
-            }
-        } else if(intervalTypeDropdown.getSelectedIndex()==1) { // weekly (every 7 days)
-            // enforces 4 to 5200 weeks
-            if(dur<4) {
-                intervalCountTextField.setText("4");
-            } else if(dur>5200) {
-                intervalCountTextField.setText("5200");
-            } else {
-                intervalCountTextField.setText(Integer.toString(dur));
-            }
-        } else { // daily
-            // enforces 7 to 36500 days
-            if(dur<7) {
-                intervalCountTextField.setText("7");
-            } else if(dur>36500) {
-                intervalCountTextField.setText("36500");
-            } else {
-                intervalCountTextField.setText(Integer.toString(dur));
-            }
+        switch (intervalTypeDropdown.getSelectedIndex()) {
+            case 0:
+                // monthly
+                // enforces 6 to 1200 months
+                if(dur<6) {
+                    intervalCountTextField.setText("6");
+                } else if(dur>1200) {
+                    intervalCountTextField.setText("1200");
+                } else {
+                    intervalCountTextField.setText(Integer.toString(dur));
+                }   break;
+            case 1:
+                // weekly (every 7 days)
+                // enforces 4 to 5200 weeks
+                if(dur<4) {
+                    intervalCountTextField.setText("4");
+                } else if(dur>5200) {
+                    intervalCountTextField.setText("5200");
+                } else {
+                    intervalCountTextField.setText(Integer.toString(dur));
+                }   break;
+            default:
+                // daily
+                // enforces 7 to 36500 days
+                if(dur<7) {
+                    intervalCountTextField.setText("7");
+                } else if(dur>36500) {
+                    intervalCountTextField.setText("36500");
+                } else {
+                    intervalCountTextField.setText(Integer.toString(dur));
+                }   break;
         }
     }//GEN-LAST:event_intervalCountTextFieldFocusLost
 
     private void intervalTypeDropdownActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_intervalTypeDropdownActionPerformed
-        if(intervalTypeDropdown.getSelectedIndex()==0) { // monthly
-            intervalTagLabel.setText("months");
-            intervalCountTextField.setText("12");
-        } else if(intervalTypeDropdown.getSelectedIndex()==1) { // weekly (every 7 days)
-            intervalTagLabel.setText("weeks");
-            intervalCountTextField.setText("52");
-        } else { // daily
-            intervalTagLabel.setText("days");
-            intervalCountTextField.setText("365");
+        switch (intervalTypeDropdown.getSelectedIndex()) {
+            case 0:
+                // monthly
+                intervalTagLabel.setText("months");
+                intervalCountTextField.setText("12");
+                break;
+            case 1:
+                // weekly (every 7 days)
+                intervalTagLabel.setText("weeks");
+                intervalCountTextField.setText("52");
+                break;
+            default:
+                // daily
+                intervalTagLabel.setText("days");
+                intervalCountTextField.setText("365");
+                break;
         }
     }//GEN-LAST:event_intervalTypeDropdownActionPerformed
 
     private void serverToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_serverToggleButtonActionPerformed
         if(serverToggleButton.isSelected()) {
-            // retrieve username and password from the text fields
-            String un, pw = "";
-            un = gmailUsername.getText();
-            for(char c : gmailPassword.getPassword()) {
-                pw += c;
-            }
-            // check if un & pw are valid
-            if(Gmail.isValidCredentials(un, pw)) {
-                gmail = DBMS.getGmail();
-                gmail.setUsername(un);
-                gmail.setPassword(pw);
-                serverIsOn = true;
-                exec = Executors.newSingleThreadExecutor();
-                exec.submit(gmailServer);
-                serverToggleButton.setText("Stop Server");
-                gmailServerStatus.setText("Gmail server is now ON.");
-                serverLoginFailCount = 0;
-                gmailUsername.setEnabled(false);
-                gmailPassword.setEnabled(false);
-            } else {
+            if(!attemptServerLogin()) {
                 serverToggleButton.setSelected(false);
                 gmailServerStatus.setText("Error(" + ++serverLoginFailCount + "): invalid username and/or password.");
             }
         } else {
-            serverIsOn = false;
-            exec.shutdownNow();
-            serverToggleButton.setText("Start Server");
-            gmailServerStatus.setText("Gmail server is now OFF.");
-            gmailUsername.setEnabled(true);
-            gmailPassword.setEnabled(true);
+            serverLogout();
         }
     }//GEN-LAST:event_serverToggleButtonActionPerformed
 
