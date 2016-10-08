@@ -41,16 +41,17 @@ public final class EmailTableModel implements TableModel {
     @Override
     public Object getValueAt(int row, int col) {
         Email email = emails.get(row);
-        if(col==0) {
-            return email.getCreated();
-        } else if(col==1) {
-            return email.getModified();
-        } else if(col==2) {
-            return email.getAttempt();
-        } else if(col==3) {
-            return email.getUser().getUsername();
-        } else {
-            return email.getAddress();
+        switch (col) {
+            case 0:
+                return email.getCreated();
+            case 1:
+                return email.getModified();
+            case 2:
+                return email.getAttempt();
+            case 3:
+                return email.getUser().getUsername();
+            default:
+                return email.getAddress();
         }
     }
 

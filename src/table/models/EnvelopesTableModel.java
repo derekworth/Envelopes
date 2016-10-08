@@ -14,6 +14,7 @@ import javax.swing.JTable;
 import javax.swing.event.TableModelListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import misc.Utilities;
+import server.local.Console;
 
 /**
  * Created on Sep 22, 2013
@@ -26,11 +27,11 @@ public final class EnvelopesTableModel implements TableModel {
     LinkedList<Object> containers;
     
     Object[] columnNames = {"Envelope", "Amount"};
-    ViewController vc;
+    Console con;
     
-    public EnvelopesTableModel(ViewController viewCtr) {
+    public EnvelopesTableModel(Console c) {
         setEditing(false);
-        vc = viewCtr;
+        con = c;
         refresh();
     }
     
@@ -39,10 +40,10 @@ public final class EnvelopesTableModel implements TableModel {
         LinkedList<Envelope> envs;
         LinkedList<Category> cats;
         boolean isCategorized;
-        if(vc.con==null) {
+        if(con==null) {
             isCategorized = true;
         } else {
-            isCategorized = vc.con.categorizedCheckBox.isSelected();
+            isCategorized = con.categorizedCheckBox.isSelected();
         }
         if(isCategorized) {
             // add categories

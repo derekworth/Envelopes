@@ -13,6 +13,7 @@ import javax.swing.JTable;
 import javax.swing.event.TableModelListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import misc.Utilities;
+import server.local.Console;
 
 /**
  * Created on Sep 22, 2013
@@ -26,37 +27,37 @@ public final class TransactionsTableModel implements TableModel {
     LinkedList<Transaction> transactions;
     
     Object[] columnNames = {"Date", "Description", "(+)", "(-)", "Run Tot", "Account", "Envelope", "User"};
-    ViewController vc;
+    Console con;
     
-    public TransactionsTableModel(ViewController viewCtr) {
+    public TransactionsTableModel(Console c) {
         setEditing(false);
         accountForQuery = "";
         categoryForQuery = "";
         envelopeForQuery = "";
         userForQuery = "";
-        vc = viewCtr;
+        con = c;
         refresh();
     }
     
     public void refresh() {
         boolean byDateRange, hideTx;
         int qty;
-        if(vc.con==null) {
+        if(con==null) {
             byDateRange = false;
             hideTx = false;
             qty = 35;
         } else {
-            byDateRange = vc.con.dateRangeCheckBox.isSelected();
-            hideTx = vc.con.hideTransfersToggleButton.isSelected();
+            byDateRange = con.dateRangeCheckBox.isSelected();
+            hideTx = con.hideTransfersToggleButton.isSelected();
             try{
-                qty = Integer.parseInt(vc.con.transactionQtyButton.getText());
+                qty = Integer.parseInt(con.transactionQtyButton.getText());
             } catch(NumberFormatException ex) { // returns no transactions if transaction count is not an integer
                 qty = 0;
             }
         }
         if(byDateRange) {
-            String from = vc.con.transFromField.getText();
-            String to = vc.con.transToField.getText();
+            String from = con.transFromField.getText();
+            String to = con.transToField.getText();
             transactions = new LinkedList();
             if(from==null || to==null || !Utilities.isDate(from) || !Utilities.isDate(to))
                 transactions = DBMS.getTransactions(0);
@@ -68,7 +69,7 @@ public final class TransactionsTableModel implements TableModel {
     }
     
     public void addMore() {
-        boolean hideTx = vc.con.hideTransfersToggleButton.isSelected();
+        boolean hideTx = con.hideTransfersToggleButton.isSelected();
         int qty = transactions.size();
         LinkedList<Transaction> moreTrans = DBMS.getMoreTransactions(qty, DBMS.getAccount(accountForQuery, true), DBMS.getEnvelope(envelopeForQuery, true), hideTx, transactions.getLast());
         while(!moreTrans.isEmpty()) {
@@ -176,8 +177,8 @@ public final class TransactionsTableModel implements TableModel {
             } catch(NumberFormatException ex) {
                 // do not set value
             }
-            vc.updateAccountTable();
-            vc.updateEnvelopeTable();
+            con.updateAccountTable();
+            con.updateEnvelopeTable();
         } else if(col==3) {                                    // -AMT
             String strAmt = (String) aValue;
             strAmt = strAmt.replaceAll(",", ""); // remove all commas
@@ -187,16 +188,16 @@ public final class TransactionsTableModel implements TableModel {
             } catch(NumberFormatException ex) {
                 // do not set value
             }
-            vc.updateAccountTable();
-            vc.updateEnvelopeTable();
+            con.updateAccountTable();
+            con.updateEnvelopeTable();
         } else if(col==5 && this.getValueAt(row, col)!=null) { // ACCOUNT
             tran.setAccount((String) aValue);
-            vc.updateAccountTable();
+            con.updateAccountTable();
         } else if(col==6 && this.getValueAt(row, col)!=null) { // ENVELOPE
             tran.setEnvelope((String) aValue);
-            vc.updateEnvelopeTable();
+            con.updateEnvelopeTable();
         }
-        vc.updateTransactionTable();
+        con.updateTransactionTable();
     }
 
     @Override

@@ -26,9 +26,13 @@ import java.util.concurrent.TimeUnit;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JProgressBar;
+import javax.swing.SwingUtilities;
 import misc.Utilities;
 import server.remote.Gmail;
-import table.models.ViewController;
+import table.models.AccountsTableModel;
+import table.models.EmailTableModel;
+import table.models.EnvelopesTableModel;
+import table.models.TransactionsTableModel;
 
 /**
  *
@@ -49,14 +53,17 @@ public class Console extends javax.swing.JFrame {
     User currentUser;
     User gmail;
     
-    ViewController vc;
-    
     LinkedList<String> cmdHistory = new LinkedList();
     int histIndex;
     int consoleLoginFailCount = 0;
     int serverLoginFailCount = 0;
     boolean serverIsOn;
     ExecutorService exec;
+    
+    private EnvelopesTableModel    envelopesTM;
+    private AccountsTableModel     accountsTM;
+    private TransactionsTableModel transactionsTM;
+    private EmailTableModel        emailTM;
         
     Runnable gmailServer = new Runnable() {
         @Override
@@ -102,7 +109,11 @@ public class Console extends javax.swing.JFrame {
                 gmailPassword.setEnabled(false);
             }
             // initialize table models
-            vc = new ViewController(this);
+            envelopesTM    = new EnvelopesTableModel(this);
+            accountsTM     = new AccountsTableModel();
+            transactionsTM = new TransactionsTableModel(this);
+            emailTM        = new EmailTableModel();
+            initializeTables();
             // populate transaction date fields
             transFromField.setText(Utilities.getDatestamp(-28));
             transToField.setText(Utilities.getDatestamp(0));
@@ -128,13 +139,127 @@ public class Console extends javax.swing.JFrame {
         updateAllDropdowns();
     }
     
+    /****UPDATE TABLE MODELS****/
+    
+    private void initializeTables() {        
+            // initialized envelopes table
+            envelopesTable.setModel(envelopesTM);
+            envelopesTable.getColumnModel().getColumn(0).setCellRenderer(envelopesTM.getBoldRenderer());
+            envelopesTable.getColumnModel().getColumn(1).setCellRenderer(envelopesTM.getBoldRenderer());
+            envelopesTable.getColumnModel().getColumn(1).setPreferredWidth(80);
+            // initialize accounts table
+            accountsTable.setModel(accountsTM);
+            accountsTable.getColumnModel().getColumn(0).setCellRenderer(accountsTM.getBoldRenderer());
+            accountsTable.getColumnModel().getColumn(1).setCellRenderer(accountsTM.getBoldRenderer());
+            accountsTable.getColumnModel().getColumn(1).setPreferredWidth(80);
+            // initialize transactions table
+            transactionsTable.setModel(transactionsTM);
+            transactionsTable.getColumnModel().getColumn(0).setPreferredWidth(80);
+            transactionsTable.getColumnModel().getColumn(0).setMaxWidth(80);
+            transactionsTable.getColumnModel().getColumn(1).setPreferredWidth(240);
+            transactionsTable.getColumnModel().getColumn(2).setPreferredWidth(80);
+            transactionsTable.getColumnModel().getColumn(2).setMaxWidth(120);
+            transactionsTable.getColumnModel().getColumn(3).setPreferredWidth(80);
+            transactionsTable.getColumnModel().getColumn(3).setMaxWidth(120);
+            transactionsTable.getColumnModel().getColumn(4).setPreferredWidth(80);
+            transactionsTable.getColumnModel().getColumn(4).setMaxWidth(120);
+            for(int i = 0; i < transactionsTable.getColumnCount(); i++) {
+                transactionsTable.getColumnModel().getColumn(i).setCellRenderer(transactionsTM.getRenderer());
+            }
+            // initialize email table
+            emailTable.setModel(emailTM);
+            emailTable.getColumnModel().getColumn(0).setMaxWidth(130);
+            emailTable.getColumnModel().getColumn(0).setPreferredWidth(130);
+            emailTable.getColumnModel().getColumn(1).setMaxWidth(130);
+            emailTable.getColumnModel().getColumn(1).setPreferredWidth(130);
+            emailTable.getColumnModel().getColumn(2).setMaxWidth(60);
+            emailTable.getColumnModel().getColumn(2).setPreferredWidth(60);
+            emailTable.getColumnModel().getColumn(3).setMaxWidth(150);
+            emailTable.getColumnModel().getColumn(3).setPreferredWidth(80);
+            for(int i = 0; i < emailTable.getColumnCount(); i++) {
+                emailTable.getColumnModel().getColumn(i).setCellRenderer(emailTM.getRenderer());
+            }
+    }
+    
+    public final void updateAccountTable() {
+        accountsTM.refresh();
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                accountsTable.updateUI();
+            }
+        });
+    }
+    
+    public final void updateEnvelopeTable() {
+        envelopesTM.refresh();
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                envelopesTable.updateUI();
+            }
+        });
+    }
+    
+    public final void updateTransactionTable() {
+        DBMS.removeZeroAmtTransactions();
+        transactionsTM.refresh();
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                transactionsTable.updateUI();
+            }
+        });
+    }
+    
+    public final void updateTransactionTableWithMoreTransactions() {
+        DBMS.removeZeroAmtTransactions();
+        transactionsTM.addMore();
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                transactionsTable.updateUI();
+            }
+        });
+    }
+    
+    public final void updateEmailTable() {
+        emailTM.refresh();
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                emailTable.updateUI();
+            }
+        });
+    }    
+    
+    public final void updateSelectedAmount(char type, String acctSelected, String envSelected) {
+        // set selection; type: a = account; thisConsole = category; e = envelope; u = user; n = none
+        if(type == 'a') {
+            transactionsTM.setAccountForQuery(acctSelected);
+        } else if(type == 'e') {
+            transactionsTM.setEnvelopeForQuery(envSelected);
+        }
+    }
+    
+    public final void exportTransactions(String fileName) {
+        transactionsTM.export(fileName);
+    }
+    
+    public final void allowEditing(boolean isAllowed) {
+        accountsTM.setEditing(isAllowed);
+        envelopesTM.setEditing(isAllowed);
+        transactionsTM.setEditing(isAllowed);
+    }
+    
     /****UPDATE TABLES****/
+    
     public final void updateAllTables() {
-        vc.updateTransactionTable();
-        vc.updateAccountTable();
-        vc.updateTransactionTable();
+        updateTransactionTable();
+        updateAccountTable();
+        updateTransactionTable();
         updateSelectedAmount('n');
-        vc.updateEmailTable();
+        updateEmailTable();
     }
     
     /****UPDATE DROPDOWNS****/
@@ -247,9 +372,9 @@ public class Console extends javax.swing.JFrame {
         String acctSelected = (String) transAccountDropdown.getSelectedItem();
         String envSelected = (String) transEnvelopeDropdown.getSelectedItem();
         // set selection; type: a = account; thisConsole = category; e = envelope; u = user; n = none
-        vc.updateSelectedAmount(type, acctSelected, envSelected);
+        updateSelectedAmount(type, acctSelected, envSelected);
         // update table to reflect new selection
-        vc.updateTransactionTable();
+        updateTransactionTable();
         // display selected account/envelope amounts
         if(DBMS.getTransactions(1).size()>0 && acctSelected!=null && envSelected!=null && (DBMS.isAccount(acctSelected, true) || acctSelected.equalsIgnoreCase("-all-")) && (DBMS.isEnvelope(envSelected, true) || envSelected.equalsIgnoreCase("-all-"))) {
             // display account amount
@@ -482,7 +607,7 @@ public class Console extends javax.swing.JFrame {
         envTransferTo.setEnabled(isLoggedIn);
         
         // table editing
-        vc.allowEditing(isLoggedIn);
+        allowEditing(isLoggedIn);
         
         // admin option in File dropdown menu
         if(currentUser!=null && currentUser.isAdmin()) {
@@ -1346,13 +1471,10 @@ public class Console extends javax.swing.JFrame {
 
         emailTable.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null}
+
             },
             new String [] {
-                "Title 1", "Title 2", "Title 3", "Title 4"
+
             }
         ));
         emailTable.setFillsViewportHeight(true);
@@ -2741,7 +2863,7 @@ public class Console extends javax.swing.JFrame {
             tmp.setAttempt(0);
             tmp.setUser(usr);
         }
-        vc.updateEmailTable();
+        updateEmailTable();
     }//GEN-LAST:event_allowEmailActionPerformed
 
     private void blockEmailActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_blockEmailActionPerformed
@@ -2750,7 +2872,7 @@ public class Console extends javax.swing.JFrame {
             tmp.setAttempt(99);
             tmp.setUser(null);
         }
-        vc.updateEmailTable();
+        updateEmailTable();
     }//GEN-LAST:event_blockEmailActionPerformed
 
     private void transactionQtyButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_transactionQtyButtonActionPerformed
@@ -2763,12 +2885,12 @@ public class Console extends javax.swing.JFrame {
             transactionQtyButton.setText("25");
         }
         validateTransactionFields();
-        vc.updateTransactionTable();
+        updateTransactionTable();
     }//GEN-LAST:event_transactionQtyButtonActionPerformed
 
     private void moreTransactionsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_moreTransactionsButtonActionPerformed
         validateTransactionFields();
-        vc.updateTransactionTableWithMoreTransactions();
+        updateTransactionTableWithMoreTransactions();
     }//GEN-LAST:event_moreTransactionsButtonActionPerformed
 
     private void mergeEnvelopesButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_mergeEnvelopesButtonActionPerformed
@@ -2787,7 +2909,7 @@ public class Console extends javax.swing.JFrame {
             int opt = JOptionPane.showConfirmDialog(this, msg, title, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
             if(opt == yes) {
                 DBMS.mergeEnvelopes(mergeFromEnv, mergeToEnv);
-                vc.updateEnvelopeTable();
+                updateEnvelopeTable();
                 updateEnvelopeDropdowns();
             }
         }
@@ -2800,8 +2922,8 @@ public class Console extends javax.swing.JFrame {
             Envelope env = DBMS.getEnvelope(envName, true);
             Category cat = DBMS.getCategory(catName, true);
             env.setCategory(cat);
-            vc.updateEnvelopeTable();
-            vc.updateTransactionTable();
+            updateEnvelopeTable();
+            updateTransactionTable();
         }
     }//GEN-LAST:event_setCategoryButtonActionPerformed
 
@@ -2815,7 +2937,7 @@ public class Console extends javax.swing.JFrame {
                 env.setCategory(null);
             }
             cat.setEnabled(false);
-            vc.updateEnvelopeTable();
+            updateEnvelopeTable();
             updateCategoryDropdowns();
         }
     }//GEN-LAST:event_removeCategoryButtonActionPerformed
@@ -2830,7 +2952,7 @@ public class Console extends javax.swing.JFrame {
             Account acct = DBMS.getAccount(acctName, true);
             if(Utilities.roundAmount(acct.getAmt()).equalsIgnoreCase("0.00")) {
                 acct.setEnabled(false);
-                vc.updateAccountTable();
+                updateAccountTable();
                 updateAccountDropdowns();
             } else {
                 message.setText("ERROR: '" + acctName + "' must have a zero balance before it can be removed");
@@ -2849,7 +2971,7 @@ public class Console extends javax.swing.JFrame {
             if(DBMS.getTransactionCount(env)==0) {
                 env.setCategory(null);
                 env.setEnabled(false);
-                vc.updateEnvelopeTable();
+                updateEnvelopeTable();
                 updateEnvelopeDropdowns();
             } else {
                 message.setText("ERROR: '" + envName + "' must not have any transactions before it can be removed--please move transactions manually or by using the merge button");
@@ -2887,12 +3009,12 @@ public class Console extends javax.swing.JFrame {
 
     private void hideTransfersToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_hideTransfersToggleButtonActionPerformed
         validateTransactionFields();
-        vc.updateTransactionTable();
+        updateTransactionTable();
     }//GEN-LAST:event_hideTransfersToggleButtonActionPerformed
 
     private void transactionsRefreshButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_transactionsRefreshButtonActionPerformed
         validateTransactionFields();
-        vc.updateTransactionTable();
+        updateTransactionTable();
     }//GEN-LAST:event_transactionsRefreshButtonActionPerformed
 
     private void envTransferButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_envTransferButtonActionPerformed
@@ -3001,9 +3123,9 @@ public class Console extends javax.swing.JFrame {
             && currentUser!=null) {
             double diff = Double.parseDouble(amt);
             DBMS.newTransaction(acct.getName(), env.getName(), currentUser.getUsername(), date, Utilities.removeDoubleApostrophes(desc), diff, "");
-            vc.updateAccountTable();
-            vc.updateEnvelopeTable();
-            vc.updateTransactionTable();
+            updateAccountTable();
+            updateEnvelopeTable();
+            updateTransactionTable();
             transactionDescriptionField.setText("");
             transactionAmtField.setText("");
             message.setText("");
@@ -3069,7 +3191,7 @@ public class Console extends javax.swing.JFrame {
             File file = fc.getSelectedFile();
             fileName = file.getAbsolutePath();
         }
-        vc.exportTransactions(fileName);
+        exportTransactions(fileName);
     }//GEN-LAST:event_exportTransactionsButtonActionPerformed
 
     private void transEnvelopeDropdownActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_transEnvelopeDropdownActionPerformed
@@ -3149,7 +3271,7 @@ public class Console extends javax.swing.JFrame {
                         env.setEnabled(false);
                     }
                     DBMS.newCategory(newCatName);
-                    vc.updateEnvelopeTable();
+                    updateEnvelopeTable();
                     updateCategoryDropdowns();
                     newCategoryField.setText("");
                 }
@@ -3220,7 +3342,7 @@ public class Console extends javax.swing.JFrame {
                             env.setEnabled(false);
                         }
                         DBMS.newCategory(newCatName);
-                        vc.updateEnvelopeTable();
+                        updateEnvelopeTable();
                         updateCategoryDropdowns();
                         newCategoryField.setText("");
                     }
@@ -3289,7 +3411,7 @@ public class Console extends javax.swing.JFrame {
                         env.setEnabled(true);
                     }
                     DBMS.newEnvelope(newEnvName);
-                    vc.updateEnvelopeTable();
+                    updateEnvelopeTable();
                     updateEnvelopeDropdowns();
                     newEnvelopeField.setText("");
                 }
@@ -3360,7 +3482,7 @@ public class Console extends javax.swing.JFrame {
                             env.setEnabled(true);
                         }
                         DBMS.newEnvelope(newEnvName);
-                        vc.updateEnvelopeTable();
+                        updateEnvelopeTable();
                         updateEnvelopeDropdowns();
                         newEnvelopeField.setText("");
                     }
@@ -3375,14 +3497,14 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_newEnvelopeFieldKeyPressed
 
     private void categorizedCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_categorizedCheckBoxActionPerformed
-        vc.updateEnvelopeTable();
+        updateEnvelopeTable();
         envelopesTable.updateUI();
     }//GEN-LAST:event_categorizedCheckBoxActionPerformed
 
     private void envelopesTablePropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_envelopesTablePropertyChange
         if(evt.getPropertyName().equalsIgnoreCase("tableCellEditor") && evt.getNewValue()==null) {
             updateEnvelopeDropdowns();
-            vc.updateEnvelopeTable();
+            updateEnvelopeTable();
             updateCategoryDropdowns();
         }
     }//GEN-LAST:event_envelopesTablePropertyChange
@@ -3444,7 +3566,7 @@ public class Console extends javax.swing.JFrame {
                         }
                     }
                     DBMS.newAccount(newAcctName);
-                    vc.updateAccountTable();
+                    updateAccountTable();
                     updateAccountDropdowns();
                     newAccountField.setText("");
                 }
@@ -3517,7 +3639,7 @@ public class Console extends javax.swing.JFrame {
                             }
                         }
                         DBMS.newAccount(newAcctName);
-                        vc.updateAccountTable();
+                        updateAccountTable();
                         updateAccountDropdowns();
                         newAccountField.setText("");
                     }
@@ -3534,7 +3656,7 @@ public class Console extends javax.swing.JFrame {
     private void accountsTablePropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_accountsTablePropertyChange
         if(evt.getPropertyName().equalsIgnoreCase("tableCellEditor") && evt.getNewValue()==null) {
             updateAccountDropdowns();
-            vc.updateAccountTable();
+            updateAccountTable();
         }
     }//GEN-LAST:event_accountsTablePropertyChange
 
