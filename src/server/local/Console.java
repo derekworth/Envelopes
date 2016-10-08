@@ -36,17 +36,12 @@ import table.models.TransactionsTableModel;
 
 /**
  *
- * @author Worth
+ * @author Derek Worth
  */
 public class Console extends javax.swing.JFrame {
     final Console thisConsole = this;
     JProgressBar pbar = new JProgressBar(0,100);
     public final String TITLE = "Envelopes";
-    LinkedList<Account> accounts;
-    LinkedList<Category> categories;
-    LinkedList<Envelope> envelopes;
-    LinkedList<User> users;
-    LinkedList<Email> email;
     LinkedList<String> errorMsg = new LinkedList();
     LinkedList<String> errorMsg1 = new LinkedList();
     
@@ -274,7 +269,6 @@ public class Console extends javax.swing.JFrame {
     
     public final void updateAccountDropdowns() {
         LinkedList<Account> accts = DBMS.getAccounts(true);
-        accounts = accts;
         // reset account dropdown lists
         transAccountDropdown.removeAllItems();
         transAccountDropdown.addItem("-all-");
@@ -282,7 +276,7 @@ public class Console extends javax.swing.JFrame {
         acctTransferFrom.removeAllItems();
         acctTransferTo.removeAllItems();
         // populates account dropdown lists
-        for(Account acct : accounts) {
+        for(Account acct : accts) {
             transAccountDropdown.addItem(acct.getName());
             newTransAcctDropdown.addItem(acct.getName());
             acctTransferFrom.addItem(acct.getName());
@@ -290,8 +284,8 @@ public class Console extends javax.swing.JFrame {
         }
     }
     
-    public final void updateEnvelopeDropdowns() {        
-        envelopes = DBMS.getEnvelopes(true);
+    public final void updateEnvelopeDropdowns() {
+        LinkedList<Envelope> envs = DBMS.getEnvelopes(true);
         // reset envelope dropdowns
         transEnvelopeDropdown.removeAllItems();
         newTransEnvDropdown.removeAllItems();
@@ -300,7 +294,7 @@ public class Console extends javax.swing.JFrame {
         envTransferTo.removeAllItems();
         // poplates envelope dropdowns
         transEnvelopeDropdown.addItem("-all-");
-        for(Envelope env : envelopes) {
+        for(Envelope env : envs) {
             newTransEnvDropdown.addItem(env.getName());
             mergeEnvelopesList.addItem(env.getName());
             envTransferFrom.addItem(env.getName());
@@ -311,26 +305,24 @@ public class Console extends javax.swing.JFrame {
     
     public final void updateCategoryDropdowns() {
         LinkedList<Category> cats = DBMS.getCategories(true);
-        categories = cats;
         // reset category dropdown
         transCategoryDropdown.removeAllItems();
         // populate
         transCategoryDropdown.addItem("-none-");
-        for(Category cat : categories) {
+        for(Category cat : cats) {
             transCategoryDropdown.addItem(cat.getName());
         }
     }
     
     public final void updateUserDropdowns() {
         LinkedList<User> usrs = DBMS.getUsers(true);
-        users = usrs;
         // reset user dropdowns
         loginUserDropdown.removeAllItems();
         removeUserDropdown.removeAllItems();
         updateUserDropdown.removeAllItems();
         emailUserDropdown.removeAllItems();
         // populate dropdowns
-        for(User usr : users) {
+        for(User usr : usrs) {
             // add all users to login list
             loginUserDropdown.addItem(usr.getUsername());
             // add all users to email list
@@ -360,10 +352,9 @@ public class Console extends javax.swing.JFrame {
     
     public final void updateEmailDropdown() {
         LinkedList<Email> em = DBMS.getEmail();
-        email = em;
         // reset dropdown
         emailAddressDropdown.removeAllItems();
-        for(Email e : email) {
+        for(Email e : em) {
             emailAddressDropdown.addItem(e.getAddress());
         }
     }
@@ -451,6 +442,8 @@ public class Console extends javax.swing.JFrame {
             gmailPassword.setEnabled(false);
             return true;
         }
+        serverToggleButton.setSelected(false);
+        gmailServerStatus.setText("Error(" + ++serverLoginFailCount + "): invalid username and/or password.");
         return false;
     }
     
@@ -2704,10 +2697,7 @@ public class Console extends javax.swing.JFrame {
 
     private void serverToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_serverToggleButtonActionPerformed
         if(serverToggleButton.isSelected()) {
-            if(!attemptServerLogin()) {
-                serverToggleButton.setSelected(false);
-                gmailServerStatus.setText("Error(" + ++serverLoginFailCount + "): invalid username and/or password.");
-            }
+            attemptServerLogin();
         } else {
             serverLogout();
         }
@@ -2715,59 +2705,13 @@ public class Console extends javax.swing.JFrame {
 
     private void gmailPasswordKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_gmailPasswordKeyPressed
         if(evt.getKeyCode()==10) { // <enter> is pressed
-            // retrieve username and password from the text fields
-            String un, pw = "";
-            un = gmailUsername.getText();
-            for(char c : gmailPassword.getPassword()) {
-                pw += c;
-            }
-            // check if un & pw are valid
-            if(Gmail.isValidCredentials(un, pw)) {
-                gmail = DBMS.getGmail();
-                gmail.setUsername(un);
-                gmail.setPassword(pw);
-                serverIsOn = true;
-                exec = Executors.newSingleThreadExecutor();
-                exec.submit(gmailServer);
-                serverToggleButton.setText("Stop Server");
-                serverToggleButton.setSelected(true);
-                gmailServerStatus.setText("Gmail server is now ON.");
-                serverLoginFailCount = 0;
-                gmailUsername.setEnabled(false);
-                gmailPassword.setEnabled(false);
-            } else {
-                serverToggleButton.setSelected(false);
-                gmailServerStatus.setText("Error(" + ++serverLoginFailCount + "): invalid username and/or password.");
-            }
+            attemptServerLogin();
         }
     }//GEN-LAST:event_gmailPasswordKeyPressed
 
     private void gmailUsernameKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_gmailUsernameKeyPressed
         if(evt.getKeyCode()==10) { // <enter> is pressed
-            // retrieve username and password from the text fields
-            String un, pw = "";
-            un = gmailUsername.getText();
-            for(char c : gmailPassword.getPassword()) {
-                pw += c;
-            }
-            // check if un & pw are valid
-            if(Gmail.isValidCredentials(un, pw)) {
-                gmail = DBMS.getGmail();
-                gmail.setUsername(un);
-                gmail.setPassword(pw);
-                serverIsOn = true;
-                exec = Executors.newSingleThreadExecutor();
-                exec.submit(gmailServer);
-                serverToggleButton.setText("Stop Server");
-                serverToggleButton.setSelected(true);
-                gmailServerStatus.setText("Gmail server is now ON.");
-                serverLoginFailCount = 0;
-                gmailUsername.setEnabled(false);
-                gmailPassword.setEnabled(false);
-            } else {
-                serverToggleButton.setSelected(false);
-                gmailServerStatus.setText("Error(" + ++serverLoginFailCount + "): invalid username and/or password.");
-            }
+            attemptServerLogin();
         }
     }//GEN-LAST:event_gmailUsernameKeyPressed
 
