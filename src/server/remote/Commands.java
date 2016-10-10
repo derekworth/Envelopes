@@ -203,8 +203,8 @@ public class Commands {
             double oldFromAcctAmt = from.getAmt();
             double oldToAcctAmt   = to.getAmt();
             // Create transactions
-            Transaction t1 = DBMS.newTransaction(from.getName(), "", user.getUsername(), date, "*(" + from.getName() + " > " + to.getName() + ")", -amt, "");
-            Transaction t2 = DBMS.newTransaction(to.getName(),   "", user.getUsername(), date, "*(" + from.getName() + " > " + to.getName() + ")", amt, "");
+            Transaction t1 = DBMS.addTransaction(from.getName(), "", user.getUsername(), date, "*(" + from.getName() + " > " + to.getName() + ")", -amt, "");
+            Transaction t2 = DBMS.addTransaction(to.getName(),   "", user.getUsername(), date, "*(" + from.getName() + " > " + to.getName() + ")", amt, "");
             DBMS.setTransferRelationship(t1, t2);
             
             return "ACCOUNT TRANSFER:\n"
@@ -223,8 +223,8 @@ public class Commands {
             double oldFromAmt = from.getAmt();
             double oldToAmt   = to.getAmt();
             // Create transactions
-            Transaction t1 = DBMS.newTransaction("", from.getName(), user.getUsername(), date, "(" + from.getName() + " > " + to.getName() + ")", -amt, "");
-            Transaction t2 = DBMS.newTransaction("", to.getName(),   user.getUsername(), date, "(" + from.getName() + " > " + to.getName() + ")", amt, "");
+            Transaction t1 = DBMS.addTransaction("", from.getName(), user.getUsername(), date, "(" + from.getName() + " > " + to.getName() + ")", -amt, "");
+            Transaction t2 = DBMS.addTransaction("", to.getName(),   user.getUsername(), date, "(" + from.getName() + " > " + to.getName() + ")", amt, "");
             DBMS.setTransferRelationship(t1, t2);
             
             return "ENVELOPE TRANSFER:\n"
@@ -459,11 +459,11 @@ public class Commands {
             Envelope e = DBMS.getEnvelope(env, true);
             double oldAcctAmt = currAcct.getAmt();
             double oldEnvAmt = e.getAmt();
-            Transaction t = DBMS.newTransaction(currAcct.getName(), e.getName(), user.getUsername(), date, "<no description specified>", amt, "");
+            Transaction t = DBMS.addTransaction(currAcct.getName(), e.getName(), user.getUsername(), date, "<no description specified>", amt, "");
             splitTransactions.add(t);
             // updates envelope and account now that transaction created
             e.updateAmt();
-            currAcct.updateAmt();
+            currAcct.setAmt(oldAcctAmt + amt);
             return "UPDATE:\n"
                     + " amt: " + Utilities.addCommasToAmount(amt) + "\n"
                     + " desc: <none specified>\n"
@@ -480,11 +480,11 @@ public class Commands {
             currAcct = DBMS.getAccount(acct, true);
             double oldAcctAmt = currAcct.getAmt();
             double oldEnvAmt = e.getAmt();
-            Transaction t = DBMS.newTransaction(currAcct.getName(), e.getName(), user.getUsername(), date, "<no description specified>", amt, "");
+            Transaction t = DBMS.addTransaction(currAcct.getName(), e.getName(), user.getUsername(), date, "<no description specified>", amt, "");
             splitTransactions.add(t);
             // updates envelope and account now that transaction created
             e.updateAmt();
-            currAcct.updateAmt();
+            currAcct.setAmt(oldAcctAmt + amt);
             return "UPDATE:\n"
                     + " amt: " + Utilities.addCommasToAmount(amt) + "\n"
                     + " desc: <none specified>\n"
@@ -517,13 +517,13 @@ public class Commands {
                 curr = curr.next;
             }
             // new transaction
-            Transaction t = DBMS.newTransaction(currAcct.getName(), e.getName(), user.getUsername(), date, desc, amt, "");
+            Transaction t = DBMS.addTransaction(currAcct.getName(), e.getName(), user.getUsername(), date, desc, amt, "");
             splitTransactions.add(t);
             // shorten description for response
             desc = Utilities.shortenString(t.getDesc(),15);
             // updates envelope and account now that transaction created
             e.updateAmt();
-            currAcct.updateAmt();
+            currAcct.setAmt(oldAcctAmt + amt);
             return "UPDATE:\n"
                     + " amt: " + Utilities.addCommasToAmount(amt) + "\n"
                     + " desc: " + desc + "\n"
@@ -554,13 +554,13 @@ public class Commands {
                 curr = curr.next;
             }
             // new transaction
-            Transaction t = DBMS.newTransaction(currAcct.getName(), e.getName(), user.getUsername(), date, desc, amt, "");
+            Transaction t = DBMS.addTransaction(currAcct.getName(), e.getName(), user.getUsername(), date, desc, amt, "");
             splitTransactions.add(t);
             // shorten description for response
             desc = Utilities.shortenString(t.getDesc(),15);
             // updates envelope and account now that transaction created
             e.updateAmt();
-            currAcct.updateAmt();
+            currAcct.setAmt(oldAcctAmt + amt);
             return "UPDATE:\n"
                     + " amt: " + Utilities.addCommasToAmount(amt) + "\n"
                     + " desc: " + desc + "\n"
@@ -672,7 +672,7 @@ public class Commands {
                             }
                         }
                         // create acct
-                        acct = DBMS.newAccount(getToken(3).getPossibilities());
+                        acct = DBMS.addAccount(getToken(3).getPossibilities());
                         
                         if(acct==null) {
                             commandResponse = "Error: could not create '" + getToken(3).getPossibilities() + "'.";
@@ -711,7 +711,7 @@ public class Commands {
                             }
                         }
                         // create acct
-                        cat = DBMS.newCategory(getToken(3).getPossibilities());
+                        cat = DBMS.addCategory(getToken(3).getPossibilities());
                         
                         if(cat==null) {
                             commandResponse = "Error: could not create '" + getToken(3).getPossibilities() + "'.";
@@ -750,7 +750,7 @@ public class Commands {
                             }
                         }
                         // create acct
-                        env = DBMS.newEnvelope(getToken(3).getPossibilities());
+                        env = DBMS.addEnvelope(getToken(3).getPossibilities());
                         
                         if(env==null) {
                             commandResponse = "Error: could not create '" + getToken(3).getPossibilities() + "'.";
@@ -854,7 +854,7 @@ public class Commands {
                         }
                         break;
                     case NEW        + "" + USER     + "" + WORD       + "" + WORD:
-                        usr = DBMS.newUser(getToken(3).getPossibilities(), getToken(4).getPossibilities());
+                        usr = DBMS.addUser(getToken(3).getPossibilities(), getToken(4).getPossibilities());
                         if(usr==null) {
                             commandResponse = "The username '" + getToken(3).getPossibilities() + "' is already in use.";
                         } else {
@@ -891,7 +891,8 @@ public class Commands {
                                     e.setName(Utilities.renameContainer(e.getName()));
                                     e.setEnabled(false); // return envelope to disabled state
                                 }
-                                commandResponse = acct.setName(newName);
+                                commandResponse = DBMS.updateAccountName(acct.getId(), newName);
+                                acct.setName(newName);
                             }
                         }
                         break;

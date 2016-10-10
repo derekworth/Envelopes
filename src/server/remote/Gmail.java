@@ -235,7 +235,7 @@ public class Gmail {
         if(username==null || password==null || username.length()==0 || password.length()==0) {
             // checks for email in database
             if (email==null) { // email address not yet in database
-                DBMS.newEmail(address);
+                DBMS.addEmail(address);
             } else { // email already in database
                 email.setAttempt(email.getAttempt()+1); // increase attempt count
             }
@@ -251,7 +251,7 @@ public class Gmail {
         
         // checks for email in database
         if (email==null) { // email address not yet in database
-            email = DBMS.newEmail(address);
+            email = DBMS.addEmail(address);
         } else { // email already in database
             email.setAttempt(email.getAttempt()+1); // increase attempt count
         }

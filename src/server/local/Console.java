@@ -2793,7 +2793,7 @@ public class Console extends javax.swing.JFrame {
         } else if(!Utilities.isValidPassword(pw)) {
             usersMessage.setText("ERROR: password must contain at least 4 characters with no whitespaces.");
         } else {
-            DBMS.newUser(un, pw);
+            DBMS.addUser(un, pw);
             addUserTextField.setText("");
             addUserPasswordField.setText("");
             updateUserDropdowns();
@@ -2975,10 +2975,10 @@ public class Console extends javax.swing.JFrame {
                 desc = " " + desc;
             }
             double diff = Double.parseDouble(amt);
-            //DBMS.newTransaction(acct, env, Usr, Date, desc, amt)
+            //DBMS.addTransaction(acct, env, Usr, Date, desc, amt)
             String date = Utilities.getTimestamp().substring(0, 10);
-            Transaction t1 = DBMS.newTransaction("", from.getName(), currentUser.getUsername(), date, "(" + from.getName() + " > " + to.getName() + ")" + desc, -diff, "");
-            Transaction t2 = DBMS.newTransaction("", to.getName(),   currentUser.getUsername(), date, "(" + from.getName() + " > " + to.getName() + ")" + desc, diff, "");
+            Transaction t1 = DBMS.addTransaction("", from.getName(), currentUser.getUsername(), date, "(" + from.getName() + " > " + to.getName() + ")" + desc, -diff, "");
+            Transaction t2 = DBMS.addTransaction("", to.getName(),   currentUser.getUsername(), date, "(" + from.getName() + " > " + to.getName() + ")" + desc, diff, "");
             DBMS.setTransferRelationship(t1, t2);
 
             updateAllTables();
@@ -3004,9 +3004,9 @@ public class Console extends javax.swing.JFrame {
             }
             double diff = Double.parseDouble(amt);
             String date = Utilities.getTimestamp().substring(0, 10);
-            // DBMS.newTransaction(acct, env, Usr, Date, desc, amt, runTot)
-            Transaction t1 = DBMS.newTransaction(from.getName(), "", currentUser.getUsername(), date, "*(" + from.getName() + " > " + to.getName() + ")" + desc, -diff, "");
-            Transaction t2 = DBMS.newTransaction(to.getName(),   "", currentUser.getUsername(), date, "*(" + from.getName() + " > " + to.getName() + ")" + desc, diff, "");
+            // DBMS.addTransaction(acct, env, Usr, Date, desc, amt, runTot)
+            Transaction t1 = DBMS.addTransaction(from.getName(), "", currentUser.getUsername(), date, "*(" + from.getName() + " > " + to.getName() + ")" + desc, -diff, "");
+            Transaction t2 = DBMS.addTransaction(to.getName(),   "", currentUser.getUsername(), date, "*(" + from.getName() + " > " + to.getName() + ")" + desc, diff, "");
             DBMS.setTransferRelationship(t1, t2);
 
             updateAllTables();
@@ -3066,7 +3066,7 @@ public class Console extends javax.swing.JFrame {
             && env!=null
             && currentUser!=null) {
             double diff = Double.parseDouble(amt);
-            DBMS.newTransaction(acct.getName(), env.getName(), currentUser.getUsername(), date, Utilities.removeDoubleApostrophes(desc), diff, "");
+            DBMS.addTransaction(acct.getName(), env.getName(), currentUser.getUsername(), date, Utilities.removeDoubleApostrophes(desc), diff, "");
             updateAccountTable();
             updateEnvelopeTable();
             updateTransactionTable();
@@ -3214,7 +3214,7 @@ public class Console extends javax.swing.JFrame {
                         env.setName(Utilities.renameContainer(newCatName));
                         env.setEnabled(false);
                     }
-                    DBMS.newCategory(newCatName);
+                    DBMS.addCategory(newCatName);
                     updateEnvelopeTable();
                     updateCategoryDropdowns();
                     newCategoryField.setText("");
@@ -3285,7 +3285,7 @@ public class Console extends javax.swing.JFrame {
                             env.setName(Utilities.renameContainer(newCatName));
                             env.setEnabled(false);
                         }
-                        DBMS.newCategory(newCatName);
+                        DBMS.addCategory(newCatName);
                         updateEnvelopeTable();
                         updateCategoryDropdowns();
                         newCategoryField.setText("");
@@ -3354,7 +3354,7 @@ public class Console extends javax.swing.JFrame {
                         Envelope env = DBMS.getEnvelope(newEnvName, false);
                         env.setEnabled(true);
                     }
-                    DBMS.newEnvelope(newEnvName);
+                    DBMS.addEnvelope(newEnvName);
                     updateEnvelopeTable();
                     updateEnvelopeDropdowns();
                     newEnvelopeField.setText("");
@@ -3425,7 +3425,7 @@ public class Console extends javax.swing.JFrame {
                             Envelope env = DBMS.getEnvelope(newEnvName, false);
                             env.setEnabled(true);
                         }
-                        DBMS.newEnvelope(newEnvName);
+                        DBMS.addEnvelope(newEnvName);
                         updateEnvelopeTable();
                         updateEnvelopeDropdowns();
                         newEnvelopeField.setText("");
@@ -3509,7 +3509,7 @@ public class Console extends javax.swing.JFrame {
                             env.setEnabled(false);
                         }
                     }
-                    DBMS.newAccount(newAcctName);
+                    DBMS.addAccount(newAcctName);
                     updateAccountTable();
                     updateAccountDropdowns();
                     newAccountField.setText("");
@@ -3582,7 +3582,7 @@ public class Console extends javax.swing.JFrame {
                                 env.setEnabled(false);
                             }
                         }
-                        DBMS.newAccount(newAcctName);
+                        DBMS.addAccount(newAcctName);
                         updateAccountTable();
                         updateAccountDropdowns();
                         newAccountField.setText("");

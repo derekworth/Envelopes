@@ -512,35 +512,23 @@ public class Utilities {
         return true;
     }
     
-    public static boolean isFirstCharacterALetter(String text) {
-        // check for null/empty text
-        if(text==null || text.length()==0)
-            return false;
-        // get first character
-        char firstChar = text.charAt(0);
-        // check character for letter
-        if((firstChar>='a' && firstChar <='z') || (firstChar>='A' && firstChar <='Z'))
-            return true;
-        // return false if not a letter
-        return false;
-    }
-    
-    // validates name contains only numbers, letters, or the following characters: '-'  '('  ')'
+    // validates name begins with a letter and contains only numbers,
+    // letters, or the following characters: '-'  '('  ')'
     public static boolean isValidContainerName(String name) {
-        if(name==null || name.length()==0 || !isFirstCharacterALetter(name)) {
+        name = name.toLowerCase();
+        // checks if first character is a letter
+        if(name.isEmpty() || name.charAt(0)<'a' || name.charAt(0)>'z') {
             return false;
         }
-        name = name.toLowerCase();
+
         // check each letter
         for(int i = 0; i< name.length(); i++) {
             char c = name.charAt(i);
-            if( c=='-' || 
-                c=='(' || 
-                c==')' || 
-                (c>='a' && c<='z') ||
-                (c>='0' && c<='9')) {
-                // do nothing
-            } else {
+            if( c!='-' && 
+                c!='(' && 
+                c!=')' &&
+              !(c>='a' && c<='z') &&
+              !(c>='0' && c<='9')) {
                 return false;
             }
         }
