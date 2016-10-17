@@ -10,7 +10,6 @@ public class Email {
     private int attempt;
     private final int id;
     private int uid;
-    private User user;
     private final String addr;
     
     // CONSTRUCTOR
@@ -21,7 +20,6 @@ public class Email {
         this.attempt = attempt;
         this.id = id;
         this.uid = uid;
-        this.user = null;
         this.addr = addr;
     }
     
@@ -47,10 +45,6 @@ public class Email {
         return uid;
     }
     
-    public User getUser() {
-        return user;
-    }
-    
     public String getAddress() {
         return addr;
     }
@@ -68,15 +62,9 @@ public class Email {
     public void setUserId(int uid) {
         this.uid = uid;
     }
-    
-    public void setUser(User usr) {
-        user = usr;
-    }
 
     @Override
     public String toString() {
-        String u = "NONE";
-        if(user!=null) u = user.getUsername();
-        return "created: " + created + " | modified: " + modified + " | attempt: " + attempt + " | id: " + id + " | user id: " + u + " | address: " + addr;
+        return "created: " + created + " | modified: " + modified + " | attempt: " + attempt + " | id: " + id + " | uid: " + uid + " | address: " + addr;
     }
 }

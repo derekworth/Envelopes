@@ -11,35 +11,27 @@ public class Transaction {
     private String modified;
     private final int id;
     private int aid;
-    private Account acct;
     private int eid;
-    private Envelope env;
     private final int uid;
-    private User usr;
     private String date;
     private String desc;
     private double amt;
     private String runTot;
     private int tid;
-    private Transaction tx;
     
     // CONSTRUCTOR
     
     public Transaction(String created, String modified, int id, int aid, int eid, int uid, String date, String desc, double amt, int tid) {
         this.created = created;
         this.modified = modified;
-        this.id = id;
-        this.aid = aid;
-        this.acct = null;
-        this.eid = eid;
-        this.env = null;
-        this.uid = uid;
-        this.usr = null;
-        this.date = date;
-        this.desc = desc;
-        this.amt = amt;
-        this.tid = tid;
-        this.tx = null;
+        this.id     = id;
+        this.aid    = aid;
+        this.eid    = eid;
+        this.uid    = uid;
+        this.date   = date;
+        this.desc   = desc;
+        this.amt    = amt;
+        this.tid    = tid;
         this.runTot = "";
     }
     
@@ -61,24 +53,12 @@ public class Transaction {
         return aid;
     }
     
-    public Account getAccount() {
-        return acct;
-    }
-    
     public int getEnvelopeId() {
         return eid;
     }
     
-    public Envelope getEnvelope() {
-        return env;
-    }
-    
     public int getUserId() {
         return uid;
-    }
-    
-    public User getUser() {
-        return usr;
     }
     
     public String getDate() {
@@ -97,12 +77,8 @@ public class Transaction {
         return runTot;
     }
     
-    public int getTxTransactionId() {
+    public int getTxId() {
         return tid;
-    }
-    
-    public Transaction getTxTransaction() {
-        return tx;
     }
     
     // SETTERS
@@ -115,20 +91,8 @@ public class Transaction {
         this.aid = aid;
     }
     
-    public void setAccount(Account acct) {
-        this.acct = acct;
-    }
-    
     public void setEnvelopeId(int eid) {
         this.eid = eid;
-    }
-    
-    public void setEnvelope(Envelope env) {
-        this.env = env;
-    }
-    
-    public void setUser(User usr) {
-        this.usr = usr;
     }
     
     public void setDate(String newDate) {
@@ -277,12 +241,8 @@ public class Transaction {
 //        return "Transaction (" + this.id + ") amount successfully set to " + newAmt;
     }
     
-    public void setTxTransactionId(int tid) {
+    public void setTxId(int tid) {
         this.tid = tid;
-    }
-    
-    public void setTxTransaction(Transaction tx) {
-        this.tx = tx;
     }
 //        if (!isInDatabase()) {
 //            return "Error: transaction does not exist in database";
@@ -312,11 +272,6 @@ public class Transaction {
     
     @Override
     public String toString() {
-        String a, e, u;
-        a = e = u = "NONE";
-        if(acct!=null) a = acct.getName();
-        if(env!=null)  e = env.getName();
-        if(usr!=null) u = usr.getUsername();
-        return "created: " + created + " | modified: " + modified + " | id: " + id + " | acct: " + a + " | env: " + e + " | user: " + u + " | date: " + date + " | desc: " + desc + " | amt: " + amt + " | tx: " + tid;
+        return "created: " + created + " | modified: " + modified + " | id: " + id + " | aid: " + aid + " | eid: " + eid + " | uid: " + uid + " | date: " + date + " | desc: " + desc + " | amt: " + amt + " | tid: " + tid;
     }
 }

@@ -68,17 +68,14 @@ public class DBMS {
     //==========================================================================
     
     private void initializeModel() {
-        accounts     = getAccountsFromDB();                             // must add transactions
-        envelopes    = getEnvelopesFromDB();                            // must set Category objects, add transactions
-        categories   = getCategoriesFromDB();                           // must set amounts, add envelopes
+        accounts     = getAccountsFromDB();
+        envelopes    = getEnvelopesFromDB();
+        categories   = getCategoriesFromDB(); // must set category amounts
         users        = getUsersFromDB();
-        email        = getEmailFromDB();                                // must set User objects
-        transactions = getTransactionsFromDB(25, 0, null, null, false); // must set Account, Envelope, User, and Transfer objects
+        email        = getEmailFromDB();
+        transactions = getTransactionsFromDB(25, 0, null, null, false);
         
-        setEnvelopeCategories();   // sets envelope categories and category amounts
-        setEmailUsers();           // sets user for each email
-        setEnvelopeTransactions(); // sets the first 25 transactions for each envelope
-        setAccountTransactions();  // sets the first 25 transactions for each account
+        setCategoryAmounts(); // sets amounts for each category
     }
     
     // GETTERS
@@ -117,30 +114,12 @@ public class DBMS {
     
     // SETTERS
     
-    private void setEnvelopeCategories() {
+    private void setCategoryAmounts() {
         for(Envelope e : envelopes) {
-            Category c = getCategory(e.getCategoryId());
-            e.setCategory(c);
-            c.addEnvelope(e);
-        }
-    }
-    
-    private void setEmailUsers() {
-        for(Email em : email) {
-            User u = getUser(em.getUserId());
-            em.setUser(u);
-        }
-    }
-    
-    private void setEnvelopeTransactions() {
-        for(Envelope e : envelopes) {
-            
-        }
-    }
-    
-    private void setAccountTransactions() {
-        for(Account a : accounts) {
-            
+            if(e.getCategoryId()!=-1) {
+                Category c = getCategory(e.getCategoryId());
+                c.setAmount(c.getAmount() + e.getAmount());
+            }
         }
     }
     
@@ -585,17 +564,10 @@ public class DBMS {
     
     // SETTERS
     
-    private static boolean updateEnvelopeInDB(Envelope env, boolean en, String name, Category cat) {
+    private static boolean updateEnvelopeInDB(Envelope env, boolean en, String name, int cid) {
         boolean sameName = env.getName().equalsIgnoreCase(name);
         boolean sameEn   = env.isEnabled()==en;
-        boolean sameCat  = false;
-        if(env.getCategory()==null || cat==null) {
-            if(env.getCategory()==null && cat==null) {
-                sameCat = true;
-            }
-        } else if(env.getCategory().getId()==cat.getId()) {
-            sameCat = true;
-        }
+        boolean sameCat  = env.getCategoryId()==cid;
         
         // prevents updates if specified attributes are already set or name is invalid
         if(!Utilities.isValidContainerName(name) || // checks name is valid
@@ -614,18 +586,13 @@ public class DBMS {
                 // get enabled
                 int enabled = 0;
                 if(en) enabled = 1;
-                // get new category id
-                int catid = -1;
-                if(cat!=null) {
-                    catid = cat.getId();
-                }
                 // update database
-                stmt.executeUpdate("UPDATE envs SET modified='" + ts + "', enabled="+ enabled +", name='" + name + "', catid=" + catid + " WHERE id=" + env.getId());
+                stmt.executeUpdate("UPDATE envs SET modified='" + ts + "', enabled="+ enabled +", name='" + name + "', catid=" + cid + " WHERE id=" + env.getId());
                 // update object
                 env.setModified(ts);
                 env.setEnabled(en);
                 env.setName(name);
-                env.setCategory(cat);
+                env.setCategoryId(cid);
                 return true;
             }
         } catch (ClassNotFoundException | SQLException e) {
@@ -667,16 +634,10 @@ public class DBMS {
         }
     }
     
-    private static boolean updateEmailInDB(Email em, int attempt, User usr) {
+    private static boolean updateEmailInDB(Email em, int attempt, int uid) {
         boolean sameAttempt = em.getAttempt()==attempt;
-        boolean sameUser    = false;
-        if(em.getUser()==null || usr==null) {
-            if(em.getUser()==null && usr==null) {
-                sameUser = true;
-            }
-        } else if(em.getUser().getId()==usr.getId()) {
-            sameUser = true;
-        }
+        boolean sameUser    = em.getUserId()==uid;
+        
         // prevents updates if specified attributes are already set
         if((sameAttempt && sameUser)) { // checks for changes
             return false;
@@ -690,17 +651,12 @@ public class DBMS {
             // connect to database and execute queries
             try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
                 stmt.setQueryTimeout(TIMEOUT);
-                // get new category id
-                int userid = -1;
-                if(usr!=null) {
-                    userid = usr.getId();
-                }
                 // update database
-                stmt.executeUpdate("UPDATE email SET modified='" + ts + "', attempt=" + attempt + ", userid=" + userid + " WHERE id=" + em.getId());
+                stmt.executeUpdate("UPDATE email SET modified='" + ts + "', attempt=" + attempt + ", userid=" + uid + " WHERE id=" + em.getId());
                 // update object
                 em.setModified(ts);
                 em.setAttempt(attempt);
-                em.setUser(usr);
+                em.setUserId(uid);
                 return true;
             }
         } catch (ClassNotFoundException | SQLException e) {
@@ -776,48 +732,17 @@ public class DBMS {
         }
     }
     
-    private static boolean updateTransactionInDB(Transaction tran, Account acct, Envelope env, String date, String desc, double amt, Transaction tx) {
+    private static boolean updateTransactionInDB(Transaction tran, int aid, int eid, String date, String desc, double amt, int tid) {
+        boolean sameAcct = tran.getAccountId()==aid;
+        boolean sameEnv  = tran.getEnvelopeId()==eid;
         boolean sameDate = tran.getDate().equals(date);
         boolean sameDesc = tran.getDescription().equals(desc);
         boolean sameAmt  = tran.getAmount()==amt;
-        
-        boolean sameAcct = false;
-        if(tran.getAccount()==null || acct==null) {
-            if(tran.getAccount()==null && acct==null) {
-                sameAcct = true;
-            }
-        } else if(tran.getAccount().getId()==acct.getId()) {
-            sameAcct = true;
-        }
-        
-        boolean sameEnv = false;
-        if(tran.getEnvelope()==null || env==null) {
-            if(tran.getEnvelope()==null && env==null) {
-                sameEnv = true;
-            }
-        } else if(tran.getEnvelope().getId()==env.getId()) {
-            sameEnv = true;
-        }
-        
-        boolean sameTx = false;
-        if(tran.getTxTransaction()==null || tx==null) {
-            if(tran.getTxTransaction()==null && tx==null) {
-                sameTx = true;
-            }
-        } else if(tran.getTxTransaction().getId()==tx.getId()) {
-            sameTx = true;
-        }
+        boolean sameTx   = tran.getTxId()==tid;
         
         if(!Utilities.isDate(date) || (sameDate && sameDesc && sameAmt && sameAcct && sameEnv && sameTx)) {
             return false;
         }
-        
-        int aid = -1;
-        if(acct!=null) aid = acct.getId();
-        int eid = -1;
-        if(env!=null) eid = env.getId();
-        int tid = -1;
-        if(tx!=null) tid = tx.getId();
         
         // something has changed, so let's modify the database record
         String ts = Utilities.getTimestamp(); // modified timestamp
@@ -831,9 +756,9 @@ public class DBMS {
                 stmt.executeUpdate("UPDATE trans SET modified='" + ts + "', acctid=" + aid +", envid=" + eid + ", tx=" + tid + ", date='" + date + "', desc='" + desc + "', amt=" + amt + " WHERE id=" + tran.getId());
                 // update object
                 tran.setModified(ts);
-                tran.setAccount(acct);
-                tran.setEnvelope(env);
-                tran.setTxTransaction(tx);
+                tran.setAccountId(aid);
+                tran.setEnvelopeId(eid);
+                tran.setTxId(tid);
                 tran.setDate(date);
                 tran.setDescription(desc);
                 tran.setAmount(amt);
@@ -1032,9 +957,6 @@ public class DBMS {
                         // sets variables accordingly
                         //Transaction(String created, String modified, int id, int aid, int eid, int uid, String date, String desc, double amt, int tid)
                         Transaction t = new Transaction(ts, ts, rs.getInt("id"), aid, eid, usr.getId(), date, desc, 0, -1);
-                        t.setAccount(acct);
-                        t.setEnvelope(env);
-                        t.setUser(usr);
                         return t;
                     }
                 } catch (ClassNotFoundException | SQLException e) {}

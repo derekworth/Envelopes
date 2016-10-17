@@ -1,14 +1,5 @@
 package database;
 
-//import static database.DBMS.TIMEOUT;
-//import static database.DBMS.URL;
-//import java.sql.Connection;
-//import java.sql.DriverManager;
-//import java.sql.ResultSet;
-//import java.sql.SQLException;
-//import java.sql.Statement;
-//import misc.Utilities;
-
 /**
  * Created on Aug 2, 2013
  * @author Derek Worth
