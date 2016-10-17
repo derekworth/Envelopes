@@ -127,6 +127,10 @@ public class User {
     }
     
     // SETTERS
+    
+    public void setModified(String newModified) {
+        modified = newModified;
+    }
         
     public void setEnabled(boolean en) {
         enabled = en;

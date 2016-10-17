@@ -14,17 +14,147 @@ import misc.Utilities;
  */
 public class DBMS {
     
-    public static final String DATABASE = "database.db";
-    public static final String DRIVER_NAME = "org.sqlite.JDBC";
-    public static final String URL = "jdbc:sqlite:" + DATABASE;
-    public static final int TIMEOUT = 30;
+    private static final String DATABASE = "database.db";
+    private static final String DRIVER_NAME = "org.sqlite.JDBC";
+    private static final String URL = "jdbc:sqlite:" + DATABASE;
+    private static final int TIMEOUT = 30;
+    
+    private LinkedList<Account> accounts;
+    private LinkedList<Envelope> envelopes;
+    private LinkedList<Category> categories;
+    private LinkedList<User> users;
+    private LinkedList<Email> email;
+    private LinkedList<Transaction> transactions;
+    
+    // CONSTRUCTOR
+    
+    public DBMS() {
+        // setup database if not already done so
+        initializeDB();
+        // pull data from database
+        initializeModel();
+    }
+    
+    //==========================================================================
+    // PUBLIC METHODS
+    //==========================================================================
+    
+    public LinkedList<Account> getAccounts() {
+        return accounts;
+    }
+    
+    public LinkedList<Envelope> getEnvelopes() {
+        return envelopes;
+    }
+    
+    public LinkedList<Category> getCategories() {
+        return categories;
+    }
+    
+    public LinkedList<User> getUsers() {
+        return users;
+    }
+    
+    public LinkedList<Email> getEmail() {
+        return email;
+    }
+    
+    public LinkedList<Transaction> getTransactions() {
+        return transactions;
+    }
+    
+    //==========================================================================
+    // PRIVATE METHODS
+    //==========================================================================
+    
+    private void initializeModel() {
+        accounts     = getAccountsFromDB();                             // must add transactions
+        envelopes    = getEnvelopesFromDB();                            // must set Category objects, add transactions
+        categories   = getCategoriesFromDB();                           // must set amounts, add envelopes
+        users        = getUsersFromDB();
+        email        = getEmailFromDB();                                // must set User objects
+        transactions = getTransactionsFromDB(25, 0, null, null, false); // must set Account, Envelope, User, and Transfer objects
+        
+        setEnvelopeCategories();   // sets envelope categories and category amounts
+        setEmailUsers();           // sets user for each email
+        setEnvelopeTransactions(); // sets the first 25 transactions for each envelope
+        setAccountTransactions();  // sets the first 25 transactions for each account
+    }
+    
+    // GETTERS
+    
+    private Account getAccount(int aid) {
+        if(aid==-1) return null;
+        for(Account a : accounts) {
+            if(a.getId()==aid) return a;
+        }
+        return null;
+    }
+    
+    private Envelope getEnvelope(int eid) {
+        if(eid==-1) return null;
+        for(Envelope e : envelopes) {
+            if(e.getId()==eid) return e;
+        }
+        return null;
+    }
+    
+    private Category getCategory(int cid) {
+        if(cid==-1) return null;
+        for(Category c : categories) {
+            if(c.getId()==cid) return c;
+        }
+        return null;
+    }
+    
+    private User getUser(int uid) {
+        if(uid==-1) return null;
+        for(User u : users) {
+            if(u.getId()==uid) return u;
+        }
+        return null;
+    }
+    
+    // SETTERS
+    
+    private void setEnvelopeCategories() {
+        for(Envelope e : envelopes) {
+            Category c = getCategory(e.getCategoryId());
+            e.setCategory(c);
+            c.addEnvelope(e);
+        }
+    }
+    
+    private void setEmailUsers() {
+        for(Email em : email) {
+            User u = getUser(em.getUserId());
+            em.setUser(u);
+        }
+    }
+    
+    private void setEnvelopeTransactions() {
+        for(Envelope e : envelopes) {
+            
+        }
+    }
+    
+    private void setAccountTransactions() {
+        for(Account a : accounts) {
+            
+        }
+    }
+    
+    //==========================================================================
+    // PRIVATE STATIC METHODS
+    //==========================================================================
     
     // DATABASE SETUP
     
     /**
      * Creates tables in database and two users (gmail and admin)
+     * @return true if tables and users created, false otherwise
      */
-    public static void initializeDatabase() {
+    private static boolean initializeDB() {
         String ts = Utilities.getTimestamp();
         // initialize tables
         String [] queries = {
@@ -39,14 +169,14 @@ public class DBMS {
             /*INITIALIZE GMAIL AND ADMIN ACCOUNTS*/
             "INSERT INTO users (created, modified, enabled, type, un, pw) VALUES ('" + ts + "', '" + ts + "', 1, 1, 'gmail_username', 'gmail_password')",
             "INSERT INTO users (created, modified, enabled, type, un, pw) VALUES ('" + ts + "', '" + ts + "', 1, 2, 'admin', '" + Utilities.getHash("password") + "')"};
-        updateDatabase(queries);
+        return executeQueries(queries);
     }
     
     /**
      * Resets database with empty tables and inserts admin and gmail user
      * accounts
      */
-    public static void resetDatabase() {
+    private static void resetDB() {
         String [] queries = {
             /*DROP TABLES*/
             "DROP TABLE IF EXISTS accts",
@@ -55,60 +185,415 @@ public class DBMS {
             "DROP TABLE IF EXISTS trans",
             "DROP TABLE IF EXISTS users",
             "DROP TABLE IF EXISTS email"};
-        updateDatabase(queries);
-        initializeDatabase();
+        executeQueries(queries);
+        initializeDB();
     }
-        
-    public static void removeZeroAmtTransactions() {
-        // execute query
-        executeQuery("DELETE FROM trans WHERE amt=0");
+    
+    /**
+     * Updates the database with the given query
+     * @param query SQL query to update database (ex. "UPDATE email SET
+     * modified='2013-08-17 15:50:44', attempt=5 WHERE id=3")
+     * @return true if successful, false otherwise
+     */
+    private static boolean executeQuery(String query) {
+        try {
+            // register the driver
+            Class.forName(DRIVER_NAME);
+            // connect to database and execute queries
+            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
+                stmt.setQueryTimeout(TIMEOUT);
+                // create tables
+                stmt.executeUpdate(query);
+            }
+        } catch (ClassNotFoundException | SQLException e) {
+            return false;
+        }
+        return true;
+    }
+    
+    /**
+     * Updates the database with the given queries
+     * @param queries String array of SQL queries to update database
+     * @return true if successful, false otherwise
+     */
+    private static boolean executeQueries(String[] queries) {
+        try {
+            // register the driver
+            Class.forName(DRIVER_NAME);
+            // connect to database and execute queries
+            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
+                stmt.setQueryTimeout(TIMEOUT);
+                // create tables
+                for(int i = 0; i < queries.length; i++) {
+                    stmt.executeUpdate(queries[i]);
+                }
+            }
+        } catch (ClassNotFoundException | SQLException e) {
+            return false;
+        }
+        return true;
     }
     
     // GETTERS
     
-    public static LinkedList<Category> getCategories() {
-        return null;
+    /**
+     * Pulls all categories from the database and inserts them into a linked list.
+     * The amount in each category is NOT updated prior to returning the linked
+     * list of categories and must be set after the linked list is generated.
+     * @return Linked list of categories
+     */
+    private static LinkedList<Category> getCategoriesFromDB() {
+        try {
+            // register the driver
+            Class.forName(DRIVER_NAME);
+            // connect to database
+            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
+                stmt.setQueryTimeout(TIMEOUT);
+                // execute query
+                ResultSet rs = stmt.executeQuery("SELECT * FROM cats ORDER BY name");
+                LinkedList<Category> cats = new LinkedList();
+                while(rs.next()) {
+                    String ts = Utilities.getTimestamp();
+                    //String created, String modified, boolean enabled, int id, String name, double amt
+                    cats.add(new Category(
+                            rs.getString("created"),
+                            rs.getString("modified"),
+                            rs.getInt("enabled")==1,
+                            rs.getInt("id"),
+                            rs.getString("name")));
+                }
+                return cats;
+            }
+        } catch (ClassNotFoundException | SQLException e) {
+            return null;
+        }
     }
     
-    public static LinkedList<Envelope> getEnvelopes() {
-        return null;
+    /**
+     * Pulls all envelopes from the database and inserts them into a linked list.
+     * The amount in each envelope is updated prior to returning the linked list
+     * of envelopes. However, envelope categories are not set and must be
+     * updated after linked list is generated.
+     * @return Linked list of all envelopes
+     */
+    private static LinkedList<Envelope> getEnvelopesFromDB() {
+        try {
+            // register the driver
+            Class.forName(DRIVER_NAME);
+            // connect to database
+            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
+                stmt.setQueryTimeout(TIMEOUT);
+                // execute query
+                ResultSet rs = stmt.executeQuery("SELECT * FROM envs ORDER BY name");
+                
+                LinkedList<Envelope> envs = new LinkedList();
+                while(rs.next()) {
+                    Envelope e = new Envelope(
+                            rs.getString("created"),
+                            rs.getString("modified"),
+                            rs.getInt("enabled")==1,
+                            rs.getInt("id"),
+                            rs.getInt("catid"),
+                            rs.getString("name"),
+                            0);
+                    e.setAmount(getEnvelopeAmountFromDB(e));
+                    envs.add(e);
+                }
+                return envs;
+            }
+        } catch (ClassNotFoundException | SQLException e) {
+            return null;
+        }
     }
     
-    public static LinkedList<Account> getAccounts() {
-        return null;
+    /**
+     * Pulls all accounts from the database and inserts them into a linked list.
+     * The amount in each account is updated prior to returning the linked list
+     * of accounts.
+     * @return Linked list of all accounts
+     */
+    private static LinkedList<Account> getAccountsFromDB() {
+        try {
+            // register the driver
+            Class.forName(DRIVER_NAME);
+            // connect to database
+            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
+                stmt.setQueryTimeout(TIMEOUT);
+                // execute query
+                ResultSet rs = stmt.executeQuery("SELECT * FROM accts ORDER BY name");
+                LinkedList<Account> accts = new LinkedList();
+                while(rs.next()) {
+                    Account a = new Account(
+                            rs.getString("created"),
+                            rs.getString("modified"),
+                            rs.getInt("enabled")==1,
+                            rs.getInt("id"),
+                            rs.getString("name"),
+                            0);
+                    a.setAmount(getAccountAmountFromDB(a));
+                    accts.add(a);
+                }
+                return accts;
+            }
+        } catch (ClassNotFoundException | SQLException e) {
+            return null;
+        }
     }
     
-    public static LinkedList<Email> getEmails() {
-        return null;
+    /**
+     * Pulls all email addresses from the database and inserts them into a
+     * linked list. The associated User object for each email is NOT updated
+     * prior to returning the linked list of email addresses (only the user id)
+     * and must be set after the linked list is generated.
+     * @return Linked list of email addresses
+     */
+    private static LinkedList<Email> getEmailFromDB() {
+        try {
+            // register the driver
+            Class.forName(DRIVER_NAME);
+            // connect to database
+            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
+                stmt.setQueryTimeout(TIMEOUT);
+                // execute query
+                ResultSet rs = stmt.executeQuery("SELECT * FROM email ORDER BY userid, addr");
+                LinkedList<Email> email = new LinkedList();
+                while(rs.next()) {
+                    email.add(new Email(
+                            rs.getString("created"),
+                            rs.getString("modified"),
+                            rs.getInt("attempt"),
+                            rs.getInt("id"),
+                            rs.getInt("userid"),
+                            rs.getString("addr")
+                    ));
+                }
+                return email;
+            }
+        } catch (ClassNotFoundException | SQLException e) {
+            return null;
+        }
     }
     
-    public static LinkedList<User> getUsers() {
-        return null;
+    /**
+     * Pulls all users from the database and inserts them into a linked list.
+     * The list includes all users with the following types:
+     *   0 = Unprivileged user
+     *   1 = Gmail
+     *   2 = Admin
+     * @return Linked list of all users
+     */
+    private static LinkedList<User> getUsersFromDB() {
+        try {
+            // register the driver
+            Class.forName(DRIVER_NAME);
+            // connect to database
+            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
+                stmt.setQueryTimeout(TIMEOUT);
+                // execute query
+                ResultSet rs = stmt.executeQuery("SELECT * FROM users WHERE ORDER BY un");
+                LinkedList<User> users = new LinkedList();
+                while(rs.next()) {
+                    users.add(new User(
+                            rs.getString("created"),
+                            rs.getString("modified"),
+                            rs.getInt("enabled")==1,
+                            rs.getInt("id"),
+                            rs.getInt("type"),
+                            rs.getString("un"),
+                            rs.getString("pw")
+                    ));
+                }
+                return users;
+            }
+        } catch (ClassNotFoundException | SQLException e) {
+            return null;
+        }
     }
     
-    public static LinkedList<Transaction> getTransactions(String from, String to, Account acct, Envelope env) {
-        return null;
+    /**
+     * Retrieves transactions from the database based on specified filters
+     * and date range.
+     * @param from beginning date (yyyy-mm-dd format) of range
+     * @param to ending date (yyyy-mm-dd format) of range
+     * @param acct account in which to filter transactions by; pass a 'null' for all accounts
+     * @param env envelope in which to filter transactions by; pass a 'null' for all envelopes
+     * @param hideTx Transfer transactions are pairs of transactions that move funds
+     * from one envelope to another OR one account to another. Specify true if you
+     * wish to hide these transfer pairs or false otherwise.
+     * @return linked list of transactions based on given filter inputs
+     */
+    private static LinkedList<Transaction> getTransactionsFromDB(String from, String to, Account acct, Envelope env, boolean hideTx) {
+        if (!Utilities.isDate(from) || !Utilities.isDate(to)) { // checks for valid dates
+            return null;
+        }
+        int a, e;
+        String query;
+        String whereContainer = "";
+        
+        if (from.compareToIgnoreCase(to)>0) { // makes 'from' the earlier date
+            String tmp = from;
+            from = to;
+            to = tmp;
+        }
+        String whereDate = " date>='" + from + "' AND date<='" + to + "'";
+        
+        if(acct==null) { // check for account
+            a = -1;
+        } else {
+            a = acct.getId();
+        }
+        
+        if(env==null) { // check for envelope
+            e = -1;
+        } else {
+            e = env.getId();
+        }
+
+        // set search criteria as necessary according to XX (AE) where:
+        // 0X = account not specified   1X = account specified
+        // X0 = envelope not specified  X1 = envelope specified
+        if(a==-1 && e!=-1) {        // 01
+            whereContainer = " envid="  + e + " AND";
+        } else if(a!=-1 && e==-1) { // 10
+            whereContainer = " acctid=" + a + " AND";
+        } else if(a!=-1 && e!=-1) { // 11
+            whereContainer = " acctid=" + a + " AND envid="  + e + " AND";
+        } else {                    // 00
+            // do nothing (no WHERE search criteria)
+        }
+        
+        // builds query
+        if(hideTx) { // hide transfer transactions
+            query = "SELECT * FROM trans WHERE (acctid!=-1 AND envid!=-1) AND" + whereContainer + whereDate + " ORDER BY date DESC, id DESC";
+        } else {
+            query = "SELECT * FROM trans WHERE" + whereContainer + whereDate + " ORDER BY date DESC, id DESC";
+        }
+        
+        // execute query
+        try {
+            // register the driver
+            Class.forName(DRIVER_NAME);
+            // connect to database
+            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
+                stmt.setQueryTimeout(TIMEOUT);
+                // execute query
+                ResultSet rs = stmt.executeQuery(query);
+                LinkedList<Transaction> trans = new LinkedList();
+                while(rs.next()) {
+                    trans.add(new Transaction(
+                            rs.getString("created"),
+                            rs.getString("modified"),
+                            rs.getInt("id"),
+                            rs.getInt("acctid"),
+                            rs.getInt("envid"),
+                            rs.getInt("userid"),
+                            rs.getString("date"),
+                            rs.getString("desc"),
+                            rs.getDouble("amt"),
+                            rs.getInt("tx")
+                            ));
+                }
+                return trans;
+            }
+        } catch (ClassNotFoundException | SQLException ex) {
+            return null;
+        }
     }
     
-    public static LinkedList<Transaction> getTransactions(int qty, Account acct, Envelope env) {
-        return null;
-    }
-    
-    public static LinkedList<Transaction> getTransactions(int startIndex, int stopIndex, Account acct, Envelope env) {
-        return null;
+    /**
+     * Retrieves transactions from the database based on specified filters and
+     * desired transaction quantity.
+     * @param qty number of transactions to be retrieved
+     * @param offset number of transactions to skip from the beginning of all transactions
+     * @param acct account in which to filter transactions by; pass a 'null' for all accounts
+     * @param env envelope in which to filter transactions by; pass a 'null' for all envelopes
+     * @param hideTx Transfer transactions are pairs of transactions that move funds
+     * from one envelope to another OR one account to another. Specify true if you
+     * wish to hide these transfer pairs or false otherwise.
+     * @return linked list of transactions based on given filter inputs
+     */
+    private static LinkedList<Transaction> getTransactionsFromDB(int qty, int offset, Account acct, Envelope env, boolean hideTx) {
+        int a, e;
+        String query;
+        String where = "", hideTxCriteria = "";
+        
+        if(acct==null) {
+            a = -1;
+        } else {
+            a = acct.getId();
+        }
+        
+        if(env==null) {
+            e = -1;
+        } else {
+            e = env.getId();
+        }
+        
+        // set search criteria as necessary according to XX (AE) where:
+        // 0X = account not specified   1X = account specified
+        // X0 = envelope not specified  X1 = envelope specified
+        if(hideTx) {
+            hideTxCriteria = " (acctid!=-1 AND envid!=-1) AND";
+        }
+        if(a==-1 && e!=-1) {        // 01
+            where = "WHERE" + hideTxCriteria + " envid="  + e;
+        } else if(a!=-1 && e==-1) { // 10
+            where = "WHERE" + hideTxCriteria + " acctid=" + a;
+        } else if(a!=-1 && e!=-1) { // 11
+            where = "WHERE" + hideTxCriteria + " acctid=" + a + " AND envid="  + e;
+        } else {                    // 00
+            if(hideTx) {
+                where = "WHERE (acctid!=-1 AND envid!=-1)";
+            }
+        }
+        query = "SELECT * FROM trans " + where + " ORDER BY date DESC, id DESC LIMIT " + (qty+offset);
+        
+        try {
+            // register the driver
+            Class.forName(DRIVER_NAME);
+            // connect to database
+            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
+                stmt.setQueryTimeout(TIMEOUT);
+                // execute query
+                ResultSet rs = stmt.executeQuery(query);
+                LinkedList<Transaction> trans = new LinkedList();
+                int count = 1;
+                while(rs.next()) {
+                    if(count <= offset) { // skip to first transaction after offset
+                        count++;
+                    } else {
+                        trans.add(new Transaction(
+                                rs.getString("created"),
+                                rs.getString("modified"),
+                                rs.getInt("id"),
+                                rs.getInt("acctid"),
+                                rs.getInt("envid"),
+                                rs.getInt("userid"),
+                                rs.getString("date"),
+                                rs.getString("desc"),
+                                rs.getDouble("amt"),
+                                rs.getInt("tx")
+                        ));
+                    }
+                }
+                return trans;
+            }
+        } catch (ClassNotFoundException | SQLException ex) {
+            return null;
+        }
     }
     
     // SETTERS
     
-    public static boolean updateEnvelope(Envelope env, boolean en, String name, Category cat) {
+    private static boolean updateEnvelopeInDB(Envelope env, boolean en, String name, Category cat) {
         boolean sameName = env.getName().equalsIgnoreCase(name);
         boolean sameEn   = env.isEnabled()==en;
         boolean sameCat  = false;
-        if(env.getCat()==null || cat==null) {
-            if(env.getCat()==null && cat==null) {
+        if(env.getCategory()==null || cat==null) {
+            if(env.getCategory()==null && cat==null) {
                 sameCat = true;
             }
-        } else if(env.getCat().getId()==cat.getId()) {
+        } else if(env.getCategory().getId()==cat.getId()) {
             sameCat = true;
         }
         
@@ -134,8 +619,13 @@ public class DBMS {
                 if(cat!=null) {
                     catid = cat.getId();
                 }
-                // execute query
+                // update database
                 stmt.executeUpdate("UPDATE envs SET modified='" + ts + "', enabled="+ enabled +", name='" + name + "', catid=" + catid + " WHERE id=" + env.getId());
+                // update object
+                env.setModified(ts);
+                env.setEnabled(en);
+                env.setName(name);
+                env.setCategory(cat);
                 return true;
             }
         } catch (ClassNotFoundException | SQLException e) {
@@ -143,7 +633,7 @@ public class DBMS {
         }
     }
     
-    public static boolean updateAccount(Account acct, boolean en, String name) {
+    private static boolean updateAccountInDB(Account acct, boolean en, String name) {
         boolean sameName = acct.getName().equalsIgnoreCase(name);
         boolean sameEn   = acct.isEnabled()==en;
         
@@ -164,8 +654,12 @@ public class DBMS {
                 // get enabled
                 int enabled = 0;
                 if(en) enabled = 1;
-                // execute query
+                // update database
                 stmt.executeUpdate("UPDATE accts SET modified='" + ts + "', enabled="+ enabled +", name='" + name + "' WHERE id=" + acct.getId());
+                // update object
+                acct.setModified(ts);
+                acct.setEnabled(en);
+                acct.setName(name);
                 return true;
             }
         } catch (ClassNotFoundException | SQLException e) {
@@ -173,7 +667,7 @@ public class DBMS {
         }
     }
     
-    public static boolean updateEmail(Email em, int attempt, User usr) {
+    private static boolean updateEmailInDB(Email em, int attempt, User usr) {
         boolean sameAttempt = em.getAttempt()==attempt;
         boolean sameUser    = false;
         if(em.getUser()==null || usr==null) {
@@ -183,7 +677,6 @@ public class DBMS {
         } else if(em.getUser().getId()==usr.getId()) {
             sameUser = true;
         }
-        
         // prevents updates if specified attributes are already set
         if((sameAttempt && sameUser)) { // checks for changes
             return false;
@@ -202,8 +695,12 @@ public class DBMS {
                 if(usr!=null) {
                     userid = usr.getId();
                 }
-                // execute query
+                // update database
                 stmt.executeUpdate("UPDATE email SET modified='" + ts + "', attempt=" + attempt + ", userid=" + userid + " WHERE id=" + em.getId());
+                // update object
+                em.setModified(ts);
+                em.setAttempt(attempt);
+                em.setUser(usr);
                 return true;
             }
         } catch (ClassNotFoundException | SQLException e) {
@@ -211,28 +708,172 @@ public class DBMS {
         }
     }
     
-    public static boolean updateUser(User usr) {
-        return false;
+    private static boolean updateUserInDB(User usr, boolean en, String un, String pw) {
+        un = un.toLowerCase();
+        boolean sameEn = usr.isEnabled()==en;
+        boolean sameUn = usr.getUsername().equals(un);
+        boolean samePw = usr.getPassword().equals(pw);
+        // prevents updates if specified attributes are already set
+        if(sameEn && sameUn && samePw) {
+            return false;
+        }
+        
+        // something has changed, so let's modify the database record
+        String ts = Utilities.getTimestamp(); // modified timestamp
+        try {
+            // register the driver
+            Class.forName(DRIVER_NAME);
+            // connect to database and execute queries
+            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
+                stmt.setQueryTimeout(TIMEOUT);
+                // update database
+                int enabled = 0;
+                if(en) enabled = 1;
+                stmt.executeUpdate("UPDATE users SET modified='" + ts + "', enabled=" + enabled + ", un='" + un + "', pw='" + pw + "' WHERE id=" + usr.getId());
+                // update object
+                usr.setEnabled(en);
+                usr.setModified(ts);
+                usr.setUsername(un);
+                usr.setPassword(pw);
+                return true;
+            }
+        } catch (ClassNotFoundException | SQLException e) {
+            return false;
+        }
     }
     
-    public static boolean updateCategory(Category cat) {
-        return false;
+    private static boolean updateCategoryInDB(Category cat, boolean en, String name) {
+        boolean sameName = cat.getName().equalsIgnoreCase(name);
+        boolean sameEn   = cat.isEnabled()==en;
+        
+        // prevents updates if specified attributes are already set or name is invalid
+        if(!Utilities.isValidContainerName(name) || // checks name is valid
+          (sameName && sameEn)) {                   // checks for changes
+            return false;
+        }
+        
+        // something has changed, so let's modify the database record
+        String ts = Utilities.getTimestamp(); // modified timestamp
+        try {
+            // register the driver
+            Class.forName(DRIVER_NAME);
+            // connect to database and execute queries
+            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
+                stmt.setQueryTimeout(TIMEOUT);
+                // get enabled
+                int enabled = 0;
+                if(en) enabled = 1;
+                // update database
+                stmt.executeUpdate("UPDATE cats SET modified='" + ts + "', enabled="+ enabled +", name='" + name + "' WHERE id=" + cat.getId());
+                // update object
+                cat.setModified(ts);
+                cat.setEnabled(en);
+                cat.setName(name);
+                return true;
+            }
+        } catch (ClassNotFoundException | SQLException e) {
+            return false;
+        }
     }
     
-    public static boolean updateTransaction(Transaction tran) {
-        return false;
+    private static boolean updateTransactionInDB(Transaction tran, Account acct, Envelope env, String date, String desc, double amt, Transaction tx) {
+        boolean sameDate = tran.getDate().equals(date);
+        boolean sameDesc = tran.getDescription().equals(desc);
+        boolean sameAmt  = tran.getAmount()==amt;
+        
+        boolean sameAcct = false;
+        if(tran.getAccount()==null || acct==null) {
+            if(tran.getAccount()==null && acct==null) {
+                sameAcct = true;
+            }
+        } else if(tran.getAccount().getId()==acct.getId()) {
+            sameAcct = true;
+        }
+        
+        boolean sameEnv = false;
+        if(tran.getEnvelope()==null || env==null) {
+            if(tran.getEnvelope()==null && env==null) {
+                sameEnv = true;
+            }
+        } else if(tran.getEnvelope().getId()==env.getId()) {
+            sameEnv = true;
+        }
+        
+        boolean sameTx = false;
+        if(tran.getTxTransaction()==null || tx==null) {
+            if(tran.getTxTransaction()==null && tx==null) {
+                sameTx = true;
+            }
+        } else if(tran.getTxTransaction().getId()==tx.getId()) {
+            sameTx = true;
+        }
+        
+        if(!Utilities.isDate(date) || (sameDate && sameDesc && sameAmt && sameAcct && sameEnv && sameTx)) {
+            return false;
+        }
+        
+        int aid = -1;
+        if(acct!=null) aid = acct.getId();
+        int eid = -1;
+        if(env!=null) eid = env.getId();
+        int tid = -1;
+        if(tx!=null) tid = tx.getId();
+        
+        // something has changed, so let's modify the database record
+        String ts = Utilities.getTimestamp(); // modified timestamp
+        try {
+            // register the driver
+            Class.forName(DRIVER_NAME);
+            // connect to database and execute queries
+            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
+                stmt.setQueryTimeout(TIMEOUT);
+                // update database
+                stmt.executeUpdate("UPDATE trans SET modified='" + ts + "', acctid=" + aid +", envid=" + eid + ", tx=" + tid + ", date='" + date + "', desc='" + desc + "', amt=" + amt + " WHERE id=" + tran.getId());
+                // update object
+                tran.setModified(ts);
+                tran.setAccount(acct);
+                tran.setEnvelope(env);
+                tran.setTxTransaction(tx);
+                tran.setDate(date);
+                tran.setDescription(desc);
+                tran.setAmount(amt);
+                return true;
+            }
+        } catch (ClassNotFoundException | SQLException e) {
+            return false;
+        }
+    }
+    
+    private static void mergeEnvelopesInDB(Envelope from, Envelope to) {
+//        // move transactions
+//        Transaction transaction, partner;
+//        while(getTransactionCount(from)>0) {
+//            transaction = getTransactions(from, 1).getFirst();
+//            partner = new Transaction(transaction.getTxTransaction());
+//            
+//            if(transaction.getTxTransaction()!=-1 && partner.getEnvelope().getName().equalsIgnoreCase(to.getName())) {
+//                // delete same-envelope transfer transactions (they cancel each other out)
+//                executeQuery("DELETE FROM trans WHERE id=" + transaction.getId());
+//                executeQuery("DELETE FROM trans WHERE id=" + partner.getId());
+//            } else {
+//                // set new envelope
+//                transaction.setEnvelope(to);
+//            }
+//        }
+//        // remove (disable) 'from' envelope
+//        executeQuery("UPDATE envs SET enabled=0 WHERE id=" + from.getId());
     }
         
     // ADD TO DATABASE
     
-    public static Envelope addEnvelope(String name) {
+    private static Envelope addEnvelopeToDB(String name) {
         // format input
         name = name.toLowerCase();
         if(Utilities.isValidContainerName(name)) {
             // sets created/modified date/time
             String ts = Utilities.getTimestamp();
             // add new envelope
-            if(DBMS.executeQuery("INSERT INTO envs (created, modified, enabled, catid, name) VALUES ('" + ts + "', '" + ts + "', 1, -1, '" + name + "')")) {
+            if(executeQuery("INSERT INTO envs (created, modified, enabled, catid, name) VALUES ('" + ts + "', '" + ts + "', 1, -1, '" + name + "')")) {
                 // get envelope id
                 try {
                     // register the driver
@@ -243,7 +884,7 @@ public class DBMS {
                         // execute query
                         ResultSet rs = stmt.executeQuery("SELECT id FROM envs WHERE name='" + name + "'");
                         // Envelope(String created, String modified, boolean enabled, int id, String name, double amt)
-                        return new Envelope(ts, ts, true, rs.getInt("id"), name, 0);
+                        return new Envelope(ts, ts, true, rs.getInt("id"), -1, name, 0);
                     }
                 } catch (ClassNotFoundException | SQLException e) { /* do nothing */ }
             }
@@ -251,14 +892,14 @@ public class DBMS {
         return null;
     }
     
-    public static Account addAccount(String name) {
+    private static Account addAccountToDB(String name) {
         // format input
         name = name.toLowerCase();
         if(Utilities.isValidContainerName(name)) {
             // sets created/modified date/time
             String ts = Utilities.getTimestamp();
             // add new account
-            if(DBMS.executeQuery("INSERT INTO accts (created, modified, enabled, name) VALUES ('" + ts + "', '" + ts + "', 1, '" + name + "')")) {
+            if(executeQuery("INSERT INTO accts (created, modified, enabled, name) VALUES ('" + ts + "', '" + ts + "', 1, '" + name + "')")) {
                 // get account id
                 try {
                     // register the driver
@@ -277,20 +918,21 @@ public class DBMS {
         return null;
     }
     
-    public static Email addEmail(String addr, User usr) {
+    private static Email addEmailToDB(String addr, User usr) {
         // formats input
         addr = addr.toLowerCase();
         // sets created/modified date/time
         String ts = Utilities.getTimestamp();
         // prevents checks that user exists
-        boolean isUserValid = usr!=null && !usr.isGmail();
-        if (isUserValid) {
-            // creates new address in database (with user = enabled)
-            DBMS.executeQuery("INSERT INTO email (created, modified, attempt, userid, addr) VALUES ('" + ts + "', '" + ts + "', 0, " + usr.getId() + ", '" + addr + "')");
-        } else {
-            // creates new address in database (without user = disabled)
-            DBMS.executeQuery("INSERT INTO email (created, modified, attempt, userid, addr) VALUES ('" + ts + "', '" + ts + "', 1, -1, '" + addr + "')");
+        int uid = -1;
+        int attempt = 1;
+        if(usr!=null) {
+            uid = usr.getId();
+            if(!usr.isGmail()) {
+                attempt = 0;
+            }
         }
+        executeQuery("INSERT INTO email (created, modified, attempt, userid, addr) VALUES ('" + ts + "', '" + ts + "', " + attempt + ", " + uid + ", '" + addr + "')");
         // get email id
         try {
             // register the driver
@@ -300,26 +942,23 @@ public class DBMS {
                 stmt.setQueryTimeout(TIMEOUT);
                 // execute query
                 ResultSet rs = stmt.executeQuery("SELECT id FROM email ORDER BY id DESC LIMIT 1");
-                // Email(String created, String modified, int attempt, int id, User user, String addr)
-                if(isUserValid) {
-                    return new Email(ts, ts, 0, rs.getInt("id"), usr, addr);
-                } else {
-                    return new Email(ts, ts, 1, rs.getInt("id"), null, addr);
-                }
+                return new Email(ts, ts, attempt, rs.getInt("id"), uid, addr);
             }
         } catch (ClassNotFoundException | SQLException e) { /* do nothing */ }
         return null;
     }
     
-    public static User addUser(String un, String pw) {
+    private static User addUserToDB(String un, String pw) {
         // format input
         un = un.toLowerCase();
         pw = Utilities.getHash(pw);
         // sets created/modified date/time
         String ts = Utilities.getTimestamp();
         {
-            // creates new account in database
-            DBMS.executeQuery("INSERT INTO users (created, modified, enabled, type, un, pw) VALUES ('" + ts + "', '" + ts + "', 1, 0, '" + un + "', '" + pw + "')");
+            // creates new account in database where types: 0 = User
+            //                                              1 = Gmail
+            //                                              2 = Admin
+            executeQuery("INSERT INTO users (created, modified, enabled, type, un, pw) VALUES ('" + ts + "', '" + ts + "', 1, 0, '" + un + "', '" + pw + "')");
             // sets variables accordingly
             try {
                 // register the driver
@@ -337,14 +976,14 @@ public class DBMS {
         return null;
     }
     
-    public static Category addCategory(String name) {
+    private static Category addCategoryToDB(String name) {
         // format input
         name = name.toLowerCase();
         if(Utilities.isValidContainerName(name)) {
             // sets created/modified date/time
             String ts = Utilities.getTimestamp();
             // add new category
-            if(DBMS.executeQuery("INSERT INTO cats (created, modified, enabled, name) VALUES ('" + ts + "', '" + ts + "', 1, '" + name + "')")) {
+            if(executeQuery("INSERT INTO cats (created, modified, enabled, name) VALUES ('" + ts + "', '" + ts + "', 1, '" + name + "')")) {
                 // get category id
                 try {
                     // register the driver
@@ -355,7 +994,7 @@ public class DBMS {
                         // execute query
                         ResultSet rs = stmt.executeQuery("SELECT id FROM cats WHERE name='" + name + "'");
                         // create obj with appropriate attributes
-                        return new Category(ts, ts, true, rs.getInt("id"), name, 0);
+                        return new Category(ts, ts, true, rs.getInt("id"), name);
                     }
                 } catch (ClassNotFoundException | SQLException e) { }
             }
@@ -363,19 +1002,24 @@ public class DBMS {
         return null;
     }
     
-    public static Transaction addTransaction(Account acct, Envelope env, User usr, String date, String desc, double amt) {
+    private static Transaction addTransactionToDB(Account acct, Envelope env, User usr, String date, String desc, double amt) {
         desc = Utilities.trimInvalidCharacters(desc);
         desc = Utilities.removeDoubleApostrophes(desc);
         desc = Utilities.doubleApostrophes(desc);
-        if (acct!=null && env!=null && usr!=null && usr.isEnabled() && !usr.isGmail() && (acct.isEnabled() || env.isEnabled()) ) {
+        if (usr!=null && usr.isEnabled() && !usr.isGmail()) {
             // sets created/modified date/time
             String ts = Utilities.getTimestamp();
             // sets current date if date format is invalid
             if (!Utilities.isDate(date)) {
                 date = ts.substring(0, 10);
             }
-            String query = "INSERT INTO trans (created, modified, acctid, envid, userid, date, desc, amt) VALUES ('" + ts + "', '" + ts + "', " + acct.getId() + ", " + env.getId() + ", " + usr.getId() + ", '" + date + "', '" + desc + "', " + amt + ")";
-            if(DBMS.executeQuery(query)) {
+            // gets account and envelope IDs
+            int aid = -1;
+            if(acct!=null) aid = acct.getId();
+            int eid = -1;
+            if(env!=null) eid = env.getId();
+            String query = "INSERT INTO trans (created, modified, acctid, envid, userid, date, desc, amt) VALUES ('" + ts + "', '" + ts + "', " + aid + ", " + eid + ", " + usr.getId() + ", '" + date + "', '" + desc + "', " + amt + ")";
+            if(executeQuery(query)) {
                 // sets variables accordingly
                 try {
                     // register the driver
@@ -386,7 +1030,12 @@ public class DBMS {
                         // execute query
                         ResultSet rs = stmt.executeQuery("SELECT * FROM trans ORDER BY id DESC LIMIT 1");
                         // sets variables accordingly
-                        return new Transaction(ts, ts, rs.getInt("id"), acct, env, usr, date, desc, 0, null);
+                        //Transaction(String created, String modified, int id, int aid, int eid, int uid, String date, String desc, double amt, int tid)
+                        Transaction t = new Transaction(ts, ts, rs.getInt("id"), aid, eid, usr.getId(), date, desc, 0, -1);
+                        t.setAccount(acct);
+                        t.setEnvelope(env);
+                        t.setUser(usr);
+                        return t;
                     }
                 } catch (ClassNotFoundException | SQLException e) {}
             }
@@ -396,13 +1045,17 @@ public class DBMS {
     
     // REMOVE FROM DATABASE
     
-    public static boolean removeTransaction(Transaction tran) {
+    private static boolean removeTransactionInDB(Transaction tran) {
         return executeQuery("DELETE FROM trans WHERE id=" + tran.getId());
+    }
+        
+    private static boolean removeZeroAmtTransactionsInDB() {
+        return executeQuery("DELETE FROM trans WHERE amt=0");
     }
     
     // HELPER METHODS
     
-    public static double getAccountAmount(Account acct) {
+    private static double getAccountAmountFromDB(Account acct) {
         try {
             // register the driver
             Class.forName(DRIVER_NAME);
@@ -419,536 +1072,19 @@ public class DBMS {
         }
     }
     
-    public static double getEnvelopeAmount(Envelope env) {
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute query to find amount
-                ResultSet rs = stmt.executeQuery("SELECT sum(amt) FROM trans WHERE envid=" + env.getId());
-                // sets variables accordingly
-                return rs.getDouble(1);
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-            return 0;
+    /**
+     * Provides the amount in an account by summing all transactions on and before
+     * the given "as of" date.
+     * @param acct Account of the amount requested; specify null if requesting the
+     * amount for ALL accounts
+     * @param asOfDate Date ("yyyy-mm-dd" format) at which to calculate the amount
+     * @return the amount of money in the specified account as of the specified date
+     * or -999999999 if error occurs
+     */
+    private static double getAccountAsOfAmountFromDB(Account acct, String asOfDate) {
+        if(!Utilities.isDate(asOfDate)) {
+            return -999999999;
         }
-    }
-    
-    // =============================================== REPLACE AND DELETE EVERYTHING BELOW THIS LINE ===============================================
-    
-//    /**
-//     * Adds a new account to database. Accounts track the amount of money
-//     * available in its different forms.
-//     * @param name Name of new account to be added (ex. 'cash' or 'checking')
-//     * @return Account if successfully added, null otherwise
-//     */
-//    public static Account addAccount(String name) {
-//        if(name==null || name.length()>20) {
-//            return null;
-//        }
-//        name = name.toLowerCase();
-//        if(DBMS.isContainer(name, false)) { // name is in use and is enabled or disabled
-//            if(DBMS.isAccount(name, false)) { // name is an account and is enabled or disabled
-//                Account a = DBMS.getAccount(name, false);
-//                if(!a.isEnabled()) { // account is enabled
-//                    a.setEnabled(true);
-//                    return a;
-//                }
-//            }
-//        } else if(name.length()>0 && name.charAt(0)>96 && name.charAt(0)<123) { // first character is a letter
-//            // format input
-//            name = name.toLowerCase();
-//            // sets created/modified date/time
-//            String ts = Utilities.getTimestamp();
-//            // creates new account in database
-//            if(DBMS.executeQuery("INSERT INTO accts (created, modified, enabled, name) VALUES ('" + ts + "', '" + ts + "', 1, '" + name + "')")) {
-//                return DBMS.getAccount(name, true);
-//            } else {
-//                return null;
-//            }
-//        }
-//        return null;
-//    }
-//    
-//    /**
-//     * Adds a new category to database. Envelopes can be placed in categories
-//     * for organization.
-//     * @param name Name of new category to be added (ex. 'food' or 'fun')
-//     * @return Category if successfully added, null otherwise
-//     */
-//    public static Category addCategory(String name) {
-//        if(name==null || name.length()>20) {
-//            return null;
-//        }
-//        name = name.toLowerCase();
-//        if(DBMS.isContainer(name, false)) {
-//            if(DBMS.isCategory(name, false)) {
-//                Category c = DBMS.getCategory(name, false);
-//                if(!c.isEnabled()) {
-//                    c.setEnabled(true);
-//                    return c;
-//                }
-//            }
-//        } else if(name.length()>0 && name.charAt(0)>96 && name.charAt(0)<123) { // first character is a letter
-//            return new Category(name);
-//        }
-//        return null;
-//    }
-//    
-//    /**
-//     * Adds a new envelope to database. Envelopes track the logical allocation
-//     * of money, regardless of its form.
-//     * @param name Name of new envelope to be added (ex. 'groceries' or
-//     * 'housing')
-//     * @return Envelope if successfully added, null otherwise
-//     */
-//    public static Envelope addEnvelope(String name) {
-//        if(name==null || name.length()>20) {
-//            return null;
-//        }
-//        name = name.toLowerCase();
-//        if(DBMS.isContainer(name, false)) {
-//            if(DBMS.isEnvelope(name, false)) {
-//                Envelope e = DBMS.getEnvelope(name, false);
-//                if(!e.isEnabled()) {
-//                    e.setEnabled(true);
-//                    return e;
-//                }
-//            }
-//        } else if(name.length()>0 && name.charAt(0)>96 && name.charAt(0)<123) { // first character is a letter
-//            return new Envelope(name);
-//        }
-//        return null;
-//    }
-//    
-//    /**
-//     * Adds a new envelope to database. Envelopes track the logical allocation
-//     * of money, regardless of its form. Envelopes can be assigned a category
-//     * for organization.
-//     * @param name Name of new envelope to be added (ex. 'groceries' or
-//     * 'housing')
-//     * @param category Name of envelope's assigned category
-//     * @return Envelope if successfully added, null otherwise
-//     */
-//    public static Envelope newEnvelope(String name, String category) {
-//        if(name==null || name.length()>20) {
-//            return null;
-//        }
-//        name = name.toLowerCase();
-//        if(DBMS.isContainer(name, false)) {
-//            if(DBMS.isEnvelope(name, false)) {
-//                Envelope e = DBMS.getEnvelope(name, false);
-//                if(!e.isEnabled()) {
-//                    e.setEnabled(true);
-//                    e.setCategory(getCategory(category, true));
-//                    return e;
-//                }
-//            }
-//        } else if(name.length()>0 && name.charAt(0)>96 && name.charAt(0)<123) { // first character is a letter
-//            return new Envelope(name, getCategory(category, true));
-//        }
-//        return null;
-//    }
-//    
-//    /**
-//     * Adds a new transaction to database. Transactions describe exactly how
-//     * money flows, either for a transfer, income, or outgo. Transfers happen
-//     * between envelopes or accounts, but never both.
-//     * @param account Name of the account tied to this transaction (if
-//     * applicable)
-//     * @param envelope Name of the envelope tied to this transaction (if
-//     * applicable)
-//     * @param user Username of the individual making this transaction
-//     * @param date Date of transaction in format: YYYY-MM-DD (ex. 2013-08-17)
-//     * @param description Brief description of the transaction
-//     * @param amount The amount (+/-) of the transaction
-//     * @param runTot Running total in relation to either a specific account or envelope
-//     * @return Transaction if successfully added, null otherwise
-//     */
-//    public static Transaction addTransaction(String account, String envelope, String user, String date, String description, double amount, String runTot) {
-//        // uppercase the first letter of the description
-//        if(description.length()>0) { // 1 or more characters in desc
-//            if(description.charAt(0)>=97 && description.charAt(0)<=122) { // first character in desc is lowercase letter
-//                if(description.length()==1) { // only one character in desc
-//                    description = description.toUpperCase();
-//                } else { // more than one character in desc
-//                    description = (char)(description.charAt(0)-32) + description.substring(1);
-//                }
-//            }
-//        }
-//        
-//        // set user
-//        User usr = getUser(user, true);
-//        // set account
-//        Account acct;
-//        if(account==null || account.length()==0) {
-//            acct = new Account(-1);
-//        } else {
-//            acct = getAccount(account, true);
-//        }
-//        // set envelope
-//        Envelope env;
-//        if(envelope==null || envelope.length()==0) {
-//            env  = new Envelope(-1);
-//        } else {
-//            env  = getEnvelope(envelope, true);
-//        }
-//        // return new transaction
-//        if (acct != null && env != null && usr != null) {
-//            return new Transaction(acct, env, usr, date, description, amount, runTot);
-//        }
-//        return null;
-//    }
-//    
-//    /**
-//     * Adds a new user to database. Users are used for authentication, ensuring
-//     * only valid users can access and update system. All enabled users are
-//     * considered valid users
-//     * @param username Username of user (ex. 'derekw')
-//     * @param password Password of for the user (ex. 'My$e(r3tP@$$W0rd')
-//     * @return User if successfully added, null otherwise
-//     */
-//    public static User addUser(String username, String password) {
-//        if(username==null || username.length()>20) {
-//            return null;
-//        }
-//        username = username.toLowerCase();
-//        if(DBMS.isUser(username, false)) {
-//            User u = DBMS.getUser(username, false);
-//            if(!u.isEnabled()) {
-//                u.setEnabled(true);
-//                u.setPassword(password);
-//                return u;
-//            }
-//        } else if(username.length()>0 && username.charAt(0)>96 && username.charAt(0)<123) { // first character is a letter
-//            return new User(username, password);
-//        }
-//        return null;
-//    }
-//    
-//    /**
-//     * Adds a new email address to database. Email addresses not tied to valid
-//     * users will not be able to send commands for processing. Attempts will be
-//     * tracked and only 5 maximum attempts are allowed before permanent lockout.
-//     * @param address Email address of the command originator
-//     * @return Email if successfully added, null otherwise
-//     */
-//    public static Email addEmail(String address) {
-//        Email email = new Email(address);
-//        if (email.isInDatabase()) {
-//            return email;
-//        }
-//        return null;
-//    }
-//    
-//    /**
-//     * Adds a new email address to database. Email addresses not tied to valid
-//     * users will not be able to send commands for processing. Attempts will be
-//     * tracked and only 5 maximum attempts are allowed before permanent lockout.
-//     * @param address Email address of the command originator
-//     * @param username Username of the validated user tied to this email address
-//     * @return Email if successfully added, null otherwise
-//     */
-//    public static Email addEmail(String address, String username) {
-//        User usr = DBMS.getUser(username, true);
-//        if (usr!=null && !usr.isGmail()) {
-//            Email email = new Email(address, usr.getId());
-//            if (email.isInDatabase()) {
-//                return email;
-//            }    
-//        } else {
-//            Email email = new Email(address);
-//            if (email.isInDatabase()) {
-//                return email;
-//            }
-//        }
-//        return null;
-//    }
-//        
-//    // GET FROM DATABASE
-//    
-//    /**
-//     * Retrieves a specific account by name
-//     * @param name Name of account to retrieve
-//     * @param onlyEnabled if set to true, only returns an account with the given
-//     * name if such account is enabled
-//     * @return Account specified, null otherwise
-//     */
-//    public static Account getAccount(String name, boolean onlyEnabled) {
-//        if(name==null) {
-//            return null;
-//        }
-//        name = name.toLowerCase();
-//        try {
-//            // register the driver
-//            Class.forName(DRIVER_NAME);
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                ResultSet rs;
-//                if(onlyEnabled) {
-//                    rs = stmt.executeQuery("SELECT * FROM accts WHERE enabled=1 AND name='" + name + "'");
-//                } else {
-//                    rs = stmt.executeQuery("SELECT * FROM accts WHERE name='" + name + "'");
-//                }
-//                // create account obj with appropriate attributes
-//                Account acct = new Account(rs.getString("created"),
-//                                   rs.getString("modified"),
-//                                   rs.getInt("enabled")==1,
-//                                   rs.getInt("id"),
-//                                   rs.getString("name"),
-//                                   0);
-//                // execute query to find amount
-//                rs = stmt.executeQuery("SELECT sum(amt) FROM trans WHERE acctid=" + acct.getId());
-//                // sets variables accordingly
-//                acct.setAmt(rs.getDouble(1));
-//                
-//                return acct;
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return null;
-//        }
-//    }
-//    
-//    public static Account getAccount(int id) {
-//        try {
-//            // register the driver
-//            Class.forName(DRIVER_NAME);
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query to get account
-//                ResultSet rs = stmt.executeQuery("SELECT * FROM accts WHERE id = " + id);
-//                // create account obj with appropriate attributes
-//                Account acct = new Account(rs.getString("created"),
-//                                   rs.getString("modified"),
-//                                   rs.getInt("enabled")==1,
-//                                   rs.getInt("id"),
-//                                   rs.getString("name"),
-//                                   0);
-//                // execute query to find amount
-//                rs = stmt.executeQuery("SELECT sum(amt) FROM trans WHERE acctid=" + id);
-//                // sets variables accordingly
-//                acct.setAmt(rs.getDouble(1));
-//                return acct;
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return null;
-//        }
-//    }
-//    
-//    public static double getAccountsTotal() {
-//        try {
-//            // register the driver
-//            Class.forName(DRIVER_NAME);
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                ResultSet rs = stmt.executeQuery("SELECT sum(amt) FROM trans WHERE acctid!=-1");
-//                return rs.getDouble(1);
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return -9999999.99;
-//        }
-//    }
-//    
-//    public static double getEnvelopesTotal() {
-//        try {
-//            // register the driver
-//            Class.forName(DRIVER_NAME);
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                ResultSet rs = stmt.executeQuery("SELECT sum(amt) FROM trans WHERE envid!=-1");
-//                return rs.getDouble(1);
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return -9999999.99;
-//        }
-//    }
-//    
-//    public static double getUncategorizedTotal() {
-//        try {
-//            // register the driver
-//            Class.forName(DRIVER_NAME);
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                ResultSet rs = stmt.executeQuery("SELECT sum(amt) FROM trans JOIN envs ON trans.envid=envs.id WHERE catid=-1");
-//                return rs.getDouble(1);
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return -9999999.99;
-//        }
-//    }
-//    
-//    /**
-//     * Retrieves category of the specified category name
-//     * @param name Name of category to retrieve
-//     * @return The category specified. If no such category exists, returns null.
-//     */
-//    public static Category getCategory(String name, boolean onlyEnabled) {
-//        if(name==null) {
-//            return null;
-//        }
-//        name = name.toLowerCase();
-//        try {
-//            // register the driver
-//            Class.forName(DRIVER_NAME);
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                ResultSet rs;
-//                if(onlyEnabled) {
-//                    rs = stmt.executeQuery("SELECT id FROM cats WHERE enabled=1 AND name='" + name + "'");
-//                } else {
-//                    rs = stmt.executeQuery("SELECT id FROM cats WHERE name='" + name + "'");
-//                }
-//                return new Category(rs.getInt("id"));
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return null;
-//        }
-//    }
-//    
-//    /**
-//     * Retrieves the Envelope of the specified envelope name
-//     * @param name Name of envelope to retrieve
-//     * @return The envelope specified. If no such envelope exists, returns null.
-//     */
-//    public static Envelope getEnvelope(String name, boolean onlyEnabled) {
-//        if(name==null) {
-//            return null;
-//        }
-//        name = name.toLowerCase();
-//        try {
-//            // register the driver
-//            Class.forName(DRIVER_NAME);
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                ResultSet rs;
-//                if(onlyEnabled) {
-//                    rs = stmt.executeQuery("SELECT id FROM envs WHERE enabled=1 AND name='" + name + "'");
-//                } else {
-//                    rs = stmt.executeQuery("SELECT id FROM envs WHERE name='" + name + "'");
-//                }
-//                return new Envelope(rs.getInt("id"));
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return null;
-//        }
-//    }
-//    
-//    /**
-//     * Retrieves the user associated with the specified username including the
-//     * admin user (but not the Gmail user)
-//     * @param username Name of user to retrieve ID for
-//     * @return User with specified username if exists, null otherwise
-//     */
-//    public static User getUser(String username, boolean onlyEnabled) {
-//        if(username==null) {
-//            return null;
-//        }
-//        username = username.toLowerCase();
-//        try {
-//            // register the driver
-//            Class.forName(DRIVER_NAME);
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                ResultSet rs;
-//                if(onlyEnabled) {
-//                    rs = stmt.executeQuery("SELECT id FROM users WHERE enabled=1 AND un='" + username + "' and type!=1");
-//                } else {
-//                    rs = stmt.executeQuery("SELECT id FROM users WHERE un='" + username + "' and type!=1");
-//                }
-//                return new User(rs.getInt("id"));
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return null;
-//        }
-//    }
-//    
-//    /**
-//     * Gmail username and password are used by the Gmail server to authenticate
-//     * to the Gmail account associated with this Gmail server.
-//     * @return Gmail user
-//     */
-//    public static User getGmail() {
-//        try {
-//            // register the driver
-//            Class.forName(DRIVER_NAME);
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                ResultSet rs = stmt.executeQuery("SELECT id FROM users WHERE type = 1");
-//                // sets variables accordingly
-//                return new User(rs.getInt("id"));
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return null;
-//        }
-//    }
-//    
-//    /**
-//     * Admin is the root user who cannot be disabled or removed. Admin also has
-//     * the rights to update all user passwords and usernames
-//     * @return the root/admin user
-//     */
-//    public static User getAdmin() {
-//        try {
-//            // register the driver
-//            Class.forName(DRIVER_NAME);
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                ResultSet rs = stmt.executeQuery("SELECT id FROM users WHERE type = 2");
-//                // sets variables accordingly
-//                return new User(rs.getInt("id"));
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return null;
-//        }
-//    }
-//    
-//    /**
-//     * Retrieves the Email object by email address
-//     * @param address Address of email to retrieve
-//     * @return Email object if exists, null otherwise
-//     */
-//    public static Email getEmail(String address) {
-//        if(address==null || address.length()==0) {
-//            return null;
-//        }
-//        address = address.toLowerCase();
-//        try {
-//            // register the driver
-//            Class.forName(DRIVER_NAME);
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                ResultSet rs = stmt.executeQuery("SELECT id FROM email WHERE addr='" + address + "'");
-//                return new Email(rs.getInt("id"));
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return null;
-//        }
-//    }
-    
-    public static double getAccountAmount(Account acct, String asOfDate) {
         if(acct==null) { // all accounts
             try {
                 // register the driver
@@ -980,7 +1116,36 @@ public class DBMS {
         }
     }
     
-    public static double getEnvelopeAmount(Envelope env, String asOfDate) {
+    private static double getEnvelopeAmountFromDB(Envelope env) {
+        try {
+            // register the driver
+            Class.forName(DRIVER_NAME);
+            // connect to database
+            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
+                stmt.setQueryTimeout(TIMEOUT);
+                // execute query to find amount
+                ResultSet rs = stmt.executeQuery("SELECT sum(amt) FROM trans WHERE envid=" + env.getId());
+                // sets variables accordingly
+                return rs.getDouble(1);
+            }
+        } catch (ClassNotFoundException | SQLException e) {
+            return 0;
+        }
+    }
+        
+    /**
+     * Provides the amount in an envelope by summing all transactions on and before
+     * the given "as of" date.
+     * @param env Envelope of the amount requested; specify null if requesting the
+     * amount for ALL envelopes
+     * @param asOfDate Date ("yyyy-mm-dd" format) at which to calculate the amount
+     * @return the amount of money in the specified envelope as of the specified date
+     * or -999999999 if error occurs
+     */
+    private static double getEnvelopeAsOfAmountFromDB(Envelope env, String asOfDate) {
+        if(!Utilities.isDate(asOfDate)) {
+            return -999999999;
+        }
         if(env==null) { // all envelopes
             try {
                 // register the driver
@@ -1011,1000 +1176,8 @@ public class DBMS {
             }
         }
     }
-//    
-//    // UPDATE DATABASE
-//    public static String updateAccountName(int id, String newName) {
-//        // check if account exists in database
-//        try {
-//            // register the driver
-//            Class.forName(DRIVER_NAME);
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                ResultSet rs = stmt.executeQuery("SELECT * FROM accts WHERE id = " + id);
-//                // sets variables accordingly
-//                String created = rs.getString("created");
-//                this.modified = rs.getString("modified");
-//                this.enabled = rs.getInt("enabled");
-//                this.id = rs.getInt("id");
-//                this.name = rs.getString("name");
-//                updateAmt();
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            this.id = -1;
-//        }
-//
-//        if (!isInDatabase()) {
-//            return "Error: account does not exist in database";
-//        } else if (!isEnabled()) {
-//            return "Error: disabled accounts cannot be updated";
-//        } else if (newName.equalsIgnoreCase(this.name)) {
-//            return "Account is already named '" + newName + "'";
-//        }
-//        String oldName = this.name;
-//        String ts = Utilities.getTimestamp();
-//        // set new name and updates modified getTimestamp
-//        String query = "UPDATE accts SET modified='" + ts + "', name='" + newName + "' WHERE id=" + this.id;
-//        try {
-//            // register the driver
-//            Class.forName(DRIVER_NAME);
-//            // connect to database and execute queries
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                stmt.executeUpdate(query);
-//            }
-//            this.modified = ts;
-//            this.name = newName;
-//            return "Account (" + oldName + ") successfully renamed to '" + newName + "'";
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return "Error: unable to rename account (" + oldName + ") to '" + newName + "'";
-//        }
-//    }
-//
-//    // GET LISTS FROM DATABASE
-//    
-//    /**
-//     * Retrieves all accounts, categories, and envelopes (i.e. containers) whose
-//     * name begins with the given string
-//     * @param beginsWith string representing the first letters of the container
-//     * names for which to return.
-//     * @return Linked list of all containers whose name begins with the given 
-//     * string
-//     */
-//    public static LinkedList<Object> getContainers(String beginsWith, boolean onlyEnabled) {
-//        LinkedList<Account> accts = getAccounts(beginsWith, onlyEnabled);
-//        LinkedList<Category> cats = getCategories(beginsWith, onlyEnabled);
-//        LinkedList<Envelope> envs = getEnvelopes(beginsWith, onlyEnabled);
-//        LinkedList<Object> containers = new LinkedList();
-//        
-//        while(!accts.isEmpty()) {
-//            containers.add(accts.poll());
-//        }
-//        while(!cats.isEmpty()) {
-//            containers.add(cats.poll());
-//        }
-//        while(!envs.isEmpty()) {
-//            containers.add(envs.poll());
-//        }
-//        
-//        return containers;
-//    }
-//    
-//    /**
-//     * Retrieves all accounts from database and stores them in a linked list
-//     * @return Linked list of all accounts
-//     */
-//    public static LinkedList<Account> getAccounts(boolean onlyEnabled) {
-//        try {
-//            // register the driver
-//            Class.forName(DRIVER_NAME);
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                ResultSet rs;
-//                if(onlyEnabled) {
-//                    rs = stmt.executeQuery("SELECT id FROM accts WHERE enabled=1 ORDER BY name");
-//                } else {
-//                    rs = stmt.executeQuery("SELECT id FROM accts ORDER BY name");
-//                }
-//                LinkedList<Account> accts = new LinkedList();
-//                while(rs.next()) {
-//                    accts.add(new Account(rs.getInt("id")));
-//                }
-//                return accts;
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return null;
-//        }
-//    }
-//    
-//    /**
-//     * Retrieves all accounts from database and stores them in a linked list
-//     * @param beginsWith string representing the first letters of the account
-//     * names for which to return.
-//     * @return Linked list of all accounts whose name begins with the given 
-//     * string
-//     */
-//    public static LinkedList<Account> getAccounts(String beginsWith, boolean onlyEnabled) {
-//        try {
-//            // register the driver
-//            Class.forName(DRIVER_NAME);
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                ResultSet rs;
-//                if(onlyEnabled) {
-//                    rs = stmt.executeQuery("SELECT id FROM accts WHERE enabled=1 AND name LIKE '" + beginsWith + "%' ORDER BY name");
-//                } else {
-//                    rs = stmt.executeQuery("SELECT id FROM accts WHERE name LIKE '" + beginsWith + "%' ORDER BY name");
-//                }
-//                
-//                LinkedList<Account> accts = new LinkedList();
-//                while(rs.next()) {
-//                    accts.add(new Account(rs.getInt("id")));
-//                }
-//                return accts;
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return null;
-//        }
-//    }
-//
-//    /**
-//     * Retrieves all categories from database and stores them in a linked list
-//     * @return Linked list of all categories
-//     */
-//    public static LinkedList<Category> getCategories(boolean onlyEnabled) {
-//        try {
-//            // register the driver
-//            Class.forName(DRIVER_NAME);
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                ResultSet rs;
-//                if(onlyEnabled) {
-//                    rs = stmt.executeQuery("SELECT id FROM cats WHERE enabled=1 ORDER BY name");
-//                } else {
-//                    rs = stmt.executeQuery("SELECT id FROM cats ORDER BY name");
-//                }
-//                
-//                LinkedList<Category> cats = new LinkedList();
-//                while(rs.next()) {
-//                    cats.add(new Category(rs.getInt("id")));
-//                }
-//                return cats;
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return null;
-//        }
-//    }
-//    
-//    /**
-//     * Retrieves all categories from database and stores them in a linked list
-//     * @param beginsWith string representing the first letters of the category
-//     * names for which to return.
-//     * @return Linked list of all categories whose name begins with the given 
-//     * string
-//     */
-//    public static LinkedList<Category> getCategories(String beginsWith, boolean onlyEnabled) {
-//        try {
-//            // register the driver
-//            Class.forName(DRIVER_NAME);
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                ResultSet rs;
-//                if(onlyEnabled) {
-//                    rs = stmt.executeQuery("SELECT id FROM cats WHERE enabled=1 AND name LIKE '" + beginsWith + "%' ORDER BY name");
-//                } else {
-//                    rs = stmt.executeQuery("SELECT id FROM cats WHERE name LIKE '" + beginsWith + "%' ORDER BY name");
-//                }
-//                
-//                LinkedList<Category> cats = new LinkedList();
-//                while(rs.next()) {
-//                    cats.add(new Category(rs.getInt("id")));
-//                }
-//                return cats;
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return null;
-//        }
-//    }
-//    
-//    /**
-//     * Retrieves all envelopes from database and stores them in a linked list
-//     * @return Linked list of all envelopes
-//     */
-//    public static LinkedList<Envelope> getEnvelopes(boolean onlyEnabled) {
-//        try {
-//            // register the driver
-//            Class.forName(DRIVER_NAME);
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                ResultSet rs;
-//                if(onlyEnabled) {
-//                    rs = stmt.executeQuery("SELECT id FROM envs WHERE enabled=1 ORDER BY name");
-//                } else {
-//                    rs = stmt.executeQuery("SELECT id FROM envs ORDER BY name");
-//                }
-//                
-//                LinkedList<Envelope> envs = new LinkedList();
-//                while(rs.next()) {
-//                    envs.add(new Envelope(rs.getInt("id")));
-//                }
-//                return envs;
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return null;
-//        }
-//    }
-//    
-//    /**
-//     * Retrieves all envelopes from database and stores them in a linked list
-//     * @param beginsWith string representing the first letters of the envelope
-//     * names for which to return.
-//     * @return Linked list of all envelopes whose name begins with the given 
-//     * string
-//     */
-//    public static LinkedList<Envelope> getEnvelopes(String beginsWith, boolean onlyEnabled) {
-//        try {
-//            // register the driver
-//            Class.forName(DRIVER_NAME);
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                ResultSet rs;
-//                if(onlyEnabled) {
-//                    rs = stmt.executeQuery("SELECT id FROM envs WHERE enabled=1 AND name LIKE '" + beginsWith + "%' ORDER BY name");
-//                } else {
-//                    rs = stmt.executeQuery("SELECT id FROM envs WHERE name LIKE '" + beginsWith + "%' ORDER BY name");
-//                }
-//                
-//                LinkedList<Envelope> envs = new LinkedList();
-//                while(rs.next()) {
-//                    envs.add(new Envelope(rs.getInt("id")));
-//                }
-//                return envs;
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return null;
-//        }
-//    }
-//    
-//    /**
-//     * Retrieves all envelopes in the given category from database and stores 
-//     * them in a linked list
-//     * @param category Envelope category
-//     * @return Linked list of all envelopes from the given category
-//     */
-//    public static LinkedList<Envelope> getEnvelopes(Category category, boolean onlyEnabled) {
-//        try {
-//            // register the driver
-//            Class.forName(DRIVER_NAME);
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                ResultSet rs;
-//                if(onlyEnabled) {
-//                    rs = stmt.executeQuery("SELECT id FROM envs WHERE enabled=1 AND catid=" + category.getId() + " ORDER BY name");
-//                } else {
-//                    rs = stmt.executeQuery("SELECT id FROM envs WHERE catid=" + category.getId() + " ORDER BY name");
-//                }
-//                
-//                LinkedList<Envelope> envs = new LinkedList();
-//                while(rs.next()) {
-//                    envs.add(new Envelope(rs.getInt("id")));
-//                }
-//                return envs;
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return null;
-//        }
-//    }
-//    
-//    /**
-//     * Retrieves all envelopes in the given category from database and stores 
-//     * them in a linked list
-//     * @param category Envelope category
-//     * @return Linked list of all envelopes from the given category
-//     */
-//    public static LinkedList<Envelope> getUncategorizedEnvelopes(boolean onlyEnabled) {
-//        try {
-//            // register the driver
-//            Class.forName(DRIVER_NAME);
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                ResultSet rs;
-//                if(onlyEnabled) {
-//                    rs = stmt.executeQuery("SELECT id FROM envs WHERE enabled=1 AND catid=-1 ORDER BY name");
-//                } else {
-//                    rs = stmt.executeQuery("SELECT id FROM envs WHERE catid=-1 ORDER BY name");
-//                }
-//                
-//                LinkedList<Envelope> envs = new LinkedList();
-//                while(rs.next()) {
-//                    envs.add(new Envelope(rs.getInt("id")));
-//                }
-//                return envs;
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return null;
-//        }
-//    }
     
-    /**
-     * Retrieves all transactions in the given date range from database and 
-     * stores them in a linked list
-     * @param from Start date of the date range in format: YYYY-MM-DD
-     * @param to End date of the date range in format: YYYY-MM-DD
-     * @param acct refines history search to only transactions that a tied to given account
-     * @param env refines history search to only transactions that a tied to given envelope
-     * @param hideTx does not return transactions that are considered transfers (account and/or envelope is null)
-     * @return Linked list of all transactions in given date range or null if
-     * from and/or to dates are not in the format YYYY-MM-DD. The order of the
-     * from and to dates do not affect the outcome (i.e. 'to' > 'from' is the same
-     * as 'from' > 'to')
-     */
-    public static LinkedList<Transaction> getTransactions(String from, String to, Account acct, Envelope env, boolean hideTx) {
-        
-        if (!Utilities.isDate(from) || !Utilities.isDate(to)) { // checks for valid dates
-            return null;
-        }
-        int a, e;
-        String criteria, query;
-        String whereContainer = "";
-        
-        if (from.compareToIgnoreCase(to)>0) { // makes 'from' the earlier date
-            String tmp = from;
-            from = to;
-            to = tmp;
-        }
-        String whereDate = " date>='" + from + "' AND date<='" + to + "'";
-        
-        if(acct==null) { // checks for account
-            a = -1;
-        } else {
-            a = acct.getId();
-        }
-        
-        if(env==null) { // checks for envelope
-            e = -1;
-        } else {
-            e = env.getId();
-        }
-
-        // set search criteria as necessary according to XX (AE) where:
-        // 0X = account not specified   1X = account specified
-        // X0 = envelope not specified  X1 = envelope specified
-        if(a==-1 && e!=-1) {        // 01
-            criteria = "01";
-            whereContainer = " envid="  + e + " AND";
-        } else if(a!=-1 && e==-1) { // 10
-            criteria = "10";
-            whereContainer = " acctid=" + a + " AND";
-        } else if(a!=-1 && e!=-1) { // 11
-            criteria = "11";
-            whereContainer = " acctid=" + a + " AND envid="  + e + " AND";
-        } else {                             // 00
-            criteria = "00";
-            // do nothing (no WHERE search criteria)
-        }
-        
-        // builds query
-        if(hideTx) { // hide transfer transactions
-            query = "SELECT * FROM trans WHERE (acctid!=-1 AND envid!=-1) AND" + whereContainer + whereDate + " ORDER BY date DESC, id DESC";
-        } else {
-            query = "SELECT * FROM trans WHERE" + whereContainer + whereDate + " ORDER BY date DESC, id DESC";
-        }
-        
-        // execute query
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute query
-                ResultSet rs = stmt.executeQuery(query);
-                LinkedList<Transaction> trans = new LinkedList();
-                while(rs.next()) {
-                    //String created, String modified, int id, Account acct, Envelope env, User usr, String date, String desc, double amt, Transaction tx
-                    trans.add(new Transaction(
-                            rs.getString("created"),
-                            rs.getString("modified"),
-                            rs.getInt("id"),
-                            acct,
-                            env,
-                            
-                            ));
-                }
-                // only show running total from most recent transaction and when:
-                // 00 (no criteria specified), 10 (only acct specified), or 01 (only env specified)
-                if(trans.size()>0) {
-                    String lastestTransactionDate = DBMS.getTransactions(1).getFirst().getDate();
-                    if(lastestTransactionDate.compareTo(to)<=0) { // compute running totals only if query captures most recent transaction
-                        if(!criteria.equalsIgnoreCase("11")) { // only if acct, env, or none is specified
-                            double runTot, diff = 0;
-                            if(acct!=null && criteria.equalsIgnoreCase("10")) {        // 10 (running total for only the specified account)
-                                runTot = DBMS.getAccountAmount(acct.getName(), Utilities.getNewDate(lastestTransactionDate, 1));
-                            } else if(env!=null  && criteria.equalsIgnoreCase("01")) { // 01 (running total for only the specified envelope)
-                                runTot = DBMS.getEnvelopeAmount(env.getName(), Utilities.getNewDate(lastestTransactionDate, 1));
-                            } else {                                                   // 00 (running total for all transactions)
-                                runTot = DBMS.getAccountAmount("-all-", Utilities.getNewDate(lastestTransactionDate, 1));
-                            }
-                            // sets running total for each transaction
-                            for (Transaction t : trans) {
-                                runTot -= diff;
-                                t.setRunningTotal(Utilities.addCommasToAmount(runTot));
-                                diff = t.getAmt();
-                            }
-                        }
-                    }
-                }
-                return trans;
-            }
-        } catch (ClassNotFoundException | SQLException ex) {
-            return null;
-        }
-    }
-    
-    /**
-     * Retrieves the most recent specified quantity of transactions from 
-     * database and stores them in a linked list
-     * @param quantity Number of transactions to retrieve
-     * @param acct refines history search to only transactions that a tied to given account
-     * @param env refines history search to only transactions that a tied to given envelope
-     * @param hideTx does not return transactions that are considered transfers (account and/or envelope is null)
-     * @return Linked list of transactions
-     */
-    public static LinkedList<Transaction> getTransactions(int quantity, Account acct, Envelope env, boolean hideTx) {
-        int a, e;
-        String criteria, query;
-        String where = "", hideTxCriteria = "";
-        
-        if(acct==null) {
-            a = -1;
-        } else {
-            a = acct.getId();
-        }
-        
-        if(env==null) {
-            e = -1;
-        } else {
-            e = env.getId();
-        }
-        
-        // set search criteria as necessary according to XX (AE) where:
-        // 0X = account not specified   1X = account specified
-        // X0 = envelope not specified  X1 = envelope specified
-        if(hideTx) {
-            hideTxCriteria = " (acctid!=-1 AND envid!=-1) AND";
-        }
-        if(a==-1 && e!=-1) {        // X01
-            criteria = "01";
-            where = "WHERE" + hideTxCriteria + " envid="  + e;
-        } else if(a!=-1 && e==-1) { // X10
-            criteria = "10";
-            where = "WHERE" + hideTxCriteria + " acctid=" + a;
-        } else if(a!=-1 && e!=-1) { // X11
-            criteria = "11";
-            where = "WHERE" + hideTxCriteria + " acctid=" + a + " AND envid="  + e;
-        } else {                    // X00
-            criteria = "00";
-            if(hideTx) {
-                where = "WHERE (acctid!=-1 AND envid!=-1)";
-            }
-        }
-        query = "SELECT id FROM trans " + where + " ORDER BY date DESC, id DESC LIMIT " + quantity;
-        
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute query
-                ResultSet rs = stmt.executeQuery(query);
-                LinkedList<Transaction> trans = new LinkedList();
-                while(rs.next()) {
-                    trans.add(new Transaction(rs.getInt("id")));
-                }
-                if(quantity>0 && trans.size()>0) {
-                    // only show running total from most recent transaction and when:
-                    // 00 (no criteria specified), 10 (only acct specified), or 01 (only env specified)
-                    String lastestTransactionDate = DBMS.getTransactions(1).getFirst().getDate();
-                    if(!criteria.equalsIgnoreCase("11")) { // only if acct, env, or none is specified
-                        double runTot, diff = 0;
-                        if(acct!=null && criteria.equalsIgnoreCase("10")) {        // 10 (running total for only the specified account)
-                            runTot = DBMS.getAccountAmount(acct.getName(), Utilities.getNewDate(lastestTransactionDate, 1));
-                        } else if(env!=null  && criteria.equalsIgnoreCase("01")) { // 01 (running total for only the specified envelope)
-                            runTot = DBMS.getEnvelopeAmount(env.getName(), Utilities.getNewDate(lastestTransactionDate, 1));
-                        } else {                                                   // 00 (running total for all transactions)
-                            runTot = DBMS.getAccountAmount("-all-", Utilities.getNewDate(lastestTransactionDate, 1));
-                        }
-                        // sets running total for each transaction
-                        for (Transaction t : trans) {
-                            runTot -= diff;
-                            t.setRunningTotal(Utilities.addCommasToAmount(runTot));
-                            diff = t.getAmt();
-                        }
-                    }
-                }
-                return trans;
-            }
-        } catch (ClassNotFoundException | SQLException ex) {
-            return null;
-        }
-    }
-    
-    /**
-     * Retrieves the next 25 additional transactions from database and stores
-     * them in a linked list
-     * @param quantity Number of transactions previously retrieved
-     * @param acct refines history search to only transactions that a tied to given account
-     * @param env refines history search to only transactions that a tied to given envelope
-     * @param hideTx does not return transactions that are considered transfers (account and/or envelope is null)
-     * @param prev last transaction from previous set
-     * @return Linked list of next transactions
-     */
-    public static LinkedList<Transaction> getMoreTransactions(int quantity, Account acct, Envelope env, boolean hideTx, Transaction prev) {
-        int a, e;
-        String criteria, query;
-        String where = "", hideTxCriteria = "";
-        
-        if(acct==null) {
-            a = -1;
-        } else {
-            a = acct.getId();
-        }
-        
-        if(env==null) {
-            e = -1;
-        } else {
-            e = env.getId();
-        }
-        
-        // set search criteria as necessary according to XX (AE) where:
-        // 0X = account not specified   1X = account specified
-        // X0 = envelope not specified  X1 = envelope specified
-        if(hideTx) {
-            hideTxCriteria = " (acctid!=-1 AND envid!=-1) AND";
-        }
-        if(a==-1 && e!=-1) {        // X01
-            criteria = "01";
-            where = "WHERE" + hideTxCriteria + " envid="  + e;
-        } else if(a!=-1 && e==-1) { // X10
-            criteria = "10";
-            where = "WHERE" + hideTxCriteria + " acctid=" + a;
-        } else if(a!=-1 && e!=-1) { // X11
-            criteria = "11";
-            where = "WHERE" + hideTxCriteria + " acctid=" + a + " AND envid="  + e;
-        } else {                    // X00
-            criteria = "00";
-            if(hideTx) {
-                where = "WHERE (acctid!=-1 AND envid!=-1)";
-            }
-        }
-        query = "SELECT id FROM trans " + where + " ORDER BY date DESC, id DESC LIMIT " + (quantity+25);
-        
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute query
-                ResultSet rs = stmt.executeQuery(query);
-                LinkedList<Transaction> trans = new LinkedList();
-                int count = 1;
-                while(rs.next()) {
-                    if(count <= quantity) {
-                        count++;
-                    } else {
-                        trans.add(new Transaction(rs.getInt("id")));
-                    }
-                }
-                if(quantity>0 && trans.size()>0) {
-                    // only show running total from most recent transaction and when:
-                    // 00 (no criteria specified), 10 (only acct specified), or 01 (only env specified)
-                    String lastestTransactionDate = DBMS.getTransactions(1).getFirst().getDate();
-                    if(!criteria.equalsIgnoreCase("11")) { // only if acct, env, or none is specified
-                        String runTotStr = Utilities.removeCommas(prev.getRunTot());
-                        double runTot = Double.parseDouble(runTotStr);
-                        double diff = prev.getAmt();
-                        // sets running total for each transaction
-                        for (Transaction t : trans) {
-                            runTot -= diff;
-                            t.setRunningTotal(Utilities.addCommasToAmount(runTot));
-                            diff = t.getAmt();
-                        }
-                    }
-                }
-                return trans;
-            }
-        } catch (ClassNotFoundException | SQLException ex) {
-            return null;
-        }
-    }
-    
-    /**
-     * Retrieves all transactions in the given date range from database and 
-     * stores them in a linked list
-     * @param from Start date of the date range in format: YYYY-MM-DD
-     * @param to End date of the date range in format: YYYY-MM-DD
-     * @return Linked list of all transactions in given date range or null if
-     * from and/or to dates are not in the format YYYY-MM-DD. The order of the
-     * from and to dates do not affect the outcome (i.e. 'to' > 'from' is the same
-     * as 'from' > 'to')
-     */
-    public static LinkedList<Transaction> getTransactions(String from, String to) {
-        if (!Utilities.isDate(from) || !Utilities.isDate(to)) {
-            return null;
-        }
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute query
-                ResultSet rs;
-                if (from.compareToIgnoreCase(to)>0) {
-                    rs = stmt.executeQuery("SELECT id FROM trans WHERE date<='" + from + "' and date>='" + to + "' ORDER BY date, modified");
-                } else {
-                    rs = stmt.executeQuery("SELECT id FROM trans WHERE date>='" + from + "' and date<='" + to + "' ORDER BY date, modified");
-                }
-                LinkedList<Transaction> trans = new LinkedList();
-                while(rs.next()) {
-                    trans.add(new Transaction(rs.getInt("id")));
-                }
-                return trans;
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-            return null;
-        }
-    }
-    
-    /**
-     * Retrieves all transactions in the given date range for the specified
-     * account from database and stores them in a linked list
-     * @param account Account for which transactions are tied to
-     * @param from Start date of the date range in format: YYYY-MM-DD
-     * @param to End date of the date range in format: YYYY-MM-DD
-     * @return Linked list of all transactions in given date range for the given
-     * account
-     */
-    public static LinkedList<Transaction> getTransactions(Account account, String from, String to) {
-        if (!Utilities.isDate(from) || !Utilities.isDate(to) || !account.isInDatabase()) {
-            return null;
-        }
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute query
-                ResultSet rs;
-                if (from.compareToIgnoreCase(to)>1) {
-                    rs = stmt.executeQuery("SELECT id FROM trans WHERE acctid=" + account.getId() + " and date<='" + from + "' and date>='" + to + "' ORDER BY date, modified");
-                } else {
-                    rs = stmt.executeQuery("SELECT id FROM trans WHERE acctid=" + account.getId() + " and date>='" + from + "' and date<='" + to + "' ORDER BY date, modified");
-                }
-                LinkedList<Transaction> trans = new LinkedList();
-                while(rs.next()) {
-                    trans.add(new Transaction(rs.getInt("id")));
-                }
-                return trans;
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-            return null;
-        }
-    }
-    
-    /**
-     * Retrieves all transactions in the given date range for the specified
-     * category from database and stores them in a linked list
-     * @param category Category for which transactions are tied to
-     * @param from Start date of the date range in format: YYYY-MM-DD
-     * @param to End date of the date range in format: YYYY-MM-DD
-     * @return Linked list of all transactions in given date range for the given
-     * category
-     */
-    public static LinkedList<Transaction> getTransactions(Category category, String from, String to) {
-        if (!Utilities.isDate(from) || !Utilities.isDate(to) || !category.isInDatabase()) {
-            return null;
-        }
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute query
-                ResultSet rs;
-                if (from.compareToIgnoreCase(to)>1) {
-                    rs = stmt.executeQuery("SELECT trans.id FROM trans JOIN envs ON trans.envid=envs.id WHERE envs.catid=" + category.getId() + " and date<='" + from + "' and date>='" + to + "' ORDER BY date, trans.modified");
-                } else {
-                    rs = stmt.executeQuery("SELECT trans.id FROM trans JOIN envs ON trans.envid=envs.id WHERE envs.catid=" + category.getId() + " and date>='" + from + "' and date<='" + to + "' ORDER BY date, trans.modified");
-                }
-                LinkedList<Transaction> trans = new LinkedList();
-                while(rs.next()) {
-                    trans.add(new Transaction(rs.getInt("id")));
-                }
-                return trans;
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-            return null;
-        }
-    }
-    
-    /**
-     * Retrieves all transactions in the given date range for the specified
-     * envelope from database and stores them in a linked list
-     * @param envelope Envelope for which transactions are tied to
-     * @param from Start date of the date range in format: YYYY-MM-DD
-     * @param to End date of the date range in format: YYYY-MM-DD
-     * @return Linked list of all transactions in given date range for the given
-     * envelope
-     */
-    public static LinkedList<Transaction> getTransactions(Envelope envelope, String from, String to) {
-        if (!Utilities.isDate(from) || !Utilities.isDate(to) || !envelope.isInDatabase()) {
-            return null;
-        }
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute query
-                ResultSet rs;
-                if (from.compareToIgnoreCase(to)>1) {
-                    rs = stmt.executeQuery("SELECT id FROM trans WHERE envid=" + envelope.getId() + " and date<='" + from + "' and date>='" + to + "' ORDER BY date, modified");
-                } else {
-                    rs = stmt.executeQuery("SELECT id FROM trans WHERE envid=" + envelope.getId() + " and date>='" + from + "' and date<='" + to + "' ORDER BY date, modified");
-                }
-                LinkedList<Transaction> trans = new LinkedList();
-                while(rs.next()) {
-                    trans.add(new Transaction(rs.getInt("id")));
-                }
-                return trans;
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-            return null;
-        }
-    }
-    
-    /**
-     * Retrieves all transactions in the given date range for the specified
-     * user from database and stores them in a linked list
-     * @param user User for which transactions are tied to
-     * @param from Start date of the date range in format: YYYY-MM-DD
-     * @param to End date of the date range in format: YYYY-MM-DD
-     * @return Linked list of all transactions in given date range for the given
-     * user
-     */
-    public static LinkedList<Transaction> getTransactions(User user, String from, String to) {
-        if (!Utilities.isDate(from) || !Utilities.isDate(to) || !user.isInDatabase() || user.isGmail()) {
-            return null;
-        }
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute query
-                ResultSet rs;
-                if (from.compareToIgnoreCase(to)>1) {
-                    rs = stmt.executeQuery("SELECT id FROM trans WHERE userid=" + user.getId() + " and date<='" + from + "' and date>='" + to + "' ORDER BY date, modified");
-                } else {
-                    rs = stmt.executeQuery("SELECT id FROM trans WHERE userid=" + user.getId() + " and date>='" + from + "' and date<='" + to + "' ORDER BY date, modified");
-                }
-                LinkedList<Transaction> trans = new LinkedList();
-                while(rs.next()) {
-                    trans.add(new Transaction(rs.getInt("id")));
-                }
-                return trans;
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-            return null;
-        }
-    }
-    
-    /**
-     * Retrieves the most recent specified quantity of transactions from 
-     * database and stores them in a linked list
-     * @param quantity Number of transactions to retrieve
-     * @return Linked list of transactions
-     */
-    public static LinkedList<Transaction> getTransactions(int quantity) {
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute query
-                ResultSet rs = stmt.executeQuery("SELECT id FROM trans ORDER BY date DESC, modified DESC LIMIT " + quantity);
-                LinkedList<Transaction> trans = new LinkedList();
-                while(rs.next()) {
-                    trans.addFirst(new Transaction(rs.getInt("id")));
-                }
-                return trans;
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-            return null;
-        }
-    }
-    
-    /**
-     * Retrieves the most recent specified quantity of transactions tied to the 
-     * given account from database and stores them in a linked list
-     * @param account Account in which transactions are tied to
-     * @param quantity Number of transactions to retrieve
-     * @return Linked list of transactions
-     */
-    public static LinkedList<Transaction> getTransactions(Account account, int quantity) {
-        if (!account.isInDatabase()) {
-            return null;
-        }
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute query
-                ResultSet rs = stmt.executeQuery("SELECT id FROM trans WHERE acctid =" + account.getId() + " ORDER BY date DESC, modified DESC LIMIT " + quantity);
-                LinkedList<Transaction> trans = new LinkedList();
-                while(rs.next()) {
-                    trans.addFirst(new Transaction(rs.getInt("id")));
-                }
-                return trans;
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-            return null;
-        }
-    }
-    
-    /**
-     * Retrieves the most recent specified quantity of transactions tied to the 
-     * given category from database and stores them in a linked list
-     * @param category Category in which transactions are tied to
-     * @param quantity Number of transactions to retrieve
-     * @return Linked list of transactions
-     */
-    public static LinkedList<Transaction> getTransactions(Category category, int quantity) {
-        if (!category.isInDatabase()) {
-            return null;
-        }
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute query
-                ResultSet rs = stmt.executeQuery("SELECT trans.id FROM trans JOIN envs ON trans.envid=envs.id WHERE envs.catid=" + category.getId() + " ORDER BY date DESC, trans.modified DESC LIMIT " + quantity);
-                LinkedList<Transaction> trans = new LinkedList();
-                while(rs.next()) {
-                    trans.addFirst(new Transaction(rs.getInt("id")));
-                }
-                return trans;
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-            return null;
-        }
-    }
-    
-    /**
-     * Retrieves the most recent specified quantity of transactions tied to the 
-     * given envelope from database and stores them in a linked list
-     * @param envelope Envelope in which transactions are tied to
-     * @param quantity Number of transactions to retrieve
-     * @return Linked list of transactions
-     */
-    public static LinkedList<Transaction> getTransactions(Envelope envelope, int quantity) {
-        if (!envelope.isInDatabase()) {
-            return null;
-        }
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute query
-                String query = "SELECT id FROM trans WHERE envid=" + envelope.getId() + " ORDER BY date DESC, modified DESC LIMIT " + quantity;
-                ResultSet rs = stmt.executeQuery(query);
-                LinkedList<Transaction> trans = new LinkedList();
-                while(rs.next()) {
-                    trans.addFirst(new Transaction(rs.getInt("id")));
-                }
-                return trans;
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-            return null;
-        }
-    }
-    
-    /**
-     * Retrieves all transactions tied to the given envelope from
-     * database and stores them in a linked list
-     * @param envelope Envelope in which transactions are tied to
-     * @return Linked list of transactions
-     */
-    public static LinkedList<Transaction> getTransactions(Envelope envelope) {
-        if (!envelope.isInDatabase()) {
-            return null;
-        }
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute query
-                ResultSet rs = stmt.executeQuery("SELECT id FROM trans WHERE envid =" + envelope.getId() + " ORDER BY date DESC, id DESC");
-                LinkedList<Transaction> trans = new LinkedList();
-                while(rs.next()) {
-                    trans.addFirst(new Transaction(rs.getInt("id")));
-                }
-                return trans;
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-            return null;
-        }
-    }
-
-    /**
-     * Retrieves the most recent specified quantity of transactions tied to the 
-     * given user from database and stores them in a linked list
-     * @param user User in which transactions are tied to
-     * @param quantity Number of transactions to retrieve
-     * @return Linked list of transactions
-     */
-    public static LinkedList<Transaction> getTransactions(User user, int quantity) {
-        if (!user.isInDatabase() || user.isGmail()) {
-            return null;
-        }
-        if (!user.isInDatabase()) {
-            return null;
-        }
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute query
-                ResultSet rs = stmt.executeQuery("SELECT id FROM trans WHERE userid =" + user.getId() + " ORDER BY date DESC, modified DESC LIMIT " + quantity);
-                LinkedList<Transaction> trans = new LinkedList();
-                while(rs.next()) {
-                    trans.addFirst(new Transaction(rs.getInt("id")));
-                }
-                return trans;
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-            return null;
-        }
-    }
-    
-    public static int getTransactionCount() {
+    private static int getTransactionCountFromDB() {
         try {
             // register the driver
             Class.forName(DRIVER_NAME);
@@ -2020,7 +1193,7 @@ public class DBMS {
         }
     }
     
-    public static int getTransactionCount(Account acct) {
+    private static int getTransactionCountFromDB(Account acct) {
         try {
             // register the driver
             Class.forName(DRIVER_NAME);
@@ -2036,7 +1209,7 @@ public class DBMS {
         }
     }
     
-    public static int getTransactionCount(Envelope env) {
+    private static int getTransactionCountFromDB(Envelope env) {
         try {
             // register the driver
             Class.forName(DRIVER_NAME);
@@ -2050,397 +1223,5 @@ public class DBMS {
         } catch (ClassNotFoundException | SQLException e) {
             return -1;
         }
-    }
-    
-    /**
-     * Retrieves all users from database and stores them in a linked list
-     * @param onlyEnabled if false, returns disabled as well as enabled
-     * @return Linked list of all users
-     */
-    public static LinkedList<User> getUsers(boolean onlyEnabled) {
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute query
-                ResultSet rs;
-                if(onlyEnabled) {
-                    rs = stmt.executeQuery("SELECT id FROM users WHERE enabled=1 AND type!=1 ORDER BY un");
-                } else {
-                    rs = stmt.executeQuery("SELECT id FROM users WHERE type!=1 ORDER BY un");
-                }
-                
-                LinkedList<User> users = new LinkedList();
-                while(rs.next()) {
-                    users.add(new User(rs.getInt("id")));
-                }
-                return users;
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-            return null;
-        }
-    }
-    
-    /**
-     * Retrieves all users from database and stores them in a linked list
-     * @param beginsWith only need to specify the first few letters of the user
-     * @param onlyEnabled if false, returns disabled as well as enabled
-     * @return Linked list of all users
-     */
-    public static LinkedList<User> getUsers(String beginsWith, boolean onlyEnabled) {
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute query
-                ResultSet rs;
-                if(onlyEnabled) {
-                    rs = stmt.executeQuery("SELECT id FROM users WHERE enabled=1 AND type!=1 AND un LIKE '" + beginsWith + "%' ORDER BY un");
-                } else {
-                    rs = stmt.executeQuery("SELECT id FROM users WHERE type!=1 AND un LIKE '" + beginsWith + "%' ORDER BY un");
-                }
-                
-                LinkedList<User> users = new LinkedList();
-                while(rs.next()) {
-                    users.add(new User(rs.getInt("id")));
-                }
-                return users;
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-            return null;
-        }
-    }
-    
-    /**
-     * Retrieves all email from database and stores them in a linked list
-     * @return Linked list of all email
-     */
-    public static LinkedList<Email> getEmail() {
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute query
-                ResultSet rs = stmt.executeQuery("SELECT id FROM email ORDER BY userid, addr");
-                LinkedList<Email> email = new LinkedList();
-                while(rs.next()) {
-                    email.add(new Email(rs.getInt("id")));
-                }
-                return email;
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-            return null;
-        }
-    }
-    
-    /**
-     * Retrieves all email from database and stores them in a linked list
-     * @param user User for which you wish to retrieve email addresses for
-     * @return Linked list of all email for the given user
-     */
-    public static LinkedList<Email> getEmail(User user) {
-        if (!user.isInDatabase()) {
-            return null;
-        }
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute query
-                ResultSet rs = stmt.executeQuery("SELECT id FROM email WHERE userid=" + user.getId() + " ORDER BY userid, addr");
-                LinkedList<Email> email = new LinkedList();
-                while(rs.next()) {
-                    email.add(new Email(rs.getInt("id")));
-                }
-                return email;
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-            return null;
-        }
-    }
-    
-    // MISC.
-    
-    /**
-     * Check if name is already in use as an account, category, or envelope.
-     * @param name Name to check for duplication
-     * @param onlyEnabled if false, returns disabled as well as enabled
-     * @return true if name is already in use, false otherwise
-     */
-    public static boolean isContainer(String name, boolean onlyEnabled) {
-        if(name==null) {
-            return false;
-        }
-        name = name.toLowerCase();
-        return DBMS.isAccount(name, onlyEnabled) || DBMS.isCategory(name, onlyEnabled) || DBMS.isEnvelope(name, onlyEnabled);
-    }
-    
-    /**
-     * Updates the database with the given query
-     * @param query SQL query to update database (ex. "UPDATE email SET
-     * modified='2013-08-17 15:50:44', attempt=5 WHERE id=3")
-     * @return true if successful, false otherwise
-     */
-    public static boolean executeQuery(String query) {
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database and execute queries
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // create tables
-                stmt.executeUpdate(query);
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-            return false;
-        }
-        return true;
-    }
-    
-    /**
-     * Updates the database with the given queries
-     * @param queries String array of SQL queries to update database
-     * @return true if successful, false otherwise
-     */
-    public static boolean updateDatabase(String[] queries) {
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database and execute queries
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // create tables
-                for(int i = 0; i < queries.length; i++) {
-                    stmt.executeUpdate(queries[i]);
-                }
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-            return false;
-        }
-        return true;
-    }
-    
-    /**
-     * Determines whether account exists with specified name
-     * @param name potential account name
-     * @param onlyEnabled if false, returns disabled as well as enabled
-     * @return true if account exists by specified name, false otherwise
-     */
-    public static boolean isAccount(String name, boolean onlyEnabled) {
-        if(name==null) {
-            return false;
-        }
-        name = name.toLowerCase();
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute queries to determine if name already exists
-                ResultSet  rs;
-                if(onlyEnabled) {
-                    rs = stmt.executeQuery("SELECT count(*) FROM accts WHERE enabled=1 AND name='" + name + "'");
-                } else {
-                    rs = stmt.executeQuery("SELECT count(*) FROM accts WHERE name='" + name + "'");
-                }
-                return rs.getInt(1)>0;
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-        }
-        return false;
-    }
-    
-    /**
-     * Determines whether category exists with specified name
-     * @param name potential category name
-     * @param onlyEnabled if false, returns disabled as well as enabled
-     * @return true if category exists by specified name, false otherwise
-     */
-    public static boolean isCategory(String name, boolean onlyEnabled) {
-        if(name==null) {
-            return false;
-        }
-        name = name.toLowerCase();
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute queries to determine if name already exists
-                ResultSet  rs;
-                if(onlyEnabled) {
-                    rs = stmt.executeQuery("SELECT count(*) FROM cats WHERE enabled=1 AND name='" + name + "'");
-                } else {
-                    rs = stmt.executeQuery("SELECT count(*) FROM cats WHERE name='" + name + "'");
-                }
-                return rs.getInt(1)>0;
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-        }
-        return false;
-    }
-    
-    /**
-     * Determines whether envelope exists with specified name
-     * @param name potential envelope name
-     * @param onlyEnabled if false, returns disabled as well as enabled
-     * @return true if envelope exists by specified name, false otherwise
-     */
-    public static boolean isEnvelope(String name, boolean onlyEnabled) {
-        if(name==null) {
-            return false;
-        }
-        name = name.toLowerCase();
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute queries to determine if name already exists
-                ResultSet  rs;
-                if(onlyEnabled) {
-                    rs = stmt.executeQuery("SELECT count(*) FROM envs WHERE enabled=1 AND name='" + name + "'");
-                } else {
-                    rs = stmt.executeQuery("SELECT count(*) FROM envs WHERE name='" + name + "'");
-                }
-                return rs.getInt(1)>0;
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-        }
-        return false;
-    }
-    
-    /**
-     * Determines whether user exists with specified username
-     * @param username potential username
-     * @param onlyEnabled if false, returns disabled as well as enabled
-     * @return true if user exists by specified username, false otherwise
-     */
-    public static boolean isUser(String username, boolean onlyEnabled) {
-        if(username==null) {
-            return false;
-        }
-        username = username.toLowerCase();
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute queries to determine if name already exists
-                ResultSet  rs;
-                if(onlyEnabled) {
-                    rs = stmt.executeQuery("SELECT count(*) FROM users WHERE enabled=1 AND un='" + username + "' and type!=1");
-                } else {
-                    rs = stmt.executeQuery("SELECT count(*) FROM users WHERE un='" + username + "' and type!=1");
-                }
-                return rs.getInt(1)>0;
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-        }
-        return false;
-    }
-    
-    /**
-     * Determines whether email exists with specified address
-     * @param addr potential email address
-     * @return true if email exists by specified address, false otherwise
-     */
-    public static boolean isEmail(String addr) {
-        if(addr==null) {
-            return false;
-        }
-        addr = addr.toLowerCase();
-        try {
-            // register the driver
-            Class.forName(DRIVER_NAME);
-            // connect to database
-            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                stmt.setQueryTimeout(TIMEOUT);
-                // execute queries to determine if addr already exists
-                ResultSet  rs;
-                rs = stmt.executeQuery("SELECT count(*) FROM email WHERE addr='" + addr + "'");
-                if (rs.getInt(1)>0) {
-                    return true;
-                }
-            }
-        } catch (ClassNotFoundException | SQLException e) {
-        }
-        return false;
-    }
-    
-    public static String validateTrendInput(String input) {
-        if(input.length()>0) {
-            input = input.toLowerCase();
-            // remove invalid charaters
-            String tmp = "";
-            for(int i = 0 ; i < input.length(); i++) {
-                if((input.charAt(i)>='a' && input.charAt(i)<='z') || (input.charAt(i)=='-' && i>0) || input.charAt(i)==',') {
-                    tmp += input.charAt(i);
-                }
-            }
-            String[]names = tmp.split(",");
-            tmp = "";
-            LinkedList<String> validatedNames = new LinkedList();
-            for (String s : names) {
-                if(!validatedNames.contains(s)) { // removes duplicate entries
-                    validatedNames.add(s);
-                    if(isAccount(s, true) || isEnvelope(s, true)) {
-                        tmp += s + ",";
-                    } else {
-                        tmp += "[" + s + "],";
-                    }
-                }
-            }
-            // removes last comma
-            tmp = tmp.substring(0, tmp.length()-1);
-            
-            return tmp;
-        } else {
-            return "";
-        }
-    }
-    
-    public static boolean setTransferRelationship(Transaction t1, Transaction t2) {
-        if(t1.isInDatabase()                 // t1 is a valid transaction
-                && t2.isInDatabase()         // t2 is a valid transaction
-                && t1.getAmt()==-t2.getAmt() // amounts match
-                && (t1.getAcct().getId()==-1 && t2.getAcct().getId()==-1    // accounts null...
-                 || t1.getEnv().getId()==-1  && t2.getEnv().getId()==-1)) { // or envelopes null (but not both)
-            t1.setTransferTransaction(t2.getId());
-            t2.setTransferTransaction(t1.getId());
-            return true;
-        }
-        return false;
-    }
-    
-    public static void mergeEnvelopes(Envelope from, Envelope to) {
-        // move transactions
-        Transaction transaction, partner;
-        while(DBMS.getTransactionCount(from)>0) {
-            transaction = DBMS.getTransactions(from, 1).getFirst();
-            partner = new Transaction(transaction.getTx());
-            if(transaction.getTx()!=-1 && partner.getEnv().getName().equalsIgnoreCase(to.getName())) {
-                // delete same-envelope transfer transactions (they cancel each other out)
-                executeQuery("DELETE FROM trans WHERE id=" + transaction.getId());
-                executeQuery("DELETE FROM trans WHERE id=" + partner.getId());
-            } else {
-                // set new envelope
-                transaction.setEnvelope(to.getName());
-            }
-        }
-        // remove (disable) 'from' envelope
-        executeQuery("UPDATE envs SET enabled=0 WHERE id=" + from.getId());
     }
 }

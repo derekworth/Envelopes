@@ -200,8 +200,8 @@ public class Commands {
             Account to = DBMS.getAccount(acctTo, true);
             double amt = Double.parseDouble(Utilities.roundAmount(Double.parseDouble(exp)));
             
-            double oldFromAcctAmt = from.getAmt();
-            double oldToAcctAmt   = to.getAmt();
+            double oldFromAcctAmt = from.getAmount();
+            double oldToAcctAmt   = to.getAmount();
             // Create transactions
             Transaction t1 = DBMS.addTransaction(from.getName(), "", user.getUsername(), date, "*(" + from.getName() + " > " + to.getName() + ")", -amt, "");
             Transaction t2 = DBMS.addTransaction(to.getName(),   "", user.getUsername(), date, "*(" + from.getName() + " > " + to.getName() + ")", amt, "");
@@ -220,8 +220,8 @@ public class Commands {
             Envelope to = DBMS.getEnvelope(envTo, true);
             double amt = Double.parseDouble(Utilities.roundAmount(Double.parseDouble(exp)));
                     
-            double oldFromAmt = from.getAmt();
-            double oldToAmt   = to.getAmt();
+            double oldFromAmt = from.getAmount();
+            double oldToAmt   = to.getAmount();
             // Create transactions
             Transaction t1 = DBMS.addTransaction("", from.getName(), user.getUsername(), date, "(" + from.getName() + " > " + to.getName() + ")", -amt, "");
             Transaction t2 = DBMS.addTransaction("", to.getName(),   user.getUsername(), date, "(" + from.getName() + " > " + to.getName() + ")", amt, "");
@@ -240,8 +240,8 @@ public class Commands {
             double sum = 0;
             String response = "ACCOUNTS:";
             for(Account a : accts) {
-                response += "\n " + a.getName() + " " + Utilities.addCommasToAmount(a.getAmt());
-                sum += a.getAmt();
+                response += "\n " + a.getName() + " " + Utilities.addCommasToAmount(a.getAmount());
+                sum += a.getAmount();
             }
             response += "\nTOTAL: " + Utilities.addCommasToAmount(sum);
             return response;
@@ -255,26 +255,26 @@ public class Commands {
             for(Category c : cats) {
                 envs = DBMS.getEnvelopes(c, true);
                 // add category with total
-                response += "\n " + c.getName().toUpperCase() + " " + Utilities.addCommasToAmount(c.getAmt());
+                response += "\n " + c.getName().toUpperCase() + " " + Utilities.addCommasToAmount(c.getAmount());
                 // add envelopes with totals
                 for(Envelope e : envs) {
-                    response += "\n   " + e.getName() + " " + Utilities.addCommasToAmount(e.getAmt());
+                    response += "\n   " + e.getName() + " " + Utilities.addCommasToAmount(e.getAmount());
                 }
-                sum += c.getAmt();
+                sum += c.getAmount();
             }
             
             envs = DBMS.getUncategorizedEnvelopes(true);
             double uncatSum = 0;
             // get sum of uncategorized envelopes
             for(Envelope e : envs) {
-                uncatSum += e.getAmt();
+                uncatSum += e.getAmount();
             }
             if(envs.size()>0) {
                 // add category with total
                 response += "\n UNCATEGORIZED " + Utilities.addCommasToAmount(uncatSum);
                 // add envelopes with totals
                 for(Envelope e : envs) {
-                    response += "\n   " + e.getName() + " " + Utilities.addCommasToAmount(e.getAmt());
+                    response += "\n   " + e.getName() + " " + Utilities.addCommasToAmount(e.getAmount());
                 }
             }
             sum += uncatSum;
@@ -288,8 +288,8 @@ public class Commands {
             double sum = 0;
             String response = "ENVELOPES:";
             for(Envelope e : envs) {
-                response += "\n " + e.getName() + " " + Utilities.addCommasToAmount(e.getAmt());
-                sum += e.getAmt();
+                response += "\n " + e.getName() + " " + Utilities.addCommasToAmount(e.getAmount());
+                sum += e.getAmount();
             }
             response += "\nTOTAL: " + Utilities.addCommasToAmount(sum);
             return response;
@@ -319,7 +319,7 @@ public class Commands {
                     + "date | amount | description | account | envelope | user";
             LinkedList<Transaction> trans = DBMS.getTransactions(HISTORY_DEFAULT_COUNT);
             for(Transaction tran : trans) {
-                response += "\n" + tran.getDate() + " | " + Utilities.addCommasToAmount(tran.getAmt()) + " | " + Utilities.shortenString(tran.getDesc(), 20) + " | " + tran.getAcct().getName() + " | " + tran.getEnv().getName() + " | " + tran.getUser().getUsername();
+                response += "\n" + tran.getDate() + " | " + Utilities.addCommasToAmount(tran.getAmount()) + " | " + Utilities.shortenString(tran.getDescription(), 20) + " | " + tran.getAccount().getName() + " | " + tran.getEnvelope().getName() + " | " + tran.getUser().getUsername();
             }
             return response;
         }
@@ -329,7 +329,7 @@ public class Commands {
                     + "date | amount | description | account | envelope | user";
             LinkedList<Transaction> trans = DBMS.getTransactions(qty);
             for(Transaction tran : trans) {
-                response += "\n" + tran.getDate() + " | " + Utilities.addCommasToAmount(tran.getAmt()) + " | " + Utilities.shortenString(tran.getDesc(), 20) + " | " + tran.getAcct().getName() + " | " + tran.getEnv().getName() + " | " + tran.getUser().getUsername();
+                response += "\n" + tran.getDate() + " | " + Utilities.addCommasToAmount(tran.getAmount()) + " | " + Utilities.shortenString(tran.getDescription(), 20) + " | " + tran.getAccount().getName() + " | " + tran.getEnvelope().getName() + " | " + tran.getUser().getUsername();
             }
             return response;
         }
@@ -349,7 +349,7 @@ public class Commands {
         
         private String acct(String acct) {
             Account a = DBMS.getAccount(acct, true);
-            return "ACCOUNT:" + "\n " + a.getName() + " " + Utilities.addCommasToAmount(a.getAmt());
+            return "ACCOUNT:" + "\n " + a.getName() + " " + Utilities.addCommasToAmount(a.getAmount());
         }
         
         private String cat(String cat) {
@@ -358,8 +358,8 @@ public class Commands {
             String response = "ENVELOPES (" + c.getName() + "):";
             double sum = 0;
             for(Envelope e : envs) {
-                response += "\n " + e.getName() + " " + Utilities.addCommasToAmount(e.getAmt());
-                sum += e.getAmt();
+                response += "\n " + e.getName() + " " + Utilities.addCommasToAmount(e.getAmount());
+                sum += e.getAmount();
             }
             response += "\nTOTAL: " + Utilities.addCommasToAmount(sum);
             return response;
@@ -367,7 +367,7 @@ public class Commands {
         
         private String env(String env) {
             Envelope e = DBMS.getEnvelope(env, true);
-            return "ENVELOPE:" + "\n " + e.getName() + " " + Utilities.addCommasToAmount(e.getAmt());
+            return "ENVELOPE:" + "\n " + e.getName() + " " + Utilities.addCommasToAmount(e.getAmount());
         }
         
         private String uncategorized() {
@@ -376,8 +376,8 @@ public class Commands {
             LinkedList<Envelope> envs = DBMS.getUncategorizedEnvelopes(true);
             response = "ENVELOPES (uncategorized):";
             for(Envelope e : envs) {
-                response += "\n " + e.getName() + " " + Utilities.addCommasToAmount(e.getAmt());
-                sum += e.getAmt();
+                response += "\n " + e.getName() + " " + Utilities.addCommasToAmount(e.getAmount());
+                sum += e.getAmount();
             }
             response += "\nTOTAL: " + Utilities.addCommasToAmount(sum);
             return response;
@@ -395,7 +395,7 @@ public class Commands {
             String response = "ACCOUNT (" + a.getName() + ") TRANSACTIONS:\n"
                     + "date | amount | description | envelope | user";
             for(Transaction t : trans) {
-                response += "\n" + t.getDate() + " | " + Utilities.roundAmount(t.getAmt()) + " | " + Utilities.shortenString(t.getDesc(), 20) + " | " + t.getEnv().getName() + " | " + t.getUser().getUsername();
+                response += "\n" + t.getDate() + " | " + Utilities.roundAmount(t.getAmount()) + " | " + Utilities.shortenString(t.getDescription(), 20) + " | " + t.getEnvelope().getName() + " | " + t.getUser().getUsername();
             }
             return response;
         }
@@ -406,7 +406,7 @@ public class Commands {
             String response = "CATEGORY (" + c.getName() + ") TRANSACTIONS:\n"
                     + "date | amount | description | account | envelope | user";
             for(Transaction t : trans) {
-                response += "\n" + t.getDate() + " | " + Utilities.roundAmount(t.getAmt()) + " | " + Utilities.shortenString(t.getDesc(), 20) + " | " + t.getAcct().getName() + " | " + t.getEnv().getName() + " | " + t.getUser().getUsername();
+                response += "\n" + t.getDate() + " | " + Utilities.roundAmount(t.getAmount()) + " | " + Utilities.shortenString(t.getDescription(), 20) + " | " + t.getAccount().getName() + " | " + t.getEnvelope().getName() + " | " + t.getUser().getUsername();
             }
             return response;
         }
@@ -417,7 +417,7 @@ public class Commands {
             String response = "ENVELOPE (" + e.getName() + ") TRANSACTIONS:\n"
                                 + "date | amount | description | account | user";
             for(Transaction t : trans) {
-                response += "\n" + t.getDate() + " | " + Utilities.roundAmount(t.getAmt()) + " | " + Utilities.shortenString(t.getDesc(), 20) + " | " + t.getAcct().getName() + " | " + t.getUser().getUsername();
+                response += "\n" + t.getDate() + " | " + Utilities.roundAmount(t.getAmount()) + " | " + Utilities.shortenString(t.getDescription(), 20) + " | " + t.getAccount().getName() + " | " + t.getUser().getUsername();
             }
             return response;
         }
@@ -437,13 +437,13 @@ public class Commands {
                 double total = 0;
                 Iterator<Transaction> tranIter = splitTransactions.iterator();
                 while(tranIter.hasNext()) {
-                    total += tranIter.next().getAmt();
+                    total += tranIter.next().getAmount();
                 }
                 String splitTotal = Utilities.roundAmount(-total);
                 // Update descriptions with "SPLIT <TOTAL> <original description>"
                 while(!splitTransactions.isEmpty()) {
                     Transaction tmp = splitTransactions.remove();
-                    String oldDesc = tmp.getDesc();
+                    String oldDesc = tmp.getDescription();
                     tmp.setDescription("SPLIT " + splitTotal + " " + oldDesc);
                 }
             }
@@ -457,20 +457,20 @@ public class Commands {
                         + "Specify account at least once: <acct> [<env> <amt> (desc), ...]";
             }
             Envelope e = DBMS.getEnvelope(env, true);
-            double oldAcctAmt = currAcct.getAmt();
-            double oldEnvAmt = e.getAmt();
+            double oldAcctAmt = currAcct.getAmount();
+            double oldEnvAmt = e.getAmount();
             Transaction t = DBMS.addTransaction(currAcct.getName(), e.getName(), user.getUsername(), date, "<no description specified>", amt, "");
             splitTransactions.add(t);
             // updates envelope and account now that transaction created
             e.updateAmt();
-            currAcct.setAmt(oldAcctAmt + amt);
+            currAcct.setAmount(oldAcctAmt + amt);
             return "UPDATE:\n"
                     + " amt: " + Utilities.addCommasToAmount(amt) + "\n"
                     + " desc: <none specified>\n"
                     + "ENV: '" + e.getName() + "'\n"
-                    + " " + Utilities.addCommasToAmount(oldEnvAmt) + " >> " + Utilities.addCommasToAmount(e.getAmt()) + "\n"
+                    + " " + Utilities.addCommasToAmount(oldEnvAmt) + " >> " + Utilities.addCommasToAmount(e.getAmount()) + "\n"
                     + "ACCT: '" + currAcct.getName() + "'\n"
-                    + " " + Utilities.addCommasToAmount(oldAcctAmt) + " >> " + Utilities.addCommasToAmount(currAcct.getAmt());
+                    + " " + Utilities.addCommasToAmount(oldAcctAmt) + " >> " + Utilities.addCommasToAmount(currAcct.getAmount());
         }
         
         private String acctEnvExp(String acct, String env, String exp) {
@@ -478,20 +478,20 @@ public class Commands {
             double amt = Double.parseDouble(Utilities.roundAmount(Double.parseDouble(exp)));
             Envelope e = DBMS.getEnvelope(env, true);
             currAcct = DBMS.getAccount(acct, true);
-            double oldAcctAmt = currAcct.getAmt();
-            double oldEnvAmt = e.getAmt();
+            double oldAcctAmt = currAcct.getAmount();
+            double oldEnvAmt = e.getAmount();
             Transaction t = DBMS.addTransaction(currAcct.getName(), e.getName(), user.getUsername(), date, "<no description specified>", amt, "");
             splitTransactions.add(t);
             // updates envelope and account now that transaction created
             e.updateAmt();
-            currAcct.setAmt(oldAcctAmt + amt);
+            currAcct.setAmount(oldAcctAmt + amt);
             return "UPDATE:\n"
                     + " amt: " + Utilities.addCommasToAmount(amt) + "\n"
                     + " desc: <none specified>\n"
                     + "ENV: '" + e.getName() + "'\n"
-                    + " " + Utilities.addCommasToAmount(oldEnvAmt) + " >> " + Utilities.addCommasToAmount(e.getAmt()) + "\n"
+                    + " " + Utilities.addCommasToAmount(oldEnvAmt) + " >> " + Utilities.addCommasToAmount(e.getAmount()) + "\n"
                     + "ACCT: '" + currAcct.getName() + "'\n"
-                    + " " + Utilities.addCommasToAmount(oldAcctAmt) + " >> " + Utilities.addCommasToAmount(currAcct.getAmt());
+                    + " " + Utilities.addCommasToAmount(oldAcctAmt) + " >> " + Utilities.addCommasToAmount(currAcct.getAmount());
         }
         
         private String envExpWord(String env, String exp) {
@@ -501,8 +501,8 @@ public class Commands {
             }
             double amt = Double.parseDouble(Utilities.roundAmount(Double.parseDouble(exp)));
             Envelope e = DBMS.getEnvelope(env, true);
-            double oldAcctAmt = currAcct.getAmt();
-            double oldEnvAmt = e.getAmt();
+            double oldAcctAmt = currAcct.getAmount();
+            double oldEnvAmt = e.getAmount();
             // gets description from remaining tokens
             Token curr = getToken(3);
             String desc = "";
@@ -520,17 +520,17 @@ public class Commands {
             Transaction t = DBMS.addTransaction(currAcct.getName(), e.getName(), user.getUsername(), date, desc, amt, "");
             splitTransactions.add(t);
             // shorten description for response
-            desc = Utilities.shortenString(t.getDesc(),15);
+            desc = Utilities.shortenString(t.getDescription(),15);
             // updates envelope and account now that transaction created
             e.updateAmt();
-            currAcct.setAmt(oldAcctAmt + amt);
+            currAcct.setAmount(oldAcctAmt + amt);
             return "UPDATE:\n"
                     + " amt: " + Utilities.addCommasToAmount(amt) + "\n"
                     + " desc: " + desc + "\n"
                     + "ENV: '" + e.getName() + "'\n"
-                    + " " + Utilities.addCommasToAmount(oldEnvAmt) + " >> " + Utilities.addCommasToAmount(e.getAmt()) + "\n"
+                    + " " + Utilities.addCommasToAmount(oldEnvAmt) + " >> " + Utilities.addCommasToAmount(e.getAmount()) + "\n"
                     + "ACCT: '" + currAcct.getName() + "'\n"
-                    + " " + Utilities.addCommasToAmount(oldAcctAmt) + " >> " + Utilities.addCommasToAmount(currAcct.getAmt());
+                    + " " + Utilities.addCommasToAmount(oldAcctAmt) + " >> " + Utilities.addCommasToAmount(currAcct.getAmount());
         }
         
         private String acctEnvExpWord(String acct, String env, String exp) {
@@ -538,8 +538,8 @@ public class Commands {
             double amt = Double.parseDouble(Utilities.roundAmount(Double.parseDouble(exp)));
             Envelope e = DBMS.getEnvelope(env, true);
             currAcct = DBMS.getAccount(acct, true);
-            double oldAcctAmt = currAcct.getAmt();
-            double oldEnvAmt = e.getAmt();
+            double oldAcctAmt = currAcct.getAmount();
+            double oldEnvAmt = e.getAmount();
             // gets description from remaining tokens
             Token curr = getToken(4);
             String desc = "";
@@ -557,17 +557,17 @@ public class Commands {
             Transaction t = DBMS.addTransaction(currAcct.getName(), e.getName(), user.getUsername(), date, desc, amt, "");
             splitTransactions.add(t);
             // shorten description for response
-            desc = Utilities.shortenString(t.getDesc(),15);
+            desc = Utilities.shortenString(t.getDescription(),15);
             // updates envelope and account now that transaction created
             e.updateAmt();
-            currAcct.setAmt(oldAcctAmt + amt);
+            currAcct.setAmount(oldAcctAmt + amt);
             return "UPDATE:\n"
                     + " amt: " + Utilities.addCommasToAmount(amt) + "\n"
                     + " desc: " + desc + "\n"
                     + "ENV: '" + e.getName() + "'\n"
-                    + " " + Utilities.addCommasToAmount(oldEnvAmt) + " >> " + Utilities.addCommasToAmount(e.getAmt()) + "\n"
+                    + " " + Utilities.addCommasToAmount(oldEnvAmt) + " >> " + Utilities.addCommasToAmount(e.getAmount()) + "\n"
                     + "ACCT: '" + currAcct.getName() + "'\n"
-                    + " " + Utilities.addCommasToAmount(oldAcctAmt) + " >> " + Utilities.addCommasToAmount(currAcct.getAmt());
+                    + " " + Utilities.addCommasToAmount(oldAcctAmt) + " >> " + Utilities.addCommasToAmount(currAcct.getAmount());
         }
         
         private String executeCommand() {
@@ -620,7 +620,7 @@ public class Commands {
                         commandResponse = "ACCOUNT (" + acct.getName() + ") TRANSACTIONS:\n"
                                 + "date | amount | description | envelope | user";
                         for(Transaction tran : trans) {
-                            commandResponse += "\n" + tran.getDate() + " | " + Utilities.roundAmount(tran.getAmt()) + " | " + tran.getDesc() + " | " + tran.getEnv().getName() + " | " + tran.getUser().getUsername();
+                            commandResponse += "\n" + tran.getDate() + " | " + Utilities.roundAmount(tran.getAmount()) + " | " + tran.getDescription() + " | " + tran.getEnvelope().getName() + " | " + tran.getUser().getUsername();
                         }
                         break;
                     case HISTORY    + "" + CAT     + "" + QTY:
@@ -629,7 +629,7 @@ public class Commands {
                         commandResponse = "CATEGORY (" + cat.getName() + ") TRANSACTIONS:\n"
                                 + "date | amount | description | account | envelope | user";
                         for(Transaction tran : trans) {
-                            commandResponse += "\n" + tran.getDate() + " | " + Utilities.roundAmount(tran.getAmt()) + " | " + tran.getDesc() + " | " + tran.getAcct().getName() + " | " + tran.getEnv().getName() + " | " + tran.getUser().getUsername();
+                            commandResponse += "\n" + tran.getDate() + " | " + Utilities.roundAmount(tran.getAmount()) + " | " + tran.getDescription() + " | " + tran.getAccount().getName() + " | " + tran.getEnvelope().getName() + " | " + tran.getUser().getUsername();
                         }
                         break;
                     case HISTORY    + "" + ENV     + "" + QTY:
@@ -638,7 +638,7 @@ public class Commands {
                         commandResponse = "ENVELOPE (" + env.getName() + ") TRANSACTIONS:\n"
                                 + "date | amount | description | account | user";
                         for(Transaction tran : trans) {
-                            commandResponse += "\n" + tran.getDate() + " | " + Utilities.roundAmount(tran.getAmt()) + " | " + tran.getDesc() + " | " + tran.getAcct().getName() + " | " + tran.getUser().getUsername();
+                            commandResponse += "\n" + tran.getDate() + " | " + Utilities.roundAmount(tran.getAmount()) + " | " + tran.getDescription() + " | " + tran.getAccount().getName() + " | " + tran.getUser().getUsername();
                         }
                         break;
                     case NEW        + "" + ACCOUNT  + "" + WORD:
@@ -763,11 +763,11 @@ public class Commands {
                         if(acct==null) {
                             commandResponse = "Account '" + getToken(3).getPossibilities() + "' does not exist.";
                         } else {
-                            if(Utilities.roundAmount(acct.getAmt()).equalsIgnoreCase("0.00")) {
+                            if(Utilities.roundAmount(acct.getAmount()).equalsIgnoreCase("0.00")) {
                                 acct.setEnabled(false);
                                 commandResponse = "Account '" + acct.getName() + "' successfully removed.";
                             } else {
-                                commandResponse = "Account '" + acct.getName() + "' must be empty before removal. Remaining balance: " + Utilities.roundAmount(acct.getAmt());
+                                commandResponse = "Account '" + acct.getName() + "' must be empty before removal. Remaining balance: " + Utilities.roundAmount(acct.getAmount());
                             }
                         }
                         break;
@@ -791,11 +791,11 @@ public class Commands {
                         if(env==null) {
                             commandResponse = "Envelope '" + getToken(3).getPossibilities() + "' does not exist.";
                         } else {
-                            if(Utilities.roundAmount(env.getAmt()).equalsIgnoreCase("0.00")) {
+                            if(Utilities.roundAmount(env.getAmount()).equalsIgnoreCase("0.00")) {
                                 env.setEnabled(false);
                                 commandResponse = "Envelope '" + env.getName() + "' successfully removed.";
                             } else {
-                                commandResponse = "Envelope '" + env.getName() + "' must be empty before removal. Remaining balance: " + Utilities.roundAmount(env.getAmt());
+                                commandResponse = "Envelope '" + env.getName() + "' must be empty before removal. Remaining balance: " + Utilities.roundAmount(env.getAmount());
                             }
                         }
                         break;
@@ -824,7 +824,7 @@ public class Commands {
                         commandResponse = "ACCOUNT (" + acct.getName() + ") TRANSACTIONS:\n"
                                 + "date | amount | description | envelope | user";
                         for(Transaction tran : trans) {
-                            commandResponse += "\n" + tran.getDate() + " | " + Utilities.roundAmount(tran.getAmt()) + " | " + tran.getDesc() + " | " + tran.getEnv().getName() + " | " + tran.getUser().getUsername();
+                            commandResponse += "\n" + tran.getDate() + " | " + Utilities.roundAmount(tran.getAmount()) + " | " + tran.getDescription() + " | " + tran.getEnvelope().getName() + " | " + tran.getUser().getUsername();
                         }
                         break;
                     case HISTORY    + "" + CAT     + "" + DATE       + "" + DATE:
@@ -833,7 +833,7 @@ public class Commands {
                         commandResponse = "CATEGORY (" + cat.getName() + ") TRANSACTIONS:\n"
                                 + "date | amount | description | account | envelope | user";
                         for(Transaction tran : trans) {
-                            commandResponse += "\n" + tran.getDate() + " | " + Utilities.roundAmount(tran.getAmt()) + " | " + tran.getDesc() + " | " + tran.getAcct().getName() + " | " + tran.getEnv().getName() + " | " + tran.getUser().getUsername();
+                            commandResponse += "\n" + tran.getDate() + " | " + Utilities.roundAmount(tran.getAmount()) + " | " + tran.getDescription() + " | " + tran.getAccount().getName() + " | " + tran.getEnvelope().getName() + " | " + tran.getUser().getUsername();
                         }
                         break;
                     case HISTORY    + "" + ENV     + "" + DATE       + "" + DATE:
@@ -842,7 +842,7 @@ public class Commands {
                         commandResponse = "ENVELOPE (" + env.getName() + ") TRANSACTIONS:\n"
                                 + "date | amount | description | account | user";
                         for(Transaction tran : trans) {
-                            commandResponse += "\n" + tran.getDate() + " | " + Utilities.roundAmount(tran.getAmt()) + " | " + tran.getDesc() + " | " + tran.getAcct().getName() + " | " + tran.getUser().getUsername();
+                            commandResponse += "\n" + tran.getDate() + " | " + Utilities.roundAmount(tran.getAmount()) + " | " + tran.getDescription() + " | " + tran.getAccount().getName() + " | " + tran.getUser().getUsername();
                         }
                         break;
                     case NEW        + "" + ENVELOPE + "" + WORD       + "" + CAT:

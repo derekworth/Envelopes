@@ -10,113 +10,40 @@ public class Transaction {
     private final String created;
     private String modified;
     private final int id;
+    private int aid;
     private Account acct;
+    private int eid;
     private Envelope env;
-    private final User user;
+    private final int uid;
+    private User usr;
     private String date;
     private String desc;
     private double amt;
     private String runTot;
+    private int tid;
     private Transaction tx;
     
     // CONSTRUCTOR
     
-    public Transaction(String created, String modified, int id, Account acct, Envelope env, User usr, String date, String desc, double amt, Transaction tx) {
+    public Transaction(String created, String modified, int id, int aid, int eid, int uid, String date, String desc, double amt, int tid) {
         this.created = created;
         this.modified = modified;
         this.id = id;
-        this.acct = acct;
-        this.env = env;
-        this.user = usr;
+        this.aid = aid;
+        this.acct = null;
+        this.eid = eid;
+        this.env = null;
+        this.uid = uid;
+        this.usr = null;
         this.date = date;
         this.desc = desc;
         this.amt = amt;
-        this.tx = tx;
+        this.tid = tid;
+        this.tx = null;
         this.runTot = "";
     }
     
-//    public Transaction(int id, Account account) {
-//        try {
-//            // register the driver
-//            Class.forName("org.sqlite.JDBC");
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                String query = "SELECT * FROM trans WHERE id = " + id;
-//                ResultSet rs = stmt.executeQuery(query);
-//                // sets variables accordingly
-//                this.created = rs.getString("created");
-//                this.modified = rs.getString("modified");
-//                this.id = rs.getInt("id");
-//                this.acct = account;
-//                this.env = new Envelope(rs.getInt("envid"));
-//                this.user = new User(rs.getInt("userid"));
-//                this.date = rs.getString("date");
-//                this.desc = rs.getString("desc");
-//                this.amt = rs.getDouble("amt");
-//                this.runTot = "";
-//                this.tx = rs.getInt("tx");
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            this.id = -1;
-//        }
-//    }
-//    
-//    public Transaction(Account account, Envelope envelope, User user, String date, String desc, double amt, String runTot) {
-//        desc = Utilities.trimInvalidCharacters(desc);
-//        desc = Utilities.removeDoubleApostrophes(desc);
-//        desc = Utilities.doubleApostrophes(desc);
-//        while(true) {
-//            if (account==null  || envelope==null || user==null || !user.isInDatabase() || !user.isEnabled() || user.isGmail() ||
-//                    ((!account.isInDatabase() || !account.isEnabled()) && (!envelope.isInDatabase() || !envelope.isEnabled()))) {
-//                this.id = -1;
-//                break;
-//            } else {
-//                // sets created/modified date/time
-//                String ts = Utilities.getTimestamp();
-//                // sets current date if date format is invalid
-//                if (!Utilities.isDate(date)) {
-//                    date = ts.substring(0, 10);
-//                }
-//                String query = "INSERT INTO trans (created, modified, acctid, envid, userid, date, desc, amt) VALUES ('" + ts + "', '" + ts + "', " + account.getId() + ", " + envelope.getId() + ", " + user.getId() + ", '" + date + "', '" + desc + "', " + amt + ")";
-//                if(DBMS.executeQuery(query)) {
-//                    // sets variables accordingly
-//                    try {
-//                        // register the driver
-//                        Class.forName("org.sqlite.JDBC");
-//                        // connect to database
-//                        try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                            stmt.setQueryTimeout(TIMEOUT);
-//                            // execute query
-//                            ResultSet rs = stmt.executeQuery("SELECT * FROM trans ORDER BY id DESC LIMIT 1");
-//                            // sets variables accordingly
-//                            this.created = rs.getString("created");
-//                            this.modified = rs.getString("modified");
-//                            this.id = rs.getInt("id");
-//                            this.acct = account;
-//                            this.env = new Envelope(rs.getInt("envid"));
-//                            this.user = new User(rs.getInt("userid"));
-//                            this.date = rs.getString("date");
-//                            this.desc = rs.getString("desc");
-//                            this.amt = rs.getDouble("amt");
-//                            this.runTot = runTot;
-//                            this.tx = rs.getInt("tx");
-//                            break;
-//                        }
-//                    } catch (ClassNotFoundException | SQLException e) {}
-//                }
-//            }
-//            this.id = -1;
-//            break;
-//        }
-//    }
-    
     // GETTERS
-    
-//    public boolean isInDatabase() {
-//        return id!=-1;
-//    }
     
     public String getCreated() {
         return created;
@@ -130,35 +57,51 @@ public class Transaction {
         return id;
     }
     
-    public Account getAcct() {
+    public int getAccountId() {
+        return aid;
+    }
+    
+    public Account getAccount() {
         return acct;
     }
     
-    public Envelope getEnv() {
+    public int getEnvelopeId() {
+        return eid;
+    }
+    
+    public Envelope getEnvelope() {
         return env;
     }
     
+    public int getUserId() {
+        return uid;
+    }
+    
     public User getUser() {
-        return user;
+        return usr;
     }
     
     public String getDate() {
         return date;
     }
     
-    public String getDesc() {
+    public String getDescription() {
         return desc;
     }
     
-    public double getAmt() {
+    public double getAmount() {
         return Double.parseDouble(Utilities.roundAmount(amt));
     }
     
-    public String getRunTot() {
+    public String getRunningTotal() {
         return runTot;
     }
     
-    public Transaction getTx() {
+    public int getTxTransactionId() {
+        return tid;
+    }
+    
+    public Transaction getTxTransaction() {
         return tx;
     }
     
@@ -168,12 +111,24 @@ public class Transaction {
         modified = newModified;
     }
     
+    public void setAccountId(int aid) {
+        this.aid = aid;
+    }
+    
     public void setAccount(Account acct) {
         this.acct = acct;
     }
     
+    public void setEnvelopeId(int eid) {
+        this.eid = eid;
+    }
+    
     public void setEnvelope(Envelope env) {
         this.env = env;
+    }
+    
+    public void setUser(User usr) {
+        this.usr = usr;
     }
     
     public void setDate(String newDate) {
@@ -198,7 +153,18 @@ public class Transaction {
 //                stmt.executeUpdate(query);
 //            }
 //            this.modified = ts;
-//            this.date = newDate;
+//            this.dat
+//                try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
+//                    stmt.setQueryTimeout(TIMEOUT);
+//                    // execute query
+//                    stmt.executeUpdate(query);
+//                }
+//            } catch (ClassNotFoundException | SQLException e) {
+//                return "Error: date changed for transaction but not corresponding transfer transaction";
+//            }
+//            return "Date successfully changed to '" + this.date + "' for both transaction and corresponding transfer transaction";
+//        }
+//        return "Transaction (" + this.id + ") date successfully changed to '" + this.date + "'";e = newDate;
 //        } catch (ClassNotFoundException | SQLException e) {
 //            return "Error: unable to change transaction (" + this.id + ") date to '" + newDate + "'";
 //        }
@@ -311,7 +277,11 @@ public class Transaction {
 //        return "Transaction (" + this.id + ") amount successfully set to " + newAmt;
     }
     
-    public void setTransferTransaction(Transaction tx) {
+    public void setTxTransactionId(int tid) {
+        this.tid = tid;
+    }
+    
+    public void setTxTransaction(Transaction tx) {
         this.tx = tx;
     }
 //        if (!isInDatabase()) {
@@ -340,102 +310,13 @@ public class Transaction {
         this.runTot = runTot;
     }
     
-//    public String setAccount(String newAcctName) {
-//        Account newAcct = DBMS.getAccount(newAcctName, true);
-//        if(newAcct==null) {
-//            return "Error: account (" + newAcctName + ") does not exist.";
-//        } else if (!isInDatabase()) {
-//            return "Error: transaction does not exist in database";
-//        } else if (this.acct.getId()==newAcct.getId()) {
-//            return "Account (" + this.acct.getName() + ") is already set";
-//        }
-//        String ts = Utilities.getTimestamp();
-//        String query = "UPDATE trans SET modified='" + ts + "', acctid=" + newAcct.getId() + " WHERE id=" + this.id;
-//        try {
-//            // register the driver
-//            Class.forName("org.sqlite.JDBC");
-//            // connect to database and execute queries
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                stmt.executeUpdate(query);
-//            }
-//            acct = newAcct;
-//            modified = ts;
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return "Error: unable to change transaction (" + this.id + ") account to " + newAcctName;
-//        }
-//        Transaction t = new Transaction(tx);
-//        if(t.isInDatabase()) {
-//            if(desc.length()>0) {
-//                desc = " " + desc;
-//            }
-//            if(amt<0) {
-//                if(desc.contains(")")) {
-//                    this.setDescription("*(" + acct.getName() + " > " + t.getAcct().getName() + ")" + desc.substring(desc.indexOf(")")+1));
-//                } else {
-//                    this.setDescription("*(" + acct.getName() + " > " + t.getAcct().getName() + ")" + desc);
-//                }
-//            } else {
-//                if(desc.contains(")")) {
-//                    this.setDescription("*(" + t.getAcct().getName() + " > " + acct.getName() + ")" + desc.substring(desc.indexOf(")")+1));
-//                } else {
-//                    this.setDescription("*(" + t.getAcct().getName() + " > " + acct.getName() + ")" + desc);
-//                }
-//            }
-//        }
-//        return "Transaction (" + this.id + ") account successfully set to " + acct.getName();
-//    }
-//    
-//    public String setEnvelope(String newEnvName) {
-//        Envelope newEnv = DBMS.getEnvelope(newEnvName, true);
-//        if(newEnv==null) {
-//            return "Error: envelope (" + newEnvName + ") does not exist.";
-//        } else if (!isInDatabase()) {
-//            return "Error: transaction does not exist in database";
-//        } else if (this.env.getId()==newEnv.getId()) {
-//            return "Envelope (" + this.env.getName() + ") is already set";
-//        }
-//        String ts = Utilities.getTimestamp();
-//        String query = "UPDATE trans SET modified='" + ts + "', envid=" + newEnv.getId() + " WHERE id=" + this.id;
-//        try {
-//            // register the driver
-//            Class.forName("org.sqlite.JDBC");
-//            // connect to database and execute queries
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                stmt.executeUpdate(query);
-//            }
-//            env = newEnv;
-//            modified = ts;
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return "Error: unable to change transaction (" + this.id + ") envelope to " + newEnvName;
-//        }
-//        Transaction t = new Transaction(tx);
-//        if(t.isInDatabase()) {
-//            if(desc.length()>0) {
-//                desc = " " + desc;
-//            }
-//            if(amt<0) {
-//                if(desc.contains(")")) {
-//                    this.setDescription("(" + env.getName() + " > " + t.getEnv().getName() + ")" + desc.substring(desc.indexOf(")")+1));
-//                } else {
-//                    this.setDescription("(" + env.getName() + " > " + t.getEnv().getName() + ")" + desc);
-//                }
-//            } else {
-//                if(desc.contains(")")) {
-//                    this.setDescription("(" + t.getEnv().getName() + " > " + env.getName() + ")" + desc.substring(desc.indexOf(")")+1));
-//                } else {
-//                    this.setDescription("(" + t.getEnv().getName() + " > " + env.getName() + ")" + desc);
-//                }
-//            }
-//        }
-//        return "Transaction (" + this.id + ") envelope successfully set to " + env.getName();
-//    }
-    
     @Override
     public String toString() {
-        return "created: " + created + " | modified: " + modified + " | id: " + id + " | acct: " + acct.getName() + " | env: " + env.getName() + " | user: " + user.getUsername() + " | date: " + date + " | desc: " + desc + " | amt: " + amt + " | tx: " + tx;
+        String a, e, u;
+        a = e = u = "NONE";
+        if(acct!=null) a = acct.getName();
+        if(env!=null)  e = env.getName();
+        if(usr!=null) u = usr.getUsername();
+        return "created: " + created + " | modified: " + modified + " | id: " + id + " | acct: " + a + " | env: " + e + " | user: " + u + " | date: " + date + " | desc: " + desc + " | amt: " + amt + " | tx: " + tid;
     }
 }

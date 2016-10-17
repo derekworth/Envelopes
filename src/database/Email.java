@@ -9,122 +9,23 @@ public class Email {
     private String modified;
     private int attempt;
     private final int id;
+    private int uid;
     private User user;
     private final String addr;
     
     // CONSTRUCTOR
     
-    public Email(String created, String modified, int attempt, int id, User user, String addr) {
+    public Email(String created, String modified, int attempt, int id, int uid, String addr) {
         this.created = created;
         this.modified = modified;
         this.attempt = attempt;
         this.id = id;
-        this.user = user;
+        this.uid = uid;
+        this.user = null;
         this.addr = addr;
     }
-        
-//    public Email(int id) {
-//        try {
-//            // register the driver
-//            Class.forName("org.sqlite.JDBC");
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                ResultSet rs = stmt.executeQuery("SELECT * FROM email WHERE id = " + id);
-//                // sets variables accordingly
-//                this.created = rs.getString("created");
-//                this.modified = rs.getString("modified");
-//                this.attempt = rs.getInt("attempt");
-//                this.id = rs.getInt("id");
-//                this.user = new User(rs.getInt("userid"));
-//                this.addr = rs.getString("addr");
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            this.id = -1;
-//        }
-//    }
-//    
-//    public Email(String addr) {
-//        // formats input
-//        addr = addr.toLowerCase();
-//        // sets created/modified date/time
-//        String ts = Utilities.getTimestamp();
-//        // prevents duplicate addresses
-//        if (DBMS.isEmail(addr)) {
-//            this.id = -1;
-//        } else {
-//            // creates new address in database (without user)
-//            DBMS.executeQuery("INSERT INTO email (created, modified, attempt, userid, addr) VALUES ('" + ts + "', '" + ts + "', 1, -1, '" + addr + "')");
-//            // sets variables accordingly
-//            try {
-//                // register the driver
-//                Class.forName("org.sqlite.JDBC");
-//                // connect to database
-//                try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                    stmt.setQueryTimeout(TIMEOUT);
-//                    // execute query
-//                    ResultSet rs = stmt.executeQuery("SELECT * FROM email ORDER BY id DESC LIMIT 1");
-//                    // sets variables accordingly
-//                    this.created = rs.getString("created");
-//                    this.modified = rs.getString("modified");
-//                    this.attempt = rs.getInt("attempt");
-//                    this.id = rs.getInt("id");
-//                    this.user = new User(rs.getInt("userid"));
-//                    this.addr = rs.getString("addr");
-//                }
-//            } catch (ClassNotFoundException | SQLException e) {
-//                this.id = -1;
-//            }
-//        }
-//    }
-//    
-//    public Email(String addr, int userid) {
-//        // formats input
-//        addr = addr.toLowerCase();
-//        // gets user
-//        User usr = new User(userid);
-//        // sets created/modified date/time
-//        String ts = Utilities.getTimestamp();
-//        // prevents duplicate addresses and checks that user exists
-//        if (DBMS.isEmail(addr)) {
-//            this.id = -1;
-//        } else {
-//            if (!usr.isInDatabase() || usr.isGmail()) {
-//                // creates new address in database (without user)
-//                DBMS.executeQuery("INSERT INTO email (created, modified, attempt, userid, addr) VALUES ('" + ts + "', '" + ts + "', 1, -1, '" + addr + "')");
-//            } else {
-//                // creates new address in database (with user)
-//                DBMS.executeQuery("INSERT INTO email (created, modified, attempt, userid, addr) VALUES ('" + ts + "', '" + ts + "', 0, " + usr.getId() + ", '" + addr + "')");
-//            }
-//            // sets variables accordingly
-//            try {
-//                // register the driver
-//                Class.forName("org.sqlite.JDBC");
-//                // connect to database
-//                try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                    stmt.setQueryTimeout(TIMEOUT);
-//                    // execute query
-//                    ResultSet rs = stmt.executeQuery("SELECT * FROM email ORDER BY id DESC LIMIT 1");
-//                    // sets variables accordingly
-//                    this.created = rs.getString("created");
-//                    this.modified = rs.getString("modified");
-//                    this.attempt = rs.getInt("attempt");
-//                    this.id = rs.getInt("id");
-//                    this.user = new User(rs.getInt("userid"));
-//                    this.addr = rs.getString("addr");
-//                }
-//            } catch (ClassNotFoundException | SQLException e) {
-//                this.id = -1;
-//            }
-//        }
-//    }
     
     // GETTERS
-    
-//    public boolean isInDatabase() {
-//        return this.id!=-1;
-//    }
     
     public String getCreated() {
         return created;
@@ -140,6 +41,10 @@ public class Email {
     
     public int getId() {
         return id;
+    }
+    
+    public int getUserId() {
+        return uid;
     }
     
     public User getUser() {
@@ -158,78 +63,20 @@ public class Email {
         
     public void setAttempt(int attempt) {
         this.attempt = attempt;
-//        // 0 = authenticated
-//        // # = attempt number (max of 5 attempts allowed)
-//        if (!isInDatabase()) {
-//            return "Error: email does not exist in database";
-//        }
-//        // set enabled variable and update modified getTimestamp
-//        if (this.attempt==attempt) {
-//            return "Email (" + this.addr + ") attempt has already been set to " + attempt;
-//        }
-//        String ts = Utilities.getTimestamp();
-//        if (attempt < 0) {
-//            attempt = 5;
-//        }
-//        String query = "UPDATE email SET modified='" + ts + "', attempt=" + attempt + " WHERE id=" + this.id;
-//        try {
-//            // register the driver
-//            Class.forName("org.sqlite.JDBC");
-//            // connect to database and execute queries
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                stmt.executeUpdate(query);
-//            }
-//            this.modified = ts;
-//            this.attempt = attempt;
-//            return "Email (" + this.addr + ") attempt successfully set to " + this.attempt;
-//            
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return "Error: unable to update attempt number";
-//        }
+    }
+    
+    public void setUserId(int uid) {
+        this.uid = uid;
     }
     
     public void setUser(User usr) {
         user = usr;
-        
-//        String query;
-//        String ts = Utilities.getTimestamp();
-//        if(usr==null) {
-//            query = "UPDATE email SET modified='" + ts + "', userid=-1 WHERE id=" + this.id;
-//        } else {
-//            if (!isInDatabase()) {
-//                return "Error: email does not exist in database";
-//            } else if (DBMS.getGmail().getId()==usr.getId()) {
-//                return "Error: user cannot be set to Gmail account";
-//            } else if (this.user.getId()==usr.getId()) {
-//                return "Email (" + this.addr + ") user ID is already set to " + usr;
-//            } else if (!usr.isInDatabase()) {
-//                return "Error: user (" + usr + ") does not exist in database";
-//            }
-//            // set new name and updates modified getTimestamp
-//            query = "UPDATE email SET modified='" + ts + "', userid=" + usr.getId() + " WHERE id=" + this.id;
-//        }
-//
-//        try {
-//            // register the driver
-//            Class.forName("org.sqlite.JDBC");
-//            // connect to database and execute queries
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                stmt.executeUpdate(query);
-//            }
-//            this.modified = ts;
-//            this.user = usr;
-//            return "Email (" + this.addr + ") successfully set to user";
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return "Error: unable to update user";
-//        }
     }
 
     @Override
     public String toString() {
-        return "created: " + created + " | modified: " + modified + " | attempt: " + attempt + " | id: " + id + " | user id: " + user + " | address: " + addr;
+        String u = "NONE";
+        if(user!=null) u = user.getUsername();
+        return "created: " + created + " | modified: " + modified + " | attempt: " + attempt + " | id: " + id + " | user id: " + u + " | address: " + addr;
     }
 }

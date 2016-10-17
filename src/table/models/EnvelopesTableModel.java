@@ -94,13 +94,13 @@ public final class EnvelopesTableModel implements TableModel {
             if(col==0) {
                 return ((Category) container).getName().toUpperCase();
             } else {
-                return Utilities.addCommasToAmount(((Category) container).getAmt());
+                return Utilities.addCommasToAmount(((Category) container).getAmount());
             }
         } else if(container instanceof Envelope) {
             if(col==0) {
                 return ((Envelope) container).getName();
             } else {
-                return Utilities.addCommasToAmount(((Envelope) container).getAmt());
+                return Utilities.addCommasToAmount(((Envelope) container).getAmount());
             }
         } else {
             if(col==0) {
@@ -227,7 +227,7 @@ public final class EnvelopesTableModel implements TableModel {
                 cell.setForeground(Color.BLACK);
                 cell.setFont(new Font("", Font.BOLD, 12));
             } else {
-                Double amtDouble = ((Envelope)containers.get(row)).getAmt();
+                Double amtDouble = ((Envelope)containers.get(row)).getAmount();
                 String amtString = Utilities.roundAmount(amtDouble);
                 // amount is negative
                 if(Double.parseDouble(amtString)<0) {

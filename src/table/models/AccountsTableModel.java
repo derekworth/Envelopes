@@ -60,7 +60,7 @@ public final class AccountsTableModel implements TableModel {
             if(col==0) {
                 return ((Account) container).getName();
             } else {
-                return Utilities.addCommasToAmount(((Account) container).getAmt());
+                return Utilities.addCommasToAmount(((Account) container).getAmount());
             }
         } else {
             if(col==0) {
@@ -173,7 +173,7 @@ public final class AccountsTableModel implements TableModel {
                 cell.setForeground(Color.BLACK);
                 cell.setFont(new Font("", Font.BOLD, 12));
             } else {
-                Double amtDouble = ((Account)containers.get(row)).getAmt();
+                Double amtDouble = ((Account)containers.get(row)).getAmount();
                 String amtString = Utilities.roundAmount(amtDouble);
                 // amount is negative
                 if(Double.parseDouble(amtString)<0) {

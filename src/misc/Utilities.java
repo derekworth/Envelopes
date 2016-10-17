@@ -6,6 +6,7 @@ import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
+import java.util.LinkedList;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 
@@ -96,59 +97,61 @@ public class Utilities {
     }
 
     public static String renameContainer(String oldName) {
-        int left = -1, right;
-        // find index to left and right parenthesis
-        int i = oldName.length() - 1;
-        if(oldName.charAt(i)==')') { // right parenthesis found
-            right = i;
-            i--;
-            // find left parenthesis
-            for(; i>=0; i--){
-                if(oldName.charAt(i)=='(') {
-                    left = i;
-                    break;
-                }
-            }
-            if(left!=-1) { // left parenthesis found
-                try {
-                    String newName = oldName.substring(0, left) + "(" + (Integer.parseInt(oldName.substring(left+1, right))+1) + ")";
-                    if(DBMS.isContainer(newName, false)) {
-                        return renameContainer(newName);
-                    } else {
-                        return newName;
-                    }
-                } catch(Exception e) {}
-            }
-        }
-        return renameContainer(oldName + "(0)");
+        return "";
+//        int left = -1, right;
+//        // find index to left and right parenthesis
+//        int i = oldName.length() - 1;
+//        if(oldName.charAt(i)==')') { // right parenthesis found
+//            right = i;
+//            i--;
+//            // find left parenthesis
+//            for(; i>=0; i--){
+//                if(oldName.charAt(i)=='(') {
+//                    left = i;
+//                    break;
+//                }
+//            }
+//            if(left!=-1) { // left parenthesis found
+//                try {
+//                    String newName = oldName.substring(0, left) + "(" + (Integer.parseInt(oldName.substring(left+1, right))+1) + ")";
+//                    if(DBMS.isContainer(newName, false)) {
+//                        return renameContainer(newName);
+//                    } else {
+//                        return newName;
+//                    }
+//                } catch(Exception e) {}
+//            }
+//        }
+//        return renameContainer(oldName + "(0)");
     }
 
     public static String renameUser(String oldName) {
-        int left = -1, right;
-        // find index to left and right parenthesis
-        int i = oldName.length() - 1;
-        if(oldName.charAt(i)==')') { // right parenthesis found
-            right = i;
-            i--;
-            // find left parenthesis
-            for(; i>=0; i--){
-                if(oldName.charAt(i)=='(') {
-                    left = i;
-                    break;
-                }
-            }
-            if(left!=-1) { // left parenthesis found
-                try {
-                    String newName = oldName.substring(0, left) + "(" + (Integer.parseInt(oldName.substring(left+1, right))+1) + ")";
-                    if(DBMS.isUser(newName, false)) {
-                        return renameUser(newName);
-                    } else {
-                        return newName;
-                    }
-                } catch(Exception e) {}
-            }
-        }
-        return renameUser(oldName + "(0)");
+        return "";
+//        int left = -1, right;
+//        // find index to left and right parenthesis
+//        int i = oldName.length() - 1;
+//        if(oldName.charAt(i)==')') { // right parenthesis found
+//            right = i;
+//            i--;
+//            // find left parenthesis
+//            for(; i>=0; i--){
+//                if(oldName.charAt(i)=='(') {
+//                    left = i;
+//                    break;
+//                }
+//            }
+//            if(left!=-1) { // left parenthesis found
+//                try {
+//                    String newName = oldName.substring(0, left) + "(" + (Integer.parseInt(oldName.substring(left+1, right))+1) + ")";
+//                    if(DBMS.isUser(newName, false)) {
+//                        return renameUser(newName);
+//                    } else {
+//                        return newName;
+//                    }
+//                } catch(Exception e) {}
+//            }
+//        }
+//        return renameUser(oldName + "(0)");
     }
         
 //    /**
@@ -330,6 +333,16 @@ public class Utilities {
      */
     public static String getTimestamp() {
         return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Calendar.getInstance().getTime());
+    }
+    
+    public static void printTimestamp() {
+        System.out.println("Current time: " + getTimestamp());
+    }
+    
+    public static void printLinkedList(LinkedList<Object> objs) {
+        for(Object o : objs) {
+            System.out.println(o);
+        }
     }
     
     public static String getDatestamp(int fromToday) {

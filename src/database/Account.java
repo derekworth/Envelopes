@@ -114,7 +114,7 @@ public final class Account {
         return name;
     }
     
-    public double getAmt() {
+    public double getAmount() {
         return amt;
     }
     
@@ -133,12 +133,12 @@ public final class Account {
 //        String ts = Utilities.getTimestamp();
 //        // set enabled variable and update modified getTimestamp
 //        if (en) {
-//            if (isEnabled()) {
+//            if (setEnabled()) {
 //                return "Account (" + this.name + ") is already enabled";
 //            }
 //            query = "UPDATE accts SET modified='" + ts + "', enabled=1 WHERE id=" + this.id;
 //        } else {
-//            if (!isEnabled()) {
+//            if (!setEnabled()) {
 //                return "Account (" + this.name + ") is already disabled";
 //            }
 //            query = "UPDATE accts SET modified='" + ts + "', enabled=0 WHERE id=" + this.id;
@@ -172,7 +172,7 @@ public final class Account {
         
 //        if (!isInDatabase()) {
 //            return "Error: account does not exist in database";
-//        } else if (!isEnabled()) {
+//        } else if (!setEnabled()) {
 //            return "Error: disabled accounts cannot be updated";
 //        } else if (newName.equalsIgnoreCase(this.name)) {
 //            return "Account is already named '" + newName + "'";
@@ -198,7 +198,7 @@ public final class Account {
 //        }
     }
     
-    public void setAmt(double amt) {
+    public void setAmount(double amt) {
         this.amt = amt;
 //        try {
 //            // register the driver

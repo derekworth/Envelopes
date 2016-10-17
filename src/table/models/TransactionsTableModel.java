@@ -121,23 +121,23 @@ public final class TransactionsTableModel implements TableModel {
         if(col==0) {        // DATE
             return tran.getDate();
         } else if(col==1) { // DESC
-            return Utilities.removeDoubleApostrophes(tran.getDesc());
+            return Utilities.removeDoubleApostrophes(tran.getDescription());
         } else if(col==2) { // +AMT
-            if(tran.getAmt()>0) {
-                return Utilities.addCommasToAmount(tran.getAmt());
+            if(tran.getAmount()>0) {
+                return Utilities.addCommasToAmount(tran.getAmount());
             }
             return "";
         } else if(col==3) { // -AMT
-            if(tran.getAmt()<0) {
-                return Utilities.addCommasToAmount(-tran.getAmt());
+            if(tran.getAmount()<0) {
+                return Utilities.addCommasToAmount(-tran.getAmount());
             }
             return "";
         } else if(col==4) { // RUN TOT
-            return tran.getRunTot();
+            return tran.getRunningTotal();
         } else if(col==5) { // ACCOUNT
-            return tran.getAcct().getName();
+            return tran.getAccount().getName();
         } else if(col==6) { // ENVELOPE
-            return tran.getEnv().getName();
+            return tran.getEnvelope().getName();
         } else {            // USER
             return tran.getUser().getUsername();
         }
@@ -229,22 +229,22 @@ public final class TransactionsTableModel implements TableModel {
             for(Transaction t : transactions) {
                 String date, desc, amt, acct, cat, env, usr;
                 date = t.getDate();
-                desc = t.getDesc();
-                amt = Utilities.roundAmount(t.getAmt());
-                if(t.getAcct()==null || t.getAcct().getId()==-1) {
+                desc = t.getDescription();
+                amt = Utilities.roundAmount(t.getAmount());
+                if(t.getAccount()==null || t.getAccount().getId()==-1) {
                     acct = "--";
                 } else {
-                    acct = t.getAcct().getName();
+                    acct = t.getAccount().getName();
                 }
-                if(t.getEnv().getCat()==null || t.getEnv().getCat().getId()==-1) {
+                if(t.getEnvelope().getCategory()==null || t.getEnvelope().getCategory().getId()==-1) {
                     cat = "--";
                 } else {
-                    cat = t.getEnv().getCat().getName();
+                    cat = t.getEnvelope().getCategory().getName();
                 }
-                if(t.getEnv()==null || t.getEnv().getId()==-1) {
+                if(t.getEnvelope()==null || t.getEnvelope().getId()==-1) {
                     env = "--";
                 } else {
-                    env = t.getEnv().getName();
+                    env = t.getEnvelope().getName();
                 }
                 if(t.getUser()==null) {
                     usr = "--";

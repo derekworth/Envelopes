@@ -1,5 +1,7 @@
 package database;
 
+import java.util.LinkedList;
+
 /**
  * Created on Aug 2, 2013
  * @author Derek Worth
@@ -9,124 +11,29 @@ public class Envelope {
     private String modified;
     private boolean enabled;
     private final int id;
+    private int cid;
     private Category category;
     private String name;
     private double amt;
+    private LinkedList<Transaction> transactions;
+    private LinkedList<Transaction> transactionsByDate;
+    private LinkedList<Transaction> transactionsByQty;
     
     // CONSTRUCTORS
     
-    public Envelope(String created, String modified, boolean enabled, int id, String name, double amt) {
+    public Envelope(String created, String modified, boolean enabled, int id, int cid, String name, double amt) {
         this.created = created;
         this.modified = modified;
         this.enabled = enabled;
         this.id = id;
+        this.cid = cid;
+        this.category = null;
         this.name = name;
         this.amt = amt;
+        transactionsByQty = new LinkedList();
     }
-        
-//    Envelope(int id) {
-//        try {
-//            // register the driver
-//            Class.forName("org.sqlite.JDBC");
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                ResultSet rs = stmt.executeQuery("SELECT * FROM envs WHERE id = " + id);
-//                // sets variables accordingly
-//                this.created = rs.getString("created");
-//                this.modified = rs.getString("modified");
-//                this.enabled = rs.getInt("enabled");
-//                this.id = rs.getInt("id");
-//                this.category = new Category(rs.getInt("catid"));
-//                this.name = rs.getString("name");
-//                updateAmt();
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            this.id = -1;
-//        }
-//    }
-    
-//    Envelope(String name) {
-//        // formats input
-//        name = name.toLowerCase();
-//        // sets created/modified date/time
-//        String ts = Utilities.getTimestamp();
-//        // prevents duplicate naming
-//        if (DBMS.isContainer(name, false)) {
-//            this.id = -1;
-//        } else {
-//            // creates new envelope in database
-//            DBMS.updateDatabase("INSERT INTO envs (created, modified, enabled, catid, name) VALUES ('" + ts + "', '" + ts + "', 1, -1, '" + name + "')");
-//            // sets variables accordingly
-//            try {
-//                // register the driver
-//                Class.forName("org.sqlite.JDBC");
-//                // connect to database
-//                try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                    stmt.setQueryTimeout(TIMEOUT);
-//                    // execute query
-//                    ResultSet rs = stmt.executeQuery("SELECT * FROM envs ORDER BY id DESC LIMIT 1");
-//                    // sets variables accordingly
-//                    this.created = rs.getString("created");
-//                    this.modified = rs.getString("modified");
-//                    this.enabled = rs.getInt("enabled");
-//                    this.id = rs.getInt("id");
-//                    this.category = new Category(rs.getInt("catid"));
-//                    this.name = rs.getString("name");
-//                    updateAmt();
-//                }
-//            } catch (ClassNotFoundException | SQLException e) {
-//                this.id = -1;
-//            }
-//        }
-//    }
-    
-//    Envelope(String name, Category category) {
-//        // formats inputs
-//        name = name.toLowerCase();
-//        // sets created/modified date/time
-//        String ts = Utilities.getTimestamp();
-//        // prevents duplicate naming
-//        if (DBMS.isContainer(name, false)) {
-//            this.id = -1;
-//        } else {
-//            if (category!=null && category.isInDatabase() && category.isEnabled()) {
-//                // creates new envelope in database under given category
-//                DBMS.updateDatabase("INSERT INTO envs (created, modified, enabled, catid, name) VALUES ('" + ts + "', '" + ts + "', 1, " + category.getId() + ", '" + name + "')");
-//            } else {
-//                // creates new uncategorized envelope in database
-//                DBMS.updateDatabase("INSERT INTO envs (created, modified, enabled, catid, name) VALUES ('" + ts + "', '" + ts + "', 1, -1, '" + name + "')");
-//            }
-//            // sets variables accordingly
-//            try {
-//                // register the driver
-//                Class.forName("org.sqlite.JDBC");
-//                // connect to database
-//                try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                    stmt.setQueryTimeout(TIMEOUT);
-//                    // execute query
-//                    ResultSet rs = stmt.executeQuery("SELECT * FROM envs ORDER BY id DESC LIMIT 1");
-//                    // sets variables accordingly
-//                    this.created = rs.getString("created");
-//                    this.modified = rs.getString("modified");
-//                    this.enabled = rs.getInt("enabled");
-//                    this.id = rs.getInt("id");
-//                    this.category = new Category(rs.getInt("catid"));
-//                    this.name = rs.getString("name");
-//                    updateAmt();
-//                }
-//            } catch (ClassNotFoundException | SQLException e) {
-//                this.id = -1;
-//            }
-//        }
-//    }
     
     // GETTERS
-    
-//    public boolean isInDatabase() {
-//        return this.id!=-1;
-//    }
     
     public String getCreated() {
         return created;
@@ -144,7 +51,11 @@ public class Envelope {
         return id;
     }
     
-    public Category getCat() {
+    public int getCategoryId() {
+        return cid;
+    }
+    
+    public Category getCategory() {
         return category;
     }
     
@@ -152,7 +63,7 @@ public class Envelope {
         return name;
     }
     
-    public double getAmt() {
+    public double getAmount() {
         return amt;
     }
     
@@ -160,138 +71,87 @@ public class Envelope {
         
     public void setEnabled(boolean en) {
         enabled = en;
-//        if (!isInDatabase()) {
-//            return "Error: envelope does not exist in database";
-//        }
-//        String query;
-//        String ts = Utilities.getTimestamp();
-//        // set enabled variable and update modified getTimestamp
-//        if (en) {
-//            if (isEnabled()) {
-//                return "Envelope (" + this.name + ") is already enabled";
-//            }
-//            query = "UPDATE envs SET modified='" + ts + "', enabled=1 WHERE id=" + this.id;
-//        } else {
-//            if (!isEnabled()) {
-//                return "Envelope (" + this.name + ") is already disabled";
-//            }
-//            query = "UPDATE envs SET modified='" + ts + "', enabled=0 WHERE id=" + this.id;
-//        }
-//        try {
-//            // register the driver
-//            Class.forName("org.sqlite.JDBC");
-//            // connect to database and execute queries
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                stmt.executeUpdate(query);
-//            }
-//            this.modified = ts;
-//            if (en) {
-//                this.enabled = 1;
-//                return "Envelope (" + this.name + ") successfully enabled";
-//            } else {
-//                this.enabled = 0;
-//                return "Envelope (" + this.name + ") successfully disabled";
-//            }
-//            
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return "Error: unable to enable/disable envelope";
-//        }
     }
     
     public void setModified(String newModified) {
         modified = newModified;
     }
+    
+    public void setCategoryId(int cid) {
+        this.cid = cid;
+    }
+    
     public void setCategory(Category cat) {
         category = cat;
-//        if (!isInDatabase()) {                                           // ensures envelope exists
-//            return "Error: envelope does not exist in database";
-//        }
-//        Category oldCat = category;
-//        String query;
-//        String ts = Utilities.getTimestamp();
-//        if (!isEnabled()) {                                          // ensures envelope is enabled
-//            return "Error: disabled envelopes cannot be updated";
-//        } else if (cat==null) {                         // checks if new category exists
-//            query = "UPDATE envs SET modified='" + ts + "', catid=-1 WHERE id=" + id;
-//        } else if (cat.getId()==category.getId()) {                              // checks if envelope is already assigned to new category
-//            return "Envelope (" + name + ") category is already set to '" + oldCat.getName() + "'";
-//        } else {
-//            query = "UPDATE envs SET modified='" + ts + "', catid=" + cat.getId() + " WHERE id=" + id;
-//        }
-//        try {
-//            // register the driver
-//            Class.forName("org.sqlite.JDBC");
-//            // connect to database and execute queries
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                stmt.executeUpdate(query);
-//            }
-//            modified = ts;
-//            category = cat;
-//            if(cat==null) {
-//                return "Envelope (" + name + ") successfully uncategorized";
-//            } else {
-//                return "Envelope (" + name + ") category successfully set to '" + cat.getName() + "'";
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return "Error: unable to update envelope (" + name + ") to '" + cat.getName() + "'";
-//        }
     }
     
     public void setName(String newName) {
         name = newName;
-//        newName = newName.toLowerCase();
-//        if (!isInDatabase()) {
-//            return "Error: envelope does not exist in database";
-//        } else if (!isEnabled()) {
-//            return "Error: disabled envelopes cannot be updated";
-//        } else if (newName.equalsIgnoreCase(this.name)) {
-//            return "Envelope is already named '" + newName + "'";
-//        }
-//        String oldName = this.name;
-//        String ts = Utilities.getTimestamp();
-//        // set new name and updates modified getTimestamp
-//        String query = "UPDATE envs SET modified='" + ts + "', name='" + newName + "' WHERE id=" + this.id;
-//        try {
-//            // register the driver
-//            Class.forName("org.sqlite.JDBC");
-//            // connect to database and execute queries
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                stmt.executeUpdate(query);
-//            }
-//            this.modified = ts;
-//            this.name = newName;
-//            return "Envelope (" + oldName + ") successfully renamed to '" + newName + "'";
-//        } catch (ClassNotFoundException | SQLException e) {
-//            return "Error: unable to rename envelope (" + oldName + ") to '" + newName + "'";
-//        }
     }
     
-    public void setAmt(double newAmt) {
+    public void setAmount(double newAmt) {
+        double oldAmt = amt;
+        double diff = newAmt - oldAmt;
+        if(category!=null) {
+            category.updateAmount(diff);
+        }
         amt = newAmt;
-//        try {
-//            // register the driver
-//            Class.forName("org.sqlite.JDBC");
-//            // connect to database
-//            try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-//                stmt.setQueryTimeout(TIMEOUT);
-//                // execute query
-//                ResultSet rs = stmt.executeQuery("SELECT sum(amt) FROM trans WHERE envid=" + id);
-//                // sets variables accordingly
-//                amt = rs.getDouble(1);
-//            }
-//        } catch (ClassNotFoundException | SQLException e) {
-//            amt = -999999999;
-//        }
+    }
+    
+    // Linked List Management
+    
+    public void setTransactions(LinkedList<Transaction> trans) {
+        transactionsByQty = trans;
+    }
+    
+    /**
+     * Adds transactions to envelope in chronological order (by date, then id),
+     * but does not update the envelope amount (this must be done using the
+     * setAmount() method)
+     * @param newTran transaction to be added
+     */
+    public void addTransaction(Transaction newTran) {        
+        // add transaction to list in chronological order (by date, then id)
+        Transaction curr;
+        int size = transactionsByQty.size();
+        int i = 1;
+        while(true) {
+            if(i<=size) {
+                // get envelope at current index
+                curr = transactionsByQty.get(i);
+                // compare current envelope with envelope to be added
+                if(curr.getDate().compareTo(newTran.getDate())>0) {
+                    // add before current envelope
+                    transactionsByQty.add(i, curr);
+                    break;
+                }
+                i++;
+            } else {
+                // add to the end of list
+                transactionsByQty.addLast(newTran);
+                break;
+            }
+        }
+    }
+    
+    /**
+     * Removes the specified transaction from the list and updated envelope
+     * amount accordingly
+     * @param tran transaction to be removed
+     */
+    public void removeTransaction(Transaction tran) {
+        amt -= tran.getAmount();
+        transactionsByQty.remove(tran);
+    }
+    
+    public LinkedList<Transaction> getTransactions() {
+        return transactions;
     }
 
     @Override
     public String toString() {
-        return "created: " + created + " | modified: " + modified + " | enabled: " + enabled + " | id: " + id + " | category: " + category.getName() + " | name: " + name + " | amount: " + amt;
+        String c = "NONE";
+        if(category!=null) c = category.getName();
+        return "created: " + created + " | modified: " + modified + " | enabled: " + enabled + " | id: " + id + " | category: " + c + " | name: " + name + " | amount: " + amt;
     }
 }

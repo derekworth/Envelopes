@@ -128,6 +128,38 @@ public class Console extends javax.swing.JFrame {
             System.exit(0);
         }
     }
+
+    public String validateTrendInput(String input) {
+        if(input.length()>0) {
+            input = input.toLowerCase();
+            String tmp = "";
+            // remove invalid charaters
+            for(int i = 0 ; i < input.length(); i++) {
+                if((input.charAt(i)>='a' && input.charAt(i)<='z') || (input.charAt(i)=='-' && i>0) || input.charAt(i)==',') {
+                    tmp += input.charAt(i);
+                }
+            }
+            String[]names = tmp.split(",");
+            tmp = "";
+            LinkedList<String> validatedNames = new LinkedList();
+            for (String s : names) {
+                if(!validatedNames.contains(s)) { // removes duplicate entries
+                    validatedNames.add(s);        // saves for duplicate checking
+                    if(isAccount(s, true) || isEnvelope(s, true)) {
+                        tmp += s + ",";
+                    } else {
+                        tmp += "[" + s + "],";
+                    }
+                }
+            }
+            // removes last comma
+            tmp = tmp.substring(0, tmp.length()-1);
+            
+            return tmp;
+        } else {
+            return "";
+        }
+    }
     
     public final void updateAll() {
         updateAllTables();
@@ -2201,7 +2233,7 @@ public class Console extends javax.swing.JFrame {
                                 curr++;
                                 reportProgressBar.setValue(curr*100/max);
                                 row++;
-                                writer.write("," + env.getName() + ",," + Utilities.roundAmount(env.getAmt()) + ",=C" + row + "+D" + row + "\n");
+                                writer.write("," + env.getName() + ",," + Utilities.roundAmount(env.getAmount()) + ",=C" + row + "+D" + row + "\n");
                             }
                         }
 
@@ -2220,7 +2252,7 @@ public class Console extends javax.swing.JFrame {
                                 curr++;
                                 reportProgressBar.setValue(curr*100/max);
                                 row++;
-                                writer.write("," + env.getName() + ",," + Utilities.roundAmount(env.getAmt()) + ",=C" + row + "+D" + row + "\n");
+                                writer.write("," + env.getName() + ",," + Utilities.roundAmount(env.getAmount()) + ",=C" + row + "+D" + row + "\n");
                             }
                         }
 
@@ -2253,7 +2285,7 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_budgetWorksheetButtonActionPerformed
 
     private void trendTextFieldFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_trendTextFieldFocusLost
-        trendTextField.setText(DBMS.validateTrendInput(trendTextField.getText()));
+        trendTextField.setText(validateTrendInput(trendTextField.getText()));
         if(trendTextField.getText().contains("[")) {
             trendReportDirectionsLabel.setText("Names within [brackets] are invalid, please fix before continuing:");
             trendReportDirectionsLabel.setForeground(Color.red);
@@ -2504,27 +2536,27 @@ public class Console extends javax.swing.JFrame {
                             while(!transactions.isEmpty()) {
                                 Transaction trans = transactions.pollLast();
                                 runTot -= diff;
-                                if(trans.getAcct().getId()!=-1 && trans.getEnv().getId()!=-1) // both env and acct specified = not a transfer (Tx)
+                                if(trans.getAccount().getId()!=-1 && trans.getEnvelope().getId()!=-1) // both env and acct specified = not a transfer (Tx)
                                     tx = "";
                                 else
                                     tx = "X";
                                 date = trans.getDate();
-                                desc = trans.getDesc();
-                                amt = Utilities.roundAmount(trans.getAmt());
+                                desc = trans.getDescription();
+                                amt = Utilities.roundAmount(trans.getAmount());
                                 rt = Utilities.roundAmount(runTot);
-                                if(trans.getAcct().getId()!=-1)
-                                    acct = trans.getAcct().getName();
+                                if(trans.getAccount().getId()!=-1)
+                                    acct = trans.getAccount().getName();
                                 else
                                     acct = "";
-                                if(trans.getEnv().getId()!=-1)
-                                    env = trans.getEnv().getName();
+                                if(trans.getEnvelope().getId()!=-1)
+                                    env = trans.getEnvelope().getName();
                                 else
                                     env = "";
                                 usr = trans.getUser().getUsername();
                                 writer.write("\n" + tx + "," + date + "," + desc + "," + amt + "," + rt + "," + acct + "," + env + "," + usr);
                                 curr++;
                                 reportProgressBar.setValue(curr*100/max);
-                                diff = trans.getAmt();
+                                diff = trans.getAmount();
                             }
                         } else {
                             writer.write("Transactions as of " + Utilities.getDatestamp(0) + "\n\n");
@@ -2894,7 +2926,7 @@ public class Console extends javax.swing.JFrame {
         String acctName = (String) transAccountDropdown.getSelectedItem();
         if(acctName!=null && !acctName.equalsIgnoreCase("-all-")) {
             Account acct = DBMS.getAccount(acctName, true);
-            if(Utilities.roundAmount(acct.getAmt()).equalsIgnoreCase("0.00")) {
+            if(Utilities.roundAmount(acct.getAmount()).equalsIgnoreCase("0.00")) {
                 acct.setEnabled(false);
                 updateAccountTable();
                 updateAccountDropdowns();
