@@ -3,7 +3,7 @@ package table.models;
 import database.Account;
 import database.Category;
 import javax.swing.table.TableModel;
-import database.DBMS;
+import database.Model;
 import database.Envelope;
 import java.awt.Color;
 import java.awt.Component;
@@ -32,7 +32,7 @@ public final class AccountsTableModel implements TableModel {
     
     public void refresh() {
         containers = new LinkedList();
-        LinkedList<Account> accts = DBMS.getAccounts(true);
+        LinkedList<Account> accts = Model.getAccounts(true);
         for(Account acct : accts) {
             containers.add(acct);
         }
@@ -101,28 +101,28 @@ public final class AccountsTableModel implements TableModel {
         }
         Object container = containers.get(row);
         // rename disabled container if exists
-        if(DBMS.isContainer(newName, false)) {      // name already in use by enabled or disabled container
-            if(!DBMS.isContainer(newName, true)) {   // name already in use by disabled container
+        if(Model.isContainer(newName, false)) {      // name already in use by enabled or disabled container
+            if(!Model.isContainer(newName, true)) {   // name already in use by disabled container
                 // renames disabled container that matches the specified name
-                if(DBMS.isAccount(newName, false)) {
-                    Account disabledAcct = DBMS.getAccount(newName, false);
+                if(Model.isAccount(newName, false)) {
+                    Account disabledAcct = Model.getAccount(newName, false);
                     disabledAcct.setEnabled(true);
                     disabledAcct.setName(Utilities.renameContainer(newName));
                     disabledAcct.setEnabled(false);
-                } else if(DBMS.isCategory(newName, false)) {
-                    Category disabledCat = DBMS.getCategory(newName, false);
+                } else if(Model.isCategory(newName, false)) {
+                    Category disabledCat = Model.getCategory(newName, false);
                     disabledCat.setEnabled(true);
                     disabledCat.setName(Utilities.renameContainer(newName));
                     disabledCat.setEnabled(false);
-                } else if (DBMS.isEnvelope(newName, false)) {
-                    Envelope disabledEnv = DBMS.getEnvelope(newName, false);
+                } else if (Model.isEnvelope(newName, false)) {
+                    Envelope disabledEnv = Model.getEnvelope(newName, false);
                     disabledEnv.setEnabled(true);
                     disabledEnv.setName(Utilities.renameContainer(newName));
                     disabledEnv.setEnabled(false);
                 }
             }
         }
-        if(!DBMS.isContainer(newName, true)) {
+        if(!Model.isContainer(newName, true)) {
             if(container instanceof Account && col==0) {
                 ((Account) container).setName(newName);
             }
@@ -147,7 +147,7 @@ public final class AccountsTableModel implements TableModel {
         double amt;
         public Total() {
             // queries accounts total from the database
-            amt = DBMS.getAccountsTotal();
+            amt = Model.getAccountsTotal();
         }
         // returns stored accounts total
         public double getAmt() {

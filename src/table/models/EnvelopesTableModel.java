@@ -4,7 +4,7 @@ import database.Account;
 import database.Category;
 import database.Envelope;
 import javax.swing.table.TableModel;
-import database.DBMS;
+import database.Model;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Font;
@@ -47,25 +47,25 @@ public final class EnvelopesTableModel implements TableModel {
         }
         if(isCategorized) {
             // add categories
-            cats = DBMS.getCategories(true);
+            cats = Model.getCategories(true);
             // add envelopes for each category
             for(Category cat : cats) {
                 containers.add(cat);
-                envs = DBMS.getEnvelopes(cat, true);
+                envs = Model.getEnvelopes(cat, true);
                 for(Envelope env : envs) {
                     containers.add(env);
                 }
             }
             // add uncategorized envelopes
-            envs = DBMS.getUncategorizedEnvelopes(true);
+            envs = Model.getUncategorizedEnvelopes(true);
             if(envs.size()>0) {
-                containers.add(new Total("uncategorized", DBMS.getUncategorizedTotal()));
+                containers.add(new Total("uncategorized", Model.getUncategorizedTotal()));
                 for(Envelope env : envs) {
                     containers.add(env);
                 }
             }
         } else {
-            envs = DBMS.getEnvelopes(true);
+            envs = Model.getEnvelopes(true);
             for(Envelope env : envs) {
                 containers.add(env);
             }
@@ -141,28 +141,28 @@ public final class EnvelopesTableModel implements TableModel {
         }
         Object container = containers.get(row);
         // rename disabled container if exists
-        if(DBMS.isContainer(newName, false)) {      // name already in use by enabled or disabled container
-            if(!DBMS.isContainer(newName, true)) {   // name already in use by disabled container
+        if(Model.isContainer(newName, false)) {      // name already in use by enabled or disabled container
+            if(!Model.isContainer(newName, true)) {   // name already in use by disabled container
                 // renames disabled container that matches the specified name
-                if(DBMS.isAccount(newName, false)) {
-                    Account disabledAcct = DBMS.getAccount(newName, false);
+                if(Model.isAccount(newName, false)) {
+                    Account disabledAcct = Model.getAccount(newName, false);
                     disabledAcct.setEnabled(true);
                     disabledAcct.setName(Utilities.renameContainer(newName));
                     disabledAcct.setEnabled(false);
-                } else if(DBMS.isCategory(newName, false)) {
-                    Category disabledCat = DBMS.getCategory(newName, false);
+                } else if(Model.isCategory(newName, false)) {
+                    Category disabledCat = Model.getCategory(newName, false);
                     disabledCat.setEnabled(true);
                     disabledCat.setName(Utilities.renameContainer(newName));
                     disabledCat.setEnabled(false);
-                } else if (DBMS.isEnvelope(newName, false)) {
-                    Envelope disabledEnv = DBMS.getEnvelope(newName, false);
+                } else if (Model.isEnvelope(newName, false)) {
+                    Envelope disabledEnv = Model.getEnvelope(newName, false);
                     disabledEnv.setEnabled(true);
                     disabledEnv.setName(Utilities.renameContainer(newName));
                     disabledEnv.setEnabled(false);
                 }
             }
         }
-        if(!DBMS.isContainer(newName, true)) {
+        if(!Model.isContainer(newName, true)) {
             if(container instanceof Envelope && col==0) {
                 ((Envelope) container).setName(newName);
             } else if (container instanceof Category && col==0) {
@@ -196,7 +196,7 @@ public final class EnvelopesTableModel implements TableModel {
         // constructor for envelopes total
         public Total() {
             // queries accounts total from the database
-            amt = DBMS.getEnvelopesTotal();
+            amt = Model.getEnvelopesTotal();
             name = "total";
         }
         // returns stored envelopes/category total

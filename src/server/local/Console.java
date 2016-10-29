@@ -2,9 +2,9 @@ package server.local;
 
 import database.Account;
 import database.Category;
-import database.DBMS;
-import static database.DBMS.TIMEOUT;
-import static database.DBMS.URL;
+import database.Model;
+import static database.Model.TIMEOUT;
+import static database.Model.URL;
 import database.Email;
 import database.Envelope;
 import database.Transaction;
@@ -85,9 +85,9 @@ public class Console extends javax.swing.JFrame {
             
             initComponents();
             // initilize database if not already initialized
-            DBMS.initializeDatabase();
+            Model.initializeDatabase();
             // set gmail credentials
-            gmail = DBMS.getGmail();
+            gmail = Model.getGmail();
             if(Gmail.isValidCredentials(gmail.getUsername(), gmail.getPassword())) {
                 gmailUsername.setText(gmail.getUsername());
                 gmailPassword.setText(gmail.getPassword());
@@ -229,7 +229,7 @@ public class Console extends javax.swing.JFrame {
     }
     
     public final void updateTransactionTable() {
-        DBMS.removeZeroAmtTransactions();
+        Model.removeZeroAmtTransactions();
         transactionsTM.refresh();
         SwingUtilities.invokeLater(new Runnable() {
             @Override
@@ -240,7 +240,7 @@ public class Console extends javax.swing.JFrame {
     }
     
     public final void updateTransactionTableWithMoreTransactions() {
-        DBMS.removeZeroAmtTransactions();
+        Model.removeZeroAmtTransactions();
         transactionsTM.addMore();
         SwingUtilities.invokeLater(new Runnable() {
             @Override
@@ -300,7 +300,7 @@ public class Console extends javax.swing.JFrame {
     }
     
     public final void updateAccountDropdowns() {
-        LinkedList<Account> accts = DBMS.getAccounts(true);
+        LinkedList<Account> accts = Model.getAccounts(true);
         // reset account dropdown lists
         transAccountDropdown.removeAllItems();
         transAccountDropdown.addItem("-all-");
@@ -317,7 +317,7 @@ public class Console extends javax.swing.JFrame {
     }
     
     public final void updateEnvelopeDropdowns() {
-        LinkedList<Envelope> envs = DBMS.getEnvelopes(true);
+        LinkedList<Envelope> envs = Model.getEnvelopes(true);
         // reset envelope dropdowns
         transEnvelopeDropdown.removeAllItems();
         newTransEnvDropdown.removeAllItems();
@@ -336,7 +336,7 @@ public class Console extends javax.swing.JFrame {
     }
     
     public final void updateCategoryDropdowns() {
-        LinkedList<Category> cats = DBMS.getCategories(true);
+        LinkedList<Category> cats = Model.getCategories(true);
         // reset category dropdown
         transCategoryDropdown.removeAllItems();
         // populate
@@ -347,7 +347,7 @@ public class Console extends javax.swing.JFrame {
     }
     
     public final void updateUserDropdowns() {
-        LinkedList<User> usrs = DBMS.getUsers(true);
+        LinkedList<User> usrs = Model.getUsers(true);
         // reset user dropdowns
         loginUserDropdown.removeAllItems();
         removeUserDropdown.removeAllItems();
@@ -383,7 +383,7 @@ public class Console extends javax.swing.JFrame {
     }
     
     public final void updateEmailDropdown() {
-        LinkedList<Email> em = DBMS.getEmail();
+        LinkedList<Email> em = Model.getEmail();
         // reset dropdown
         emailAddressDropdown.removeAllItems();
         for(Email e : em) {
@@ -399,18 +399,18 @@ public class Console extends javax.swing.JFrame {
         // update table to reflect new selection
         updateTransactionTable();
         // display selected account/envelope amounts
-        if(DBMS.getTransactions(1).size()>0 && acctSelected!=null && envSelected!=null && (DBMS.isAccount(acctSelected, true) || acctSelected.equalsIgnoreCase("-all-")) && (DBMS.isEnvelope(envSelected, true) || envSelected.equalsIgnoreCase("-all-"))) {
+        if(Model.getTransactions(1).size()>0 && acctSelected!=null && envSelected!=null && (Model.isAccount(acctSelected, true) || acctSelected.equalsIgnoreCase("-all-")) && (Model.isEnvelope(envSelected, true) || envSelected.equalsIgnoreCase("-all-"))) {
             // display account amount
-            String lastestTransactionDate = DBMS.getTransactions(1).getFirst().getDate();
-            selectedAcctAmt.setText(Utilities.addCommasToAmount(DBMS.getAccountAmount(acctSelected, Utilities.getNewDate(lastestTransactionDate, 1))));
-            selectedEnvAmt.setText(Utilities.addCommasToAmount(DBMS.getEnvelopeAmount(envSelected, Utilities.getNewDate(lastestTransactionDate, 1))));
+            String lastestTransactionDate = Model.getTransactions(1).getFirst().getDate();
+            selectedAcctAmt.setText(Utilities.addCommasToAmount(Model.getAccountAmount(acctSelected, Utilities.getNewDate(lastestTransactionDate, 1))));
+            selectedEnvAmt.setText(Utilities.addCommasToAmount(Model.getEnvelopeAmount(envSelected, Utilities.getNewDate(lastestTransactionDate, 1))));
         }
     }
     
     /****Login and Logout****/
     
     private boolean attemptUserLogin() {
-        User usr = DBMS.getUser(loginUserDropdown.getSelectedItem().toString(), true);
+        User usr = Model.getUser(loginUserDropdown.getSelectedItem().toString(), true);
         String pw = "";
         for(char c : userPassword.getPassword()) {
             pw += c;
@@ -460,7 +460,7 @@ public class Console extends javax.swing.JFrame {
         }
         // check if un & pw are valid
         if(Gmail.isValidCredentials(srvUn, srvPw)) {
-            gmail = DBMS.getGmail();
+            gmail = Model.getGmail();
             gmail.setUsername(srvUn);
             gmail.setPassword(srvPw);
             serverIsOn = true;
@@ -2147,7 +2147,7 @@ public class Console extends javax.swing.JFrame {
             // disable login components
             enabledLoginComponents(false);
             // reset database
-            DBMS.resetDatabase();
+            Model.resetDatabase();
             // set sign in settings
             loginToggleButton.setText("Sign In");
             loginToggleButton.setSelected(false);
@@ -2199,8 +2199,8 @@ public class Console extends javax.swing.JFrame {
                     budgetWorksheetButton.setEnabled(false);
 
                     // intialize variables
-                    LinkedList<Category> cats = DBMS.getCategories(true);
-                    LinkedList<Envelope> envs = DBMS.getEnvelopes(true);
+                    LinkedList<Category> cats = Model.getCategories(true);
+                    LinkedList<Envelope> envs = Model.getEnvelopes(true);
                     int row = 5;
                     String C = "=", D = "=", E = "=";
 
@@ -2223,7 +2223,7 @@ public class Console extends javax.swing.JFrame {
                             curr++;
                             reportProgressBar.setValue(curr*100/max);
                             row++;
-                            envs = DBMS.getEnvelopes(cat, true);
+                            envs = Model.getEnvelopes(cat, true);
                             int a = row + 1, b = row + envs.size();
                             C += "C" + row + "+";
                             D += "D" + row + "+";
@@ -2238,7 +2238,7 @@ public class Console extends javax.swing.JFrame {
                         }
 
                         // write uncategorized envelopes to file
-                        envs = DBMS.getUncategorizedEnvelopes(true);
+                        envs = Model.getUncategorizedEnvelopes(true);
                         if(envs.size()>0) {
                             curr++;
                             reportProgressBar.setValue(curr*100/max);
@@ -2324,9 +2324,9 @@ public class Console extends javax.swing.JFrame {
                     runTrendReportButton.setEnabled(false);
                     budgetWorksheetButton.setEnabled(false);
                     // get accounts
-                    LinkedList<Account> activeAccts = DBMS.getAccounts(true);
+                    LinkedList<Account> activeAccts = Model.getAccounts(true);
                     // get envelopes
-                    LinkedList<Envelope> activeEnvs = DBMS.getEnvelopes(true);
+                    LinkedList<Envelope> activeEnvs = Model.getEnvelopes(true);
                     // setup for progress bar value
                     reportProgressBar.setValue(0);
                     int acctCount = activeAccts.size();
@@ -2421,7 +2421,7 @@ public class Console extends javax.swing.JFrame {
                             reportProgressBar.setValue(curr*100/max);
                             // write account totals by month
                             for(int i = 0; i < 12; i++) {
-                                writer.write("," + Utilities.roundAmount(DBMS.getAccountAmount(a.getName(), twelveMths[i][0])));
+                                writer.write("," + Utilities.roundAmount(Model.getAccountAmount(a.getName(), twelveMths[i][0])));
                                 curr++;
                                 reportProgressBar.setValue(curr*100/max);
                             }
@@ -2429,7 +2429,7 @@ public class Console extends javax.swing.JFrame {
                         // totals for each month
                         writer.write("\nTotal");
                         for(int i = 0; i < 12; i++) {
-                            writer.write("," + Utilities.roundAmount(DBMS.getAccountAmount("-all-", twelveMths[i][0])));
+                            writer.write("," + Utilities.roundAmount(Model.getAccountAmount("-all-", twelveMths[i][0])));
                             curr++;
                             reportProgressBar.setValue(curr*100/max);
                         }
@@ -2448,7 +2448,7 @@ public class Console extends javax.swing.JFrame {
                             reportProgressBar.setValue(curr*100/max);
                             // write envelope totals by month
                             for(int i = 0; i < 12; i++) {
-                                writer.write("," + Utilities.roundAmount(DBMS.getEnvelopeAmount(e.getName(), twelveMths[i][0])));
+                                writer.write("," + Utilities.roundAmount(Model.getEnvelopeAmount(e.getName(), twelveMths[i][0])));
                                 curr++;
                                 reportProgressBar.setValue(curr*100/max);
                             }
@@ -2456,7 +2456,7 @@ public class Console extends javax.swing.JFrame {
                         // totals for each month
                         writer.write("\nTotal");
                         for(int i = 0; i < 12; i++) {
-                            writer.write("," + Utilities.roundAmount(DBMS.getEnvelopeAmount("-all-", twelveMths[i][0])));
+                            writer.write("," + Utilities.roundAmount(Model.getEnvelopeAmount("-all-", twelveMths[i][0])));
                             curr++;
                             reportProgressBar.setValue(curr*100/max);
                         }
@@ -2503,7 +2503,7 @@ public class Console extends javax.swing.JFrame {
                     budgetWorksheetButton.setEnabled(false);
                     // setup for progress bar value
                     reportProgressBar.setValue(0);
-                    int t = DBMS.getTransactionCount();
+                    int t = Model.getTransactionCount();
                     int max = 6*t;
                     int curr = 0;
                     // get transactions
@@ -2526,11 +2526,11 @@ public class Console extends javax.swing.JFrame {
                     }
                     // write transactions to file
                     try (FileWriter writer = new FileWriter(f)) {
-                        if(DBMS.getTransactions(1).size()>0) { // writes only if there are 1 or more transactions
+                        if(Model.getTransactions(1).size()>0) { // writes only if there are 1 or more transactions
                             writer.write("Transactions as of " + Utilities.getDatestamp(0) + "\n\n");
                             writer.write("Tx,Date,Description,Amount,Run Total,Account,Envelope,User");
                             // pulls latest amount
-                            double runTot = DBMS.getAccountAmount("-all-", Utilities.getNewDate(DBMS.getTransactions(1).getFirst().getDate(), 1));
+                            double runTot = Model.getAccountAmount("-all-", Utilities.getNewDate(Model.getTransactions(1).getFirst().getDate(), 1));
                             double diff = 0;
                             String tx, date, desc, amt, rt, acct, env, usr;
                             while(!transactions.isEmpty()) {
@@ -2621,7 +2621,7 @@ public class Console extends javax.swing.JFrame {
                             writer.write("Trends as of " + Utilities.getDatestamp(0) + "\n\n");
                             // write column headers (account and envelope names)
                             for(String name : acctAndEnvNames) {
-                                if(DBMS.isAccount(name, true)) {
+                                if(Model.isAccount(name, true)) {
                                     writer.write(",*" + name);
                                 } else {
                                     writer.write("," + name);
@@ -2630,10 +2630,10 @@ public class Console extends javax.swing.JFrame {
                             for (String date : dates) {
                                 writer.write("\n" + date);
                                 for (String name : acctAndEnvNames) {
-                                    if (DBMS.isAccount(name, true)) {
-                                        writer.write("," + Utilities.roundAmount(DBMS.getAccountAmount(name, Utilities.getNewDate(date, 1))));
+                                    if (Model.isAccount(name, true)) {
+                                        writer.write("," + Utilities.roundAmount(Model.getAccountAmount(name, Utilities.getNewDate(date, 1))));
                                     } else {
-                                        writer.write("," + Utilities.roundAmount(DBMS.getEnvelopeAmount(name, Utilities.getNewDate(date, 1))));
+                                        writer.write("," + Utilities.roundAmount(Model.getEnvelopeAmount(name, Utilities.getNewDate(date, 1))));
                                     }
                                 }
                                 curr++;
@@ -2753,7 +2753,7 @@ public class Console extends javax.swing.JFrame {
 
     private void updateUserButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_updateUserButtonActionPerformed
         String userToUpdate = (String) updateUserDropdown.getSelectedItem();
-        User usr = DBMS.getUser(userToUpdate, true);
+        User usr = Model.getUser(userToUpdate, true);
         String un = updateUserTextField.getText();
         String pw = "";
         char[] password = updateUserPasswordField.getPassword();
@@ -2799,7 +2799,7 @@ public class Console extends javax.swing.JFrame {
 
     private void removeUserButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeUserButtonActionPerformed
         String un = (String) removeUserDropdown.getSelectedItem();
-        DBMS.getUser(un, true).setEnabled(false);
+        Model.getUser(un, true).setEnabled(false);
         updateUserDropdowns();
     }//GEN-LAST:event_removeUserButtonActionPerformed
 
@@ -2818,14 +2818,14 @@ public class Console extends javax.swing.JFrame {
         pw = pw.trim();
         if(un.length()==0 || pw.length()==0) {
             usersMessage.setText("ERROR: username and/or password cannot be blank.");
-        } else if(DBMS.isUser(un, true)) {
+        } else if(Model.isUser(un, true)) {
             usersMessage.setText("ERROR: user already exists with that name.");
         } else if(!Utilities.isValidUsername(un)) {
             usersMessage.setText("ERROR: username must begin with a letter and contain only letters and numbers.");
         } else if(!Utilities.isValidPassword(pw)) {
             usersMessage.setText("ERROR: password must contain at least 4 characters with no whitespaces.");
         } else {
-            DBMS.addUser(un, pw);
+            Model.addUser(un, pw);
             addUserTextField.setText("");
             addUserPasswordField.setText("");
             updateUserDropdowns();
@@ -2833,8 +2833,8 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_addUserButtonActionPerformed
 
     private void allowEmailActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_allowEmailActionPerformed
-        Email tmp = DBMS.getEmail((String) emailAddressDropdown.getSelectedItem());
-        User usr = DBMS.getUser((String) emailUserDropdown.getSelectedItem(), true);
+        Email tmp = Model.getEmail((String) emailAddressDropdown.getSelectedItem());
+        User usr = Model.getUser((String) emailUserDropdown.getSelectedItem(), true);
         if(tmp!=null && usr!=null) {
             tmp.setAttempt(0);
             tmp.setUser(usr);
@@ -2843,7 +2843,7 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_allowEmailActionPerformed
 
     private void blockEmailActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_blockEmailActionPerformed
-        Email tmp = DBMS.getEmail((String) emailAddressDropdown.getSelectedItem());
+        Email tmp = Model.getEmail((String) emailAddressDropdown.getSelectedItem());
         if(tmp!=null) {
             tmp.setAttempt(99);
             tmp.setUser(null);
@@ -2873,8 +2873,8 @@ public class Console extends javax.swing.JFrame {
         String mergeFromEnvName = (String) transEnvelopeDropdown.getSelectedItem();
         String mergeToEnvName = (String) mergeEnvelopesList.getSelectedItem();
         if(mergeFromEnvName!=null && mergeToEnvName!=null && !mergeFromEnvName.equalsIgnoreCase(mergeToEnvName) && !mergeFromEnvName.equalsIgnoreCase("-all-")) {
-            Envelope mergeFromEnv = DBMS.getEnvelope(mergeFromEnvName, true);
-            Envelope mergeToEnv = DBMS.getEnvelope(mergeToEnvName, true);
+            Envelope mergeFromEnv = Model.getEnvelope(mergeFromEnvName, true);
+            Envelope mergeToEnv = Model.getEnvelope(mergeToEnvName, true);
             // give user second chance to back out of the merger
             String msg = "WARNING: merging two envelopes CANNOT be undone.\n"
             + "Are you sure you want to move all transactions\n"
@@ -2884,7 +2884,7 @@ public class Console extends javax.swing.JFrame {
             int yes = 0;
             int opt = JOptionPane.showConfirmDialog(this, msg, title, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
             if(opt == yes) {
-                DBMS.mergeEnvelopes(mergeFromEnv, mergeToEnv);
+                Model.mergeEnvelopes(mergeFromEnv, mergeToEnv);
                 updateEnvelopeTable();
                 updateEnvelopeDropdowns();
             }
@@ -2895,8 +2895,8 @@ public class Console extends javax.swing.JFrame {
         String envName = (String) transEnvelopeDropdown.getSelectedItem();
         String catName = (String) transCategoryDropdown.getSelectedItem();
         if(envName!=null && catName!=null && !envName.equalsIgnoreCase("-all-")) {
-            Envelope env = DBMS.getEnvelope(envName, true);
-            Category cat = DBMS.getCategory(catName, true);
+            Envelope env = Model.getEnvelope(envName, true);
+            Category cat = Model.getCategory(catName, true);
             env.setCategory(cat);
             updateEnvelopeTable();
             updateTransactionTable();
@@ -2906,8 +2906,8 @@ public class Console extends javax.swing.JFrame {
     private void removeCategoryButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeCategoryButtonActionPerformed
         String catName = (String) transCategoryDropdown.getSelectedItem();
         if(catName!=null && !catName.equalsIgnoreCase("-none-")) {
-            Category cat = DBMS.getCategory(catName, true);
-            LinkedList<Envelope> envs = DBMS.getEnvelopes(cat, true);
+            Category cat = Model.getCategory(catName, true);
+            LinkedList<Envelope> envs = Model.getEnvelopes(cat, true);
             // remove category from envelopes
             for(Envelope env : envs) {
                 env.setCategory(null);
@@ -2925,7 +2925,7 @@ public class Console extends javax.swing.JFrame {
     private void removeAccountButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeAccountButtonActionPerformed
         String acctName = (String) transAccountDropdown.getSelectedItem();
         if(acctName!=null && !acctName.equalsIgnoreCase("-all-")) {
-            Account acct = DBMS.getAccount(acctName, true);
+            Account acct = Model.getAccount(acctName, true);
             if(Utilities.roundAmount(acct.getAmount()).equalsIgnoreCase("0.00")) {
                 acct.setEnabled(false);
                 updateAccountTable();
@@ -2943,8 +2943,8 @@ public class Console extends javax.swing.JFrame {
     private void removeEnvelopeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeEnvelopeButtonActionPerformed
         String envName = (String) transEnvelopeDropdown.getSelectedItem();
         if(envName!=null && !envName.equalsIgnoreCase("-all-")) {
-            Envelope env = DBMS.getEnvelope(envName, true);
-            if(DBMS.getTransactionCount(env)==0) {
+            Envelope env = Model.getEnvelope(envName, true);
+            if(Model.getTransactionCount(env)==0) {
                 env.setCategory(null);
                 env.setEnabled(false);
                 updateEnvelopeTable();
@@ -2994,8 +2994,8 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_transactionsRefreshButtonActionPerformed
 
     private void envTransferButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_envTransferButtonActionPerformed
-        Envelope from = DBMS.getEnvelope((String) envTransferFrom.getSelectedItem(), true);
-        Envelope to   = DBMS.getEnvelope((String) envTransferTo.getSelectedItem(), true);
+        Envelope from = Model.getEnvelope((String) envTransferFrom.getSelectedItem(), true);
+        Envelope to   = Model.getEnvelope((String) envTransferTo.getSelectedItem(), true);
         String amt = envTransferAmt.getText();
         String desc = envTransferDescriptionField.getText();
 
@@ -3009,9 +3009,9 @@ public class Console extends javax.swing.JFrame {
             double diff = Double.parseDouble(amt);
             //DBMS.addTransaction(acct, env, Usr, Date, desc, amt)
             String date = Utilities.getTimestamp().substring(0, 10);
-            Transaction t1 = DBMS.addTransaction("", from.getName(), currentUser.getUsername(), date, "(" + from.getName() + " > " + to.getName() + ")" + desc, -diff, "");
-            Transaction t2 = DBMS.addTransaction("", to.getName(),   currentUser.getUsername(), date, "(" + from.getName() + " > " + to.getName() + ")" + desc, diff, "");
-            DBMS.setTransferRelationship(t1, t2);
+            Transaction t1 = Model.addTransaction("", from.getName(), currentUser.getUsername(), date, "(" + from.getName() + " > " + to.getName() + ")" + desc, -diff, "");
+            Transaction t2 = Model.addTransaction("", to.getName(),   currentUser.getUsername(), date, "(" + from.getName() + " > " + to.getName() + ")" + desc, diff, "");
+            Model.setTransferRelationship(t1, t2);
 
             updateAllTables();
             envTransferAmt.setText("");
@@ -3023,8 +3023,8 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_envTransferButtonActionPerformed
 
     private void acctTransferButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_acctTransferButtonActionPerformed
-        Account from = DBMS.getAccount((String) acctTransferFrom.getSelectedItem(), true);
-        Account to   = DBMS.getAccount((String) acctTransferTo.getSelectedItem(), true);
+        Account from = Model.getAccount((String) acctTransferFrom.getSelectedItem(), true);
+        Account to   = Model.getAccount((String) acctTransferTo.getSelectedItem(), true);
         String amt = acctTransferAmt.getText();
         String desc = acctTransferDescriptionField.getText();
         if(Utilities.isValidAmount(amt)
@@ -3036,10 +3036,10 @@ public class Console extends javax.swing.JFrame {
             }
             double diff = Double.parseDouble(amt);
             String date = Utilities.getTimestamp().substring(0, 10);
-            // DBMS.addTransaction(acct, env, Usr, Date, desc, amt, runTot)
-            Transaction t1 = DBMS.addTransaction(from.getName(), "", currentUser.getUsername(), date, "*(" + from.getName() + " > " + to.getName() + ")" + desc, -diff, "");
-            Transaction t2 = DBMS.addTransaction(to.getName(),   "", currentUser.getUsername(), date, "*(" + from.getName() + " > " + to.getName() + ")" + desc, diff, "");
-            DBMS.setTransferRelationship(t1, t2);
+            // Model.addTransaction(acct, env, Usr, Date, desc, amt, runTot)
+            Transaction t1 = Model.addTransaction(from.getName(), "", currentUser.getUsername(), date, "*(" + from.getName() + " > " + to.getName() + ")" + desc, -diff, "");
+            Transaction t2 = Model.addTransaction(to.getName(),   "", currentUser.getUsername(), date, "*(" + from.getName() + " > " + to.getName() + ")" + desc, diff, "");
+            Model.setTransferRelationship(t1, t2);
 
             updateAllTables();
             acctTransferAmt.setText("");
@@ -3088,8 +3088,8 @@ public class Console extends javax.swing.JFrame {
         String date = transactionDateField.getText();
         String desc = transactionDescriptionField.getText();
         String amt = transactionAmtField.getText();
-        Account acct = DBMS.getAccount((String) newTransAcctDropdown.getSelectedItem(), true);
-        Envelope env = DBMS.getEnvelope((String) newTransEnvDropdown.getSelectedItem(), true);
+        Account acct = Model.getAccount((String) newTransAcctDropdown.getSelectedItem(), true);
+        Envelope env = Model.getEnvelope((String) newTransEnvDropdown.getSelectedItem(), true);
 
         if(Utilities.isDate(date)
             && Utilities.isValidDescription(desc)
@@ -3098,7 +3098,7 @@ public class Console extends javax.swing.JFrame {
             && env!=null
             && currentUser!=null) {
             double diff = Double.parseDouble(amt);
-            DBMS.addTransaction(acct.getName(), env.getName(), currentUser.getUsername(), date, Utilities.removeDoubleApostrophes(desc), diff, "");
+            Model.addTransaction(acct.getName(), env.getName(), currentUser.getUsername(), date, Utilities.removeDoubleApostrophes(desc), diff, "");
             updateAccountTable();
             updateEnvelopeTable();
             updateTransactionTable();
@@ -3199,14 +3199,14 @@ public class Console extends javax.swing.JFrame {
         // only take action if textfield is not empty
         if(newCatName.length()>0) {
             // check for duplicate naming
-            if(DBMS.isContainer(newCatName, true)) {        // name is in use by enabled acct, cat, or env
-                if(DBMS.isAccount(newCatName, true)) {
+            if(Model.isContainer(newCatName, true)) {        // name is in use by enabled acct, cat, or env
+                if(Model.isAccount(newCatName, true)) {
                     message.setText("ERROR: the name '" + newCatName + "' is already taken by an account");
                     newCategoryField.setForeground(Color.RED);
-                } else if(DBMS.isCategory(newCatName, true)) {
+                } else if(Model.isCategory(newCatName, true)) {
                     message.setText("ERROR: the name '" + newCatName + "' is already taken by another category");
                     newCategoryField.setForeground(Color.RED);
-                } else if (DBMS.isEnvelope(newCatName, true)) {
+                } else if (Model.isEnvelope(newCatName, true)) {
                     message.setText("ERROR: the name '" + newCatName + "' is already taken by an envelope");
                     newCategoryField.setForeground(Color.RED);
                 } else {
@@ -3232,21 +3232,21 @@ public class Console extends javax.swing.JFrame {
                     newCategoryField.setForeground(Color.RED);
                 } else {
                     // renames disabled container that matches the specified name
-                    if(DBMS.isAccount(newCatName, false)) {
-                        Account acct = DBMS.getAccount(newCatName, false);
+                    if(Model.isAccount(newCatName, false)) {
+                        Account acct = Model.getAccount(newCatName, false);
                         acct.setEnabled(true);
                         acct.setName(Utilities.renameContainer(newCatName));
                         acct.setEnabled(false);
-                    } else if(DBMS.isCategory(newCatName, false)) {
-                        Category cat = DBMS.getCategory(newCatName, false);
+                    } else if(Model.isCategory(newCatName, false)) {
+                        Category cat = Model.getCategory(newCatName, false);
                         cat.setEnabled(true);
-                    } else if (DBMS.isEnvelope(newCatName, false)) {
-                        Envelope env = DBMS.getEnvelope(newCatName, false);
+                    } else if (Model.isEnvelope(newCatName, false)) {
+                        Envelope env = Model.getEnvelope(newCatName, false);
                         env.setEnabled(true);
                         env.setName(Utilities.renameContainer(newCatName));
                         env.setEnabled(false);
                     }
-                    DBMS.addCategory(newCatName);
+                    Model.addCategory(newCatName);
                     updateEnvelopeTable();
                     updateCategoryDropdowns();
                     newCategoryField.setText("");
@@ -3270,14 +3270,14 @@ public class Console extends javax.swing.JFrame {
             // only take action if textfield is not empty
             if(newCatName.length()>0) {
                 // check for duplicate naming
-                if(DBMS.isContainer(newCatName, true)) {        // name is in use by enabled acct, cat, or env
-                    if(DBMS.isAccount(newCatName, true)) {
+                if(Model.isContainer(newCatName, true)) {        // name is in use by enabled acct, cat, or env
+                    if(Model.isAccount(newCatName, true)) {
                         message.setText("ERROR: the name '" + newCatName + "' is already taken by an account");
                         newCategoryField.setForeground(Color.RED);
-                    } else if(DBMS.isCategory(newCatName, true)) {
+                    } else if(Model.isCategory(newCatName, true)) {
                         message.setText("ERROR: the name '" + newCatName + "' is already taken by another category");
                         newCategoryField.setForeground(Color.RED);
-                    } else if (DBMS.isEnvelope(newCatName, true)) {
+                    } else if (Model.isEnvelope(newCatName, true)) {
                         message.setText("ERROR: the name '" + newCatName + "' is already taken by an envelope");
                         newCategoryField.setForeground(Color.RED);
                     } else {
@@ -3303,21 +3303,21 @@ public class Console extends javax.swing.JFrame {
                         newCategoryField.setForeground(Color.RED);
                     } else {
                         // renames disabled container that matches the specified name
-                        if(DBMS.isAccount(newCatName, false)) {
-                            Account acct = DBMS.getAccount(newCatName, false);
+                        if(Model.isAccount(newCatName, false)) {
+                            Account acct = Model.getAccount(newCatName, false);
                             acct.setEnabled(true);
                             acct.setName(Utilities.renameContainer(newCatName));
                             acct.setEnabled(false);
-                        } else if(DBMS.isCategory(newCatName, false)) {
-                            Category cat = DBMS.getCategory(newCatName, false);
+                        } else if(Model.isCategory(newCatName, false)) {
+                            Category cat = Model.getCategory(newCatName, false);
                             cat.setEnabled(true);
-                        } else if (DBMS.isEnvelope(newCatName, false)) {
-                            Envelope env = DBMS.getEnvelope(newCatName, false);
+                        } else if (Model.isEnvelope(newCatName, false)) {
+                            Envelope env = Model.getEnvelope(newCatName, false);
                             env.setEnabled(true);
                             env.setName(Utilities.renameContainer(newCatName));
                             env.setEnabled(false);
                         }
-                        DBMS.addCategory(newCatName);
+                        Model.addCategory(newCatName);
                         updateEnvelopeTable();
                         updateCategoryDropdowns();
                         newCategoryField.setText("");
@@ -3339,14 +3339,14 @@ public class Console extends javax.swing.JFrame {
         // only take action if textfield is not empty
         if(newEnvName.length()>0) {
             // check for duplicate naming
-            if(DBMS.isContainer(newEnvName, true)) {        // name is in use by enabled acct, cat, or env
-                if(DBMS.isAccount(newEnvName, true)) {
+            if(Model.isContainer(newEnvName, true)) {        // name is in use by enabled acct, cat, or env
+                if(Model.isAccount(newEnvName, true)) {
                     message.setText("ERROR: the name '" + newEnvName + "' is already taken by an account");
                     newEnvelopeField.setForeground(Color.RED);
-                } else if(DBMS.isCategory(newEnvName, true)) {
+                } else if(Model.isCategory(newEnvName, true)) {
                     message.setText("ERROR: the name '" + newEnvName + "' is already taken by a category");
                     newEnvelopeField.setForeground(Color.RED);
-                } else if (DBMS.isEnvelope(newEnvName, true)) {
+                } else if (Model.isEnvelope(newEnvName, true)) {
                     message.setText("ERROR: the name '" + newEnvName + "' is already taken by another envelope");
                     newEnvelopeField.setForeground(Color.RED);
                 } else {
@@ -3372,21 +3372,21 @@ public class Console extends javax.swing.JFrame {
                     newEnvelopeField.setForeground(Color.RED);
                 } else {
                     // renames disabled container that matches the specified name
-                    if(DBMS.isAccount(newEnvName, false)) {
-                        Account acct = DBMS.getAccount(newEnvName, false);
+                    if(Model.isAccount(newEnvName, false)) {
+                        Account acct = Model.getAccount(newEnvName, false);
                         acct.setEnabled(true);
                         acct.setName(Utilities.renameContainer(newEnvName));
                         acct.setEnabled(false);
-                    } else if(DBMS.isCategory(newEnvName, false)) {
-                        Category cat = DBMS.getCategory(newEnvName, false);
+                    } else if(Model.isCategory(newEnvName, false)) {
+                        Category cat = Model.getCategory(newEnvName, false);
                         cat.setEnabled(true);
                         cat.setName(Utilities.renameContainer(newEnvName));
                         cat.setEnabled(false);
-                    } else if (DBMS.isEnvelope(newEnvName, false)) {
-                        Envelope env = DBMS.getEnvelope(newEnvName, false);
+                    } else if (Model.isEnvelope(newEnvName, false)) {
+                        Envelope env = Model.getEnvelope(newEnvName, false);
                         env.setEnabled(true);
                     }
-                    DBMS.addEnvelope(newEnvName);
+                    Model.addEnvelope(newEnvName);
                     updateEnvelopeTable();
                     updateEnvelopeDropdowns();
                     newEnvelopeField.setText("");
@@ -3410,14 +3410,14 @@ public class Console extends javax.swing.JFrame {
             // only take action if textfield is not empty
             if(newEnvName.length()>0) {
                 // check for duplicate naming
-                if(DBMS.isContainer(newEnvName, true)) {        // name is in use by enabled acct, cat, or env
-                    if(DBMS.isAccount(newEnvName, true)) {
+                if(Model.isContainer(newEnvName, true)) {        // name is in use by enabled acct, cat, or env
+                    if(Model.isAccount(newEnvName, true)) {
                         message.setText("ERROR: the name '" + newEnvName + "' is already taken by an account");
                         newEnvelopeField.setForeground(Color.RED);
-                    } else if(DBMS.isCategory(newEnvName, true)) {
+                    } else if(Model.isCategory(newEnvName, true)) {
                         message.setText("ERROR: the name '" + newEnvName + "' is already taken by a category");
                         newEnvelopeField.setForeground(Color.RED);
-                    } else if (DBMS.isEnvelope(newEnvName, true)) {
+                    } else if (Model.isEnvelope(newEnvName, true)) {
                         message.setText("ERROR: the name '" + newEnvName + "' is already taken by another envelope");
                         newEnvelopeField.setForeground(Color.RED);
                     } else {
@@ -3443,21 +3443,21 @@ public class Console extends javax.swing.JFrame {
                         newEnvelopeField.setForeground(Color.RED);
                     } else {
                         // renames disabled container that matches the specified name
-                        if(DBMS.isAccount(newEnvName, false)) {
-                            Account acct = DBMS.getAccount(newEnvName, false);
+                        if(Model.isAccount(newEnvName, false)) {
+                            Account acct = Model.getAccount(newEnvName, false);
                             acct.setEnabled(true);
                             acct.setName(Utilities.renameContainer(newEnvName));
                             acct.setEnabled(false);
-                        } else if(DBMS.isCategory(newEnvName, false)) {
-                            Category cat = DBMS.getCategory(newEnvName, false);
+                        } else if(Model.isCategory(newEnvName, false)) {
+                            Category cat = Model.getCategory(newEnvName, false);
                             cat.setEnabled(true);
                             cat.setName(Utilities.renameContainer(newEnvName));
                             cat.setEnabled(false);
-                        } else if (DBMS.isEnvelope(newEnvName, false)) {
-                            Envelope env = DBMS.getEnvelope(newEnvName, false);
+                        } else if (Model.isEnvelope(newEnvName, false)) {
+                            Envelope env = Model.getEnvelope(newEnvName, false);
                             env.setEnabled(true);
                         }
-                        DBMS.addEnvelope(newEnvName);
+                        Model.addEnvelope(newEnvName);
                         updateEnvelopeTable();
                         updateEnvelopeDropdowns();
                         newEnvelopeField.setText("");
@@ -3492,14 +3492,14 @@ public class Console extends javax.swing.JFrame {
         // only take action if textfield is not empty
         if(newAcctName.length()>0) {
             // check for duplicate naming
-            if(DBMS.isContainer(newAcctName, true)) {        // name is in use by enabled acct, cat, or env
-                if(DBMS.isAccount(newAcctName, true)) {
+            if(Model.isContainer(newAcctName, true)) {        // name is in use by enabled acct, cat, or env
+                if(Model.isAccount(newAcctName, true)) {
                     message.setText("ERROR: the name '" + newAcctName + "' is already taken by another account");
                     newAccountField.setForeground(Color.RED);
-                } else if(DBMS.isCategory(newAcctName, true)) {
+                } else if(Model.isCategory(newAcctName, true)) {
                     message.setText("ERROR: the name '" + newAcctName + "' is already taken by a category");
                     newAccountField.setForeground(Color.RED);
-                } else if (DBMS.isEnvelope(newAcctName, true)) {
+                } else if (Model.isEnvelope(newAcctName, true)) {
                     message.setText("ERROR: the name '" + newAcctName + "' is already taken by an envelope");
                     newAccountField.setForeground(Color.RED);
                 } else {
@@ -3525,23 +3525,23 @@ public class Console extends javax.swing.JFrame {
                     newAccountField.setForeground(Color.RED);
                 } else {
                     // renames disabled container that matches the specified name
-                    if(DBMS.isContainer(newAcctName, false)) {  // name is in use by disabled acct, cat, or env
-                        if(DBMS.isAccount(newAcctName, false)) {
-                            Account acct = DBMS.getAccount(newAcctName, false);
+                    if(Model.isContainer(newAcctName, false)) {  // name is in use by disabled acct, cat, or env
+                        if(Model.isAccount(newAcctName, false)) {
+                            Account acct = Model.getAccount(newAcctName, false);
                             acct.setEnabled(true);
-                        } else if(DBMS.isCategory(newAcctName, false)) {
-                            Category cat = DBMS.getCategory(newAcctName, false);
+                        } else if(Model.isCategory(newAcctName, false)) {
+                            Category cat = Model.getCategory(newAcctName, false);
                             cat.setEnabled(true);
                             cat.setName(Utilities.renameContainer(newAcctName));
                             cat.setEnabled(false);
-                        } else if (DBMS.isEnvelope(newAcctName, false)) {
-                            Envelope env = DBMS.getEnvelope(newAcctName, false);
+                        } else if (Model.isEnvelope(newAcctName, false)) {
+                            Envelope env = Model.getEnvelope(newAcctName, false);
                             env.setEnabled(true);
                             env.setName(Utilities.renameContainer(newAcctName));
                             env.setEnabled(false);
                         }
                     }
-                    DBMS.addAccount(newAcctName);
+                    Model.addAccount(newAcctName);
                     updateAccountTable();
                     updateAccountDropdowns();
                     newAccountField.setText("");
@@ -3565,14 +3565,14 @@ public class Console extends javax.swing.JFrame {
             // only take action if textfield is not empty
             if(newAcctName.length()>0) {
                 // check for duplicate naming
-                if(DBMS.isContainer(newAcctName, true)) {        // name is in use by enabled acct, cat, or env
-                    if(DBMS.isAccount(newAcctName, true)) {
+                if(Model.isContainer(newAcctName, true)) {        // name is in use by enabled acct, cat, or env
+                    if(Model.isAccount(newAcctName, true)) {
                         message.setText("ERROR: the name '" + newAcctName + "' is already taken by another account");
                         newAccountField.setForeground(Color.RED);
-                    } else if(DBMS.isCategory(newAcctName, true)) {
+                    } else if(Model.isCategory(newAcctName, true)) {
                         message.setText("ERROR: the name '" + newAcctName + "' is already taken by a category");
                         newAccountField.setForeground(Color.RED);
-                    } else if (DBMS.isEnvelope(newAcctName, true)) {
+                    } else if (Model.isEnvelope(newAcctName, true)) {
                         message.setText("ERROR: the name '" + newAcctName + "' is already taken by an envelope");
                         newAccountField.setForeground(Color.RED);
                     } else {
@@ -3598,23 +3598,23 @@ public class Console extends javax.swing.JFrame {
                         newAccountField.setForeground(Color.RED);
                     } else {
                         // renames disabled container that matches the specified name
-                        if(DBMS.isContainer(newAcctName, false)) {  // name is in use by disabled acct, cat, or env
-                            if(DBMS.isAccount(newAcctName, false)) {
-                                Account acct = DBMS.getAccount(newAcctName, false);
+                        if(Model.isContainer(newAcctName, false)) {  // name is in use by disabled acct, cat, or env
+                            if(Model.isAccount(newAcctName, false)) {
+                                Account acct = Model.getAccount(newAcctName, false);
                                 acct.setEnabled(true);
-                            } else if(DBMS.isCategory(newAcctName, false)) {
-                                Category cat = DBMS.getCategory(newAcctName, false);
+                            } else if(Model.isCategory(newAcctName, false)) {
+                                Category cat = Model.getCategory(newAcctName, false);
                                 cat.setEnabled(true);
                                 cat.setName(Utilities.renameContainer(newAcctName));
                                 cat.setEnabled(false);
-                            } else if (DBMS.isEnvelope(newAcctName, false)) {
-                                Envelope env = DBMS.getEnvelope(newAcctName, false);
+                            } else if (Model.isEnvelope(newAcctName, false)) {
+                                Envelope env = Model.getEnvelope(newAcctName, false);
                                 env.setEnabled(true);
                                 env.setName(Utilities.renameContainer(newAcctName));
                                 env.setEnabled(false);
                             }
                         }
-                        DBMS.addAccount(newAcctName);
+                        Model.addAccount(newAcctName);
                         updateAccountTable();
                         updateAccountDropdowns();
                         newAccountField.setText("");

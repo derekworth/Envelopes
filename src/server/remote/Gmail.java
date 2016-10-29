@@ -1,6 +1,6 @@
 package server.remote;
 
-import database.DBMS;
+import database.Model;
 import database.Email;
 import database.User;
 import java.io.IOException;
@@ -46,7 +46,7 @@ public class Gmail {
                 // Start mail session
                 Session mailSession = Session.getDefaultInstance(props);
                 Transport transport = mailSession.getTransport();
-                User gmail = DBMS.getGmail();
+                User gmail = Model.getGmail();
                 transport.connect("smtp.gmail.com", 465, gmail.getUsername(), gmail.getPassword());
                 
                 if (isFromText(recipient)){
@@ -147,7 +147,7 @@ public class Gmail {
             
             // Connect to store
             Store store = session.getStore("imaps");
-            User gmail = DBMS.getGmail();
+            User gmail = Model.getGmail();
             store.connect("imap.gmail.com", gmail.getUsername() + "@gmail.com", gmail.getPassword());
             // Get "INBOX"
             Folder inbox = store.getFolder("Inbox");
@@ -168,7 +168,7 @@ public class Gmail {
                 }
                 // process commands
                 if (isAuthorized(addr)) {
-                    Commands commands = new Commands(DBMS.getEmail(addr).getUser(), date, msg);
+                    Commands commands = new Commands(Model.getEmail(addr).getUser(), date, msg);
                     send(addr, commands.executeCommands());
                 } else {
                     String[] tokens = msg.split(" ");
@@ -184,7 +184,7 @@ public class Gmail {
                     if(authorize(addr, un, pw)) {
                         send(addr, "Congratulations, you have been authenticated.");
                     } else {
-                        int attemptCount = DBMS.getEmail(addr).getAttempt();
+                        int attemptCount = Model.getEmail(addr).getAttempt();
                         if (attemptCount >= 5) {
                             send(addr, "You are permanently locked out. See system administrator for access.");
                         } else {
@@ -214,7 +214,7 @@ public class Gmail {
      * @return true if email is authorized, false otherwise
      */
     public static boolean isAuthorized(String address) {
-        Email email = DBMS.getEmail(address);
+        Email email = Model.getEmail(address);
         if (email!=null) { // email not in the system
             User user = email.getUser();
             if (user !=null && user.isInDatabase() && user.isEnabled() && email.getAttempt()==0) { // email has been authorized
@@ -229,19 +229,19 @@ public class Gmail {
         if(address==null) {
             return false;
         }
-        Email email = DBMS.getEmail(address);
+        Email email = Model.getEmail(address);
         
         // validates username and password
         if(username==null || password==null || username.length()==0 || password.length()==0) {
             // checks for email in database
             if (email==null) { // email address not yet in database
-                DBMS.addEmail(address);
+                Model.addEmail(address);
             } else { // email already in database
                 email.setAttempt(email.getAttempt()+1); // increase attempt count
             }
             return false;
         }
-        User user = DBMS.getUser(username, true);
+        User user = Model.getUser(username, true);
         password = Utilities.getHash(password);
         
         // returns true if already authorized (no need to authorize again)
@@ -251,7 +251,7 @@ public class Gmail {
         
         // checks for email in database
         if (email==null) { // email address not yet in database
-            email = DBMS.addEmail(address);
+            email = Model.addEmail(address);
         } else { // email already in database
             email.setAttempt(email.getAttempt()+1); // increase attempt count
         }

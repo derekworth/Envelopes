@@ -1,7 +1,7 @@
 package table.models;
 
 import javax.swing.table.TableModel;
-import database.DBMS;
+import database.Model;
 import database.Transaction;
 import java.awt.Component;
 import java.io.File;
@@ -60,25 +60,25 @@ public final class TransactionsTableModel implements TableModel {
             String to = con.transToField.getText();
             transactions = new LinkedList();
             if(from==null || to==null || !Utilities.isDate(from) || !Utilities.isDate(to))
-                transactions = DBMS.getTransactions(0);
+                transactions = Model.getTransactions(0);
             else
-                transactions = DBMS.getTransactions(from, to, DBMS.getAccount(accountForQuery, true), DBMS.getEnvelope(envelopeForQuery, true), hideTx);
+                transactions = Model.getTransactions(from, to, Model.getAccount(accountForQuery, true), Model.getEnvelope(envelopeForQuery, true), hideTx);
         } else {
-            transactions = DBMS.getTransactions(qty, DBMS.getAccount(accountForQuery, true), DBMS.getEnvelope(envelopeForQuery, true), hideTx);
+            transactions = Model.getTransactions(qty, Model.getAccount(accountForQuery, true), Model.getEnvelope(envelopeForQuery, true), hideTx);
         }
     }
     
     public void addMore() {
         boolean hideTx = con.hideTransfersToggleButton.isSelected();
         int qty = transactions.size();
-        LinkedList<Transaction> moreTrans = DBMS.getMoreTransactions(qty, DBMS.getAccount(accountForQuery, true), DBMS.getEnvelope(envelopeForQuery, true), hideTx, transactions.getLast());
+        LinkedList<Transaction> moreTrans = Model.getMoreTransactions(qty, Model.getAccount(accountForQuery, true), Model.getEnvelope(envelopeForQuery, true), hideTx, transactions.getLast());
         while(!moreTrans.isEmpty()) {
             transactions.add(moreTrans.remove());
         }
     }
     
     public void setAccountForQuery(String name) {
-        if(DBMS.isAccount(name, true)) {
+        if(Model.isAccount(name, true)) {
             accountForQuery = name;
         } else {
             accountForQuery = "";
@@ -90,7 +90,7 @@ public final class TransactionsTableModel implements TableModel {
     }
     
     public void setEnvelopeForQuery(String name) {
-        if(DBMS.isEnvelope(name, true)) {
+        if(Model.isEnvelope(name, true)) {
             envelopeForQuery = name;
         } else {
             envelopeForQuery = "";

@@ -2,7 +2,7 @@ package server.remote;
 
 import database.Account;
 import database.Category;
-import database.DBMS;
+import database.Model;
 import database.Envelope;
 import database.Transaction;
 import database.User;
@@ -196,16 +196,16 @@ public class Commands {
         }
         
         private String acctAcctExp(String acctFrom, String acctTo, String exp) {
-            Account from = DBMS.getAccount(acctFrom, true);
-            Account to = DBMS.getAccount(acctTo, true);
+            Account from = Model.getAccount(acctFrom, true);
+            Account to = Model.getAccount(acctTo, true);
             double amt = Double.parseDouble(Utilities.roundAmount(Double.parseDouble(exp)));
             
             double oldFromAcctAmt = from.getAmount();
             double oldToAcctAmt   = to.getAmount();
             // Create transactions
-            Transaction t1 = DBMS.addTransaction(from.getName(), "", user.getUsername(), date, "*(" + from.getName() + " > " + to.getName() + ")", -amt, "");
-            Transaction t2 = DBMS.addTransaction(to.getName(),   "", user.getUsername(), date, "*(" + from.getName() + " > " + to.getName() + ")", amt, "");
-            DBMS.setTransferRelationship(t1, t2);
+            Transaction t1 = Model.addTransaction(from.getName(), "", user.getUsername(), date, "*(" + from.getName() + " > " + to.getName() + ")", -amt, "");
+            Transaction t2 = Model.addTransaction(to.getName(),   "", user.getUsername(), date, "*(" + from.getName() + " > " + to.getName() + ")", amt, "");
+            Model.setTransferRelationship(t1, t2);
             
             return "ACCOUNT TRANSFER:\n"
                     + " amt: " + Utilities.addCommasToAmount(amt) + "\n"
@@ -216,16 +216,16 @@ public class Commands {
         }
         
         private String envEnvExp(String envFrom, String envTo, String exp) {
-            Envelope from = DBMS.getEnvelope(envFrom, true);
-            Envelope to = DBMS.getEnvelope(envTo, true);
+            Envelope from = Model.getEnvelope(envFrom, true);
+            Envelope to = Model.getEnvelope(envTo, true);
             double amt = Double.parseDouble(Utilities.roundAmount(Double.parseDouble(exp)));
                     
             double oldFromAmt = from.getAmount();
             double oldToAmt   = to.getAmount();
             // Create transactions
-            Transaction t1 = DBMS.addTransaction("", from.getName(), user.getUsername(), date, "(" + from.getName() + " > " + to.getName() + ")", -amt, "");
-            Transaction t2 = DBMS.addTransaction("", to.getName(),   user.getUsername(), date, "(" + from.getName() + " > " + to.getName() + ")", amt, "");
-            DBMS.setTransferRelationship(t1, t2);
+            Transaction t1 = Model.addTransaction("", from.getName(), user.getUsername(), date, "(" + from.getName() + " > " + to.getName() + ")", -amt, "");
+            Transaction t2 = Model.addTransaction("", to.getName(),   user.getUsername(), date, "(" + from.getName() + " > " + to.getName() + ")", amt, "");
+            Model.setTransferRelationship(t1, t2);
             
             return "ENVELOPE TRANSFER:\n"
                     + " amt: " + Utilities.addCommasToAmount(amt) + "\n"
@@ -236,7 +236,7 @@ public class Commands {
         }
         
         private String accounts() {
-            LinkedList<Account> accts = DBMS.getAccounts(true);
+            LinkedList<Account> accts = Model.getAccounts(true);
             double sum = 0;
             String response = "ACCOUNTS:";
             for(Account a : accts) {
@@ -248,12 +248,12 @@ public class Commands {
         }
         
         private String categories() {
-            LinkedList<Category> cats = DBMS.getCategories(true);
+            LinkedList<Category> cats = Model.getCategories(true);
             LinkedList<Envelope> envs;
             double sum = 0;
             String response = "CATEGORIES:";
             for(Category c : cats) {
-                envs = DBMS.getEnvelopes(c, true);
+                envs = Model.getEnvelopes(c, true);
                 // add category with total
                 response += "\n " + c.getName().toUpperCase() + " " + Utilities.addCommasToAmount(c.getAmount());
                 // add envelopes with totals
@@ -263,7 +263,7 @@ public class Commands {
                 sum += c.getAmount();
             }
             
-            envs = DBMS.getUncategorizedEnvelopes(true);
+            envs = Model.getUncategorizedEnvelopes(true);
             double uncatSum = 0;
             // get sum of uncategorized envelopes
             for(Envelope e : envs) {
@@ -284,7 +284,7 @@ public class Commands {
         }
         
         private String envelopes() {
-            LinkedList<Envelope> envs = DBMS.getEnvelopes(true);
+            LinkedList<Envelope> envs = Model.getEnvelopes(true);
             double sum = 0;
             String response = "ENVELOPES:";
             for(Envelope e : envs) {
@@ -317,7 +317,7 @@ public class Commands {
         private String history() {
             String response = "TRANSACTIONS:\n"
                     + "date | amount | description | account | envelope | user";
-            LinkedList<Transaction> trans = DBMS.getTransactions(HISTORY_DEFAULT_COUNT);
+            LinkedList<Transaction> trans = Model.getTransactions(HISTORY_DEFAULT_COUNT);
             for(Transaction tran : trans) {
                 response += "\n" + tran.getDate() + " | " + Utilities.addCommasToAmount(tran.getAmount()) + " | " + Utilities.shortenString(tran.getDescription(), 20) + " | " + tran.getAccount().getName() + " | " + tran.getEnvelope().getName() + " | " + tran.getUser().getUsername();
             }
@@ -327,7 +327,7 @@ public class Commands {
         private String historyQty(int qty) {
             String response = "TRANSACTIONS:\n"
                     + "date | amount | description | account | envelope | user";
-            LinkedList<Transaction> trans = DBMS.getTransactions(qty);
+            LinkedList<Transaction> trans = Model.getTransactions(qty);
             for(Transaction tran : trans) {
                 response += "\n" + tran.getDate() + " | " + Utilities.addCommasToAmount(tran.getAmount()) + " | " + Utilities.shortenString(tran.getDescription(), 20) + " | " + tran.getAccount().getName() + " | " + tran.getEnvelope().getName() + " | " + tran.getUser().getUsername();
             }
@@ -336,7 +336,7 @@ public class Commands {
         
         private String users() {
             String response = "USERS:";
-            LinkedList<User> users = DBMS.getUsers(true);
+            LinkedList<User> users = Model.getUsers(true);
             for(User u : users) {
                 if(u.isAdmin()) {
                     response += "\n " + u.getUsername() + " (admin)";
@@ -348,13 +348,13 @@ public class Commands {
         }
         
         private String acct(String acct) {
-            Account a = DBMS.getAccount(acct, true);
+            Account a = Model.getAccount(acct, true);
             return "ACCOUNT:" + "\n " + a.getName() + " " + Utilities.addCommasToAmount(a.getAmount());
         }
         
         private String cat(String cat) {
-            Category c = DBMS.getCategory(cat, true);
-            LinkedList<Envelope> envs = DBMS.getEnvelopes(c, true);
+            Category c = Model.getCategory(cat, true);
+            LinkedList<Envelope> envs = Model.getEnvelopes(c, true);
             String response = "ENVELOPES (" + c.getName() + "):";
             double sum = 0;
             for(Envelope e : envs) {
@@ -366,14 +366,14 @@ public class Commands {
         }
         
         private String env(String env) {
-            Envelope e = DBMS.getEnvelope(env, true);
+            Envelope e = Model.getEnvelope(env, true);
             return "ENVELOPE:" + "\n " + e.getName() + " " + Utilities.addCommasToAmount(e.getAmount());
         }
         
         private String uncategorized() {
             String response;
             double sum = 0;
-            LinkedList<Envelope> envs = DBMS.getUncategorizedEnvelopes(true);
+            LinkedList<Envelope> envs = Model.getUncategorizedEnvelopes(true);
             response = "ENVELOPES (uncategorized):";
             for(Envelope e : envs) {
                 response += "\n " + e.getName() + " " + Utilities.addCommasToAmount(e.getAmount());
@@ -384,14 +384,14 @@ public class Commands {
         }
         
         private String envUncategorized(String env) {
-            Envelope e = DBMS.getEnvelope(env, true);
+            Envelope e = Model.getEnvelope(env, true);
             String response = e.setCategory(null);
             return response;
         }
         
         private String historyAcct(String acct) {
-            Account a = DBMS.getAccount(acct, true);
-            LinkedList<Transaction> trans = DBMS.getTransactions(a, HISTORY_DEFAULT_COUNT);
+            Account a = Model.getAccount(acct, true);
+            LinkedList<Transaction> trans = Model.getTransactions(a, HISTORY_DEFAULT_COUNT);
             String response = "ACCOUNT (" + a.getName() + ") TRANSACTIONS:\n"
                     + "date | amount | description | envelope | user";
             for(Transaction t : trans) {
@@ -401,8 +401,8 @@ public class Commands {
         }
         
         private String historyCat(String cat) {
-            Category c = DBMS.getCategory(getToken(2).getPossibilities(), true);
-            LinkedList<Transaction> trans = DBMS.getTransactions(c, HISTORY_DEFAULT_COUNT);
+            Category c = Model.getCategory(getToken(2).getPossibilities(), true);
+            LinkedList<Transaction> trans = Model.getTransactions(c, HISTORY_DEFAULT_COUNT);
             String response = "CATEGORY (" + c.getName() + ") TRANSACTIONS:\n"
                     + "date | amount | description | account | envelope | user";
             for(Transaction t : trans) {
@@ -412,8 +412,8 @@ public class Commands {
         }
         
         private String historyEnv(String env) {
-            Envelope e = DBMS.getEnvelope(env, true);
-            LinkedList<Transaction> trans = DBMS.getTransactions(e, HISTORY_DEFAULT_COUNT);
+            Envelope e = Model.getEnvelope(env, true);
+            LinkedList<Transaction> trans = Model.getTransactions(e, HISTORY_DEFAULT_COUNT);
             String response = "ENVELOPE (" + e.getName() + ") TRANSACTIONS:\n"
                                 + "date | amount | description | account | user";
             for(Transaction t : trans) {
@@ -424,9 +424,9 @@ public class Commands {
         
         private String envCat(String env, String cat) {
             // get envelope
-            Envelope e = DBMS.getEnvelope(env, true);
+            Envelope e = Model.getEnvelope(env, true);
             // get category
-            Category c = DBMS.getCategory(cat, true);
+            Category c = Model.getCategory(cat, true);
             // add envelope to category
             return e.setCategory(c);
         }
@@ -456,10 +456,10 @@ public class Commands {
                 return "Account not specified for transaction: '" + env + " " + Utilities.addCommasToAmount(amt) + "'\n"
                         + "Specify account at least once: <acct> [<env> <amt> (desc), ...]";
             }
-            Envelope e = DBMS.getEnvelope(env, true);
+            Envelope e = Model.getEnvelope(env, true);
             double oldAcctAmt = currAcct.getAmount();
             double oldEnvAmt = e.getAmount();
-            Transaction t = DBMS.addTransaction(currAcct.getName(), e.getName(), user.getUsername(), date, "<no description specified>", amt, "");
+            Transaction t = Model.addTransaction(currAcct.getName(), e.getName(), user.getUsername(), date, "<no description specified>", amt, "");
             splitTransactions.add(t);
             // updates envelope and account now that transaction created
             e.updateAmt();
@@ -476,11 +476,11 @@ public class Commands {
         private String acctEnvExp(String acct, String env, String exp) {
             updateSplitDescriptions();
             double amt = Double.parseDouble(Utilities.roundAmount(Double.parseDouble(exp)));
-            Envelope e = DBMS.getEnvelope(env, true);
-            currAcct = DBMS.getAccount(acct, true);
+            Envelope e = Model.getEnvelope(env, true);
+            currAcct = Model.getAccount(acct, true);
             double oldAcctAmt = currAcct.getAmount();
             double oldEnvAmt = e.getAmount();
-            Transaction t = DBMS.addTransaction(currAcct.getName(), e.getName(), user.getUsername(), date, "<no description specified>", amt, "");
+            Transaction t = Model.addTransaction(currAcct.getName(), e.getName(), user.getUsername(), date, "<no description specified>", amt, "");
             splitTransactions.add(t);
             // updates envelope and account now that transaction created
             e.updateAmt();
@@ -500,7 +500,7 @@ public class Commands {
                         + "Specify account at least once: <acct> [<env> <amt> (desc), ...]";
             }
             double amt = Double.parseDouble(Utilities.roundAmount(Double.parseDouble(exp)));
-            Envelope e = DBMS.getEnvelope(env, true);
+            Envelope e = Model.getEnvelope(env, true);
             double oldAcctAmt = currAcct.getAmount();
             double oldEnvAmt = e.getAmount();
             // gets description from remaining tokens
@@ -517,7 +517,7 @@ public class Commands {
                 curr = curr.next;
             }
             // new transaction
-            Transaction t = DBMS.addTransaction(currAcct.getName(), e.getName(), user.getUsername(), date, desc, amt, "");
+            Transaction t = Model.addTransaction(currAcct.getName(), e.getName(), user.getUsername(), date, desc, amt, "");
             splitTransactions.add(t);
             // shorten description for response
             desc = Utilities.shortenString(t.getDescription(),15);
@@ -536,8 +536,8 @@ public class Commands {
         private String acctEnvExpWord(String acct, String env, String exp) {
             updateSplitDescriptions();
             double amt = Double.parseDouble(Utilities.roundAmount(Double.parseDouble(exp)));
-            Envelope e = DBMS.getEnvelope(env, true);
-            currAcct = DBMS.getAccount(acct, true);
+            Envelope e = Model.getEnvelope(env, true);
+            currAcct = Model.getAccount(acct, true);
             double oldAcctAmt = currAcct.getAmount();
             double oldEnvAmt = e.getAmount();
             // gets description from remaining tokens
@@ -554,7 +554,7 @@ public class Commands {
                 curr = curr.next;
             }
             // new transaction
-            Transaction t = DBMS.addTransaction(currAcct.getName(), e.getName(), user.getUsername(), date, desc, amt, "");
+            Transaction t = Model.addTransaction(currAcct.getName(), e.getName(), user.getUsername(), date, desc, amt, "");
             splitTransactions.add(t);
             // shorten description for response
             desc = Utilities.shortenString(t.getDescription(),15);
@@ -615,8 +615,8 @@ public class Commands {
                         commandResponse = user.setPassword(getToken(3).getPossibilities());
                         break;
                     case HISTORY    + "" + ACCT      + "" + QTY:
-                        acct = DBMS.getAccount(getToken(2).getPossibilities(), true);
-                        trans = DBMS.getTransactions(acct, Integer.parseInt(getToken(3).getPossibilities()));
+                        acct = Model.getAccount(getToken(2).getPossibilities(), true);
+                        trans = Model.getTransactions(acct, Integer.parseInt(getToken(3).getPossibilities()));
                         commandResponse = "ACCOUNT (" + acct.getName() + ") TRANSACTIONS:\n"
                                 + "date | amount | description | envelope | user";
                         for(Transaction tran : trans) {
@@ -624,8 +624,8 @@ public class Commands {
                         }
                         break;
                     case HISTORY    + "" + CAT     + "" + QTY:
-                        cat = DBMS.getCategory(getToken(2).getPossibilities(), true);
-                        trans = DBMS.getTransactions(cat, Integer.parseInt(getToken(3).getPossibilities()));
+                        cat = Model.getCategory(getToken(2).getPossibilities(), true);
+                        trans = Model.getTransactions(cat, Integer.parseInt(getToken(3).getPossibilities()));
                         commandResponse = "CATEGORY (" + cat.getName() + ") TRANSACTIONS:\n"
                                 + "date | amount | description | account | envelope | user";
                         for(Transaction tran : trans) {
@@ -633,8 +633,8 @@ public class Commands {
                         }
                         break;
                     case HISTORY    + "" + ENV     + "" + QTY:
-                        env = DBMS.getEnvelope(getToken(2).getPossibilities(), true);
-                        trans = DBMS.getTransactions(env, Integer.parseInt(getToken(3).getPossibilities()));
+                        env = Model.getEnvelope(getToken(2).getPossibilities(), true);
+                        trans = Model.getTransactions(env, Integer.parseInt(getToken(3).getPossibilities()));
                         commandResponse = "ENVELOPE (" + env.getName() + ") TRANSACTIONS:\n"
                                 + "date | amount | description | account | user";
                         for(Transaction tran : trans) {
@@ -644,27 +644,27 @@ public class Commands {
                     case NEW        + "" + ACCOUNT  + "" + WORD:
                         String accName = getToken(3).getPossibilities();
                         // checks to see if new name is already in database
-                        if(DBMS.isContainer(accName, true)) {
+                        if(Model.isContainer(accName, true)) {
                             commandResponse = "The name '" + accName + "' is already in use.";
                             break;
-                        } else if(DBMS.isContainer(accName, false)) {
+                        } else if(Model.isContainer(accName, false)) {
                             //check disabled accts
-                            if(DBMS.isAccount(accName, false)) {
-                                Account a = DBMS.getAccount(accName, false);
+                            if(Model.isAccount(accName, false)) {
+                                Account a = Model.getAccount(accName, false);
                                 // rename old disabled account
                                 a.setEnabled(true); // account must be enabled before it can be updated
                                 a.setName(Utilities.renameContainer(a.getName()));
                                 a.setEnabled(false); // return account to disabled state
                                 // check disabled cats
-                            } else if(DBMS.isCategory(accName, false)) {
-                                Category c = DBMS.getCategory(accName, false);
+                            } else if(Model.isCategory(accName, false)) {
+                                Category c = Model.getCategory(accName, false);
                                 // rename old disabled category
                                 c.setEnabled(true); // category must be enabled before it can be updated
                                 c.setName(Utilities.renameContainer(c.getName()));
                                 c.setEnabled(false); // return category to disabled state
                                 // check disabled envs
-                            } else if(DBMS.isEnvelope(accName, false)) {
-                                Envelope e = DBMS.getEnvelope(accName, false);
+                            } else if(Model.isEnvelope(accName, false)) {
+                                Envelope e = Model.getEnvelope(accName, false);
                                 // rename old disabled envelope
                                 e.setEnabled(true); // envelope must be enabled before it can be updated
                                 e.setName(Utilities.renameContainer(e.getName()));
@@ -672,7 +672,7 @@ public class Commands {
                             }
                         }
                         // create acct
-                        acct = DBMS.addAccount(getToken(3).getPossibilities());
+                        acct = Model.addAccount(getToken(3).getPossibilities());
                         
                         if(acct==null) {
                             commandResponse = "Error: could not create '" + getToken(3).getPossibilities() + "'.";
@@ -683,27 +683,27 @@ public class Commands {
                     case NEW        + "" + CATEGORY + "" + WORD:
                         String catName = getToken(3).getPossibilities();
                         // checks to see if new name is already in database
-                        if(DBMS.isContainer(catName, true)) {
+                        if(Model.isContainer(catName, true)) {
                             commandResponse = "The name '" + catName + "' is already in use.";
                             break;
-                        } else if(DBMS.isContainer(catName, false)) {
+                        } else if(Model.isContainer(catName, false)) {
                             //check disabled accts
-                            if(DBMS.isAccount(catName, false)) {
-                                Account a = DBMS.getAccount(catName, false);
+                            if(Model.isAccount(catName, false)) {
+                                Account a = Model.getAccount(catName, false);
                                 // rename old disabled account
                                 a.setEnabled(true); // account must be enabled before it can be updated
                                 a.setName(Utilities.renameContainer(a.getName()));
                                 a.setEnabled(false); // return account to disabled state
                                 // check disabled cats
-                            } else if(DBMS.isCategory(catName, false)) {
-                                Category c = DBMS.getCategory(catName, false);
+                            } else if(Model.isCategory(catName, false)) {
+                                Category c = Model.getCategory(catName, false);
                                 // rename old disabled category
                                 c.setEnabled(true); // category must be enabled before it can be updated
                                 c.setName(Utilities.renameContainer(c.getName()));
                                 c.setEnabled(false); // return category to disabled state
                                 // check disabled envs
-                            } else if(DBMS.isEnvelope(catName, false)) {
-                                Envelope e = DBMS.getEnvelope(catName, false);
+                            } else if(Model.isEnvelope(catName, false)) {
+                                Envelope e = Model.getEnvelope(catName, false);
                                 // rename old disabled envelope
                                 e.setEnabled(true); // envelope must be enabled before it can be updated
                                 e.setName(Utilities.renameContainer(e.getName()));
@@ -711,7 +711,7 @@ public class Commands {
                             }
                         }
                         // create acct
-                        cat = DBMS.addCategory(getToken(3).getPossibilities());
+                        cat = Model.addCategory(getToken(3).getPossibilities());
                         
                         if(cat==null) {
                             commandResponse = "Error: could not create '" + getToken(3).getPossibilities() + "'.";
@@ -722,27 +722,27 @@ public class Commands {
                     case NEW        + "" + ENVELOPE + "" + WORD:
                         String envName = getToken(3).getPossibilities();
                         // checks to see if new name is already in database
-                        if(DBMS.isContainer(envName, true)) {
+                        if(Model.isContainer(envName, true)) {
                             commandResponse = "The name '" + envName + "' is already in use.";
                             break;
-                        } else if(DBMS.isContainer(envName, false)) {
+                        } else if(Model.isContainer(envName, false)) {
                             //check disabled accts, and renames if exists
-                            if(DBMS.isAccount(envName, false)) {
-                                Account a = DBMS.getAccount(envName, false);
+                            if(Model.isAccount(envName, false)) {
+                                Account a = Model.getAccount(envName, false);
                                 // rename old disabled account
                                 a.setEnabled(true); // account must be enabled before it can be updated
                                 a.setName(Utilities.renameContainer(a.getName()));
                                 a.setEnabled(false); // return account to disabled state
                                 // check disabled cats
-                            } else if(DBMS.isCategory(envName, false)) {
-                                Category c = DBMS.getCategory(envName, false);
+                            } else if(Model.isCategory(envName, false)) {
+                                Category c = Model.getCategory(envName, false);
                                 // rename old disabled category
                                 c.setEnabled(true); // category must be enabled before it can be updated
                                 c.setName(Utilities.renameContainer(c.getName()));
                                 c.setEnabled(false); // return category to disabled state
                                 // check disabled envs
-                            } else if(DBMS.isEnvelope(envName, false)) {
-                                Envelope e = DBMS.getEnvelope(envName, false);
+                            } else if(Model.isEnvelope(envName, false)) {
+                                Envelope e = Model.getEnvelope(envName, false);
                                 // rename old disabled envelope
                                 e.setEnabled(true); // envelope must be enabled before it can be updated
                                 e.setName(Utilities.renameContainer(e.getName()));
@@ -750,7 +750,7 @@ public class Commands {
                             }
                         }
                         // create acct
-                        env = DBMS.addEnvelope(getToken(3).getPossibilities());
+                        env = Model.addEnvelope(getToken(3).getPossibilities());
                         
                         if(env==null) {
                             commandResponse = "Error: could not create '" + getToken(3).getPossibilities() + "'.";
@@ -759,7 +759,7 @@ public class Commands {
                         }
                         break;
                     case REMOVE     + "" + ACCOUNT  + "" + WORD:
-                        acct = DBMS.getAccount(getToken(3).getPossibilities(), true);
+                        acct = Model.getAccount(getToken(3).getPossibilities(), true);
                         if(acct==null) {
                             commandResponse = "Account '" + getToken(3).getPossibilities() + "' does not exist.";
                         } else {
@@ -772,13 +772,13 @@ public class Commands {
                         }
                         break;
                     case REMOVE     + "" + CATEGORY + "" + WORD:
-                        cat = DBMS.getCategory(getToken(3).getPossibilities(), true);
+                        cat = Model.getCategory(getToken(3).getPossibilities(), true);
                         if(getToken(3).getPossibilities().equalsIgnoreCase("uncategorized")) {
                             commandResponse = "Category 'uncategorized' cannot be removed.";
                         } else if(cat==null) {
                             commandResponse = "Category '" + getToken(3).getPossibilities() + "' does not exist.";
                         } else {
-                            envs = DBMS.getEnvelopes(cat, true);
+                            envs = Model.getEnvelopes(cat, true);
                             for(Envelope e : envs) {
                                 e.setCategory(null);
                             }
@@ -787,7 +787,7 @@ public class Commands {
                         }
                         break;
                     case REMOVE     + "" + ENVELOPE + "" + WORD:
-                        env = DBMS.getEnvelope(getToken(3).getPossibilities(), true);
+                        env = Model.getEnvelope(getToken(3).getPossibilities(), true);
                         if(env==null) {
                             commandResponse = "Envelope '" + getToken(3).getPossibilities() + "' does not exist.";
                         } else {
@@ -800,7 +800,7 @@ public class Commands {
                         }
                         break;
                     case REMOVE     + "" + USER     + "" + WORD:
-                        usr = DBMS.getUser(getToken(3).getPossibilities(), true);
+                        usr = Model.getUser(getToken(3).getPossibilities(), true);
                         if(usr==null) {
                             commandResponse = "User '" + getToken(3).getPossibilities() + "' does not exist.";
                         } else if(usr.getUsername().equalsIgnoreCase(user.getUsername())) {
@@ -819,8 +819,8 @@ public class Commands {
                     case ENV       + "" + ENV         + "" + EXP: return envEnvExp(getToken(1).getPossibilities(), getToken(2).getPossibilities(), getToken(3).getPossibilities());
                     case ENV       + "" + EXP   + "" + WORD: return envExpWord(getToken(1).getPossibilities(), getToken(2).getPossibilities());
                     case HISTORY    + "" + ACCT      + "" + DATE       + "" + DATE:
-                        acct = DBMS.getAccount(getToken(2).getPossibilities(), true);
-                        trans = DBMS.getTransactions(acct, getToken(3).getPossibilities(), getToken(4).getPossibilities());
+                        acct = Model.getAccount(getToken(2).getPossibilities(), true);
+                        trans = Model.getTransactions(acct, getToken(3).getPossibilities(), getToken(4).getPossibilities());
                         commandResponse = "ACCOUNT (" + acct.getName() + ") TRANSACTIONS:\n"
                                 + "date | amount | description | envelope | user";
                         for(Transaction tran : trans) {
@@ -828,8 +828,8 @@ public class Commands {
                         }
                         break;
                     case HISTORY    + "" + CAT     + "" + DATE       + "" + DATE:
-                        cat = DBMS.getCategory(getToken(2).getPossibilities(), true);
-                        trans = DBMS.getTransactions(cat, getToken(3).getPossibilities(), getToken(4).getPossibilities());
+                        cat = Model.getCategory(getToken(2).getPossibilities(), true);
+                        trans = Model.getTransactions(cat, getToken(3).getPossibilities(), getToken(4).getPossibilities());
                         commandResponse = "CATEGORY (" + cat.getName() + ") TRANSACTIONS:\n"
                                 + "date | amount | description | account | envelope | user";
                         for(Transaction tran : trans) {
@@ -837,8 +837,8 @@ public class Commands {
                         }
                         break;
                     case HISTORY    + "" + ENV     + "" + DATE       + "" + DATE:
-                        env = DBMS.getEnvelope(getToken(2).getPossibilities(), true);
-                        trans = DBMS.getTransactions(env, getToken(3).getPossibilities(), getToken(4).getPossibilities());
+                        env = Model.getEnvelope(getToken(2).getPossibilities(), true);
+                        trans = Model.getTransactions(env, getToken(3).getPossibilities(), getToken(4).getPossibilities());
                         commandResponse = "ENVELOPE (" + env.getName() + ") TRANSACTIONS:\n"
                                 + "date | amount | description | account | user";
                         for(Transaction tran : trans) {
@@ -846,7 +846,7 @@ public class Commands {
                         }
                         break;
                     case NEW        + "" + ENVELOPE + "" + WORD       + "" + CAT:
-                        env = DBMS.newEnvelope(getToken(3).getPossibilities(), getToken(4).getPossibilities());
+                        env = Model.newEnvelope(getToken(3).getPossibilities(), getToken(4).getPossibilities());
                         if(env==null) {
                             commandResponse = "The name '" + getToken(3).getPossibilities() + "' is already in use.";
                         } else {
@@ -854,7 +854,7 @@ public class Commands {
                         }
                         break;
                     case NEW        + "" + USER     + "" + WORD       + "" + WORD:
-                        usr = DBMS.addUser(getToken(3).getPossibilities(), getToken(4).getPossibilities());
+                        usr = Model.addUser(getToken(3).getPossibilities(), getToken(4).getPossibilities());
                         if(usr==null) {
                             commandResponse = "The username '" + getToken(3).getPossibilities() + "' is already in use.";
                         } else {
@@ -862,65 +862,65 @@ public class Commands {
                         }
                         break;
                     case RENAME     + "" + ACCOUNT  + "" + WORD       + "" + WORD:
-                        acct = DBMS.getAccount(getToken(3).getPossibilities(), true);
+                        acct = Model.getAccount(getToken(3).getPossibilities(), true);
                         String newName = getToken(4).getPossibilities();
                         // checks to see if new name is already in database
-                        if(DBMS.isContainer(newName, true)) {
+                        if(Model.isContainer(newName, true)) {
                             commandResponse = "The name '" + newName + "' is already in use.";
                         } else {
                             if(acct==null) {
                                 commandResponse = "Account '" + getToken(3).getPossibilities() + "' does not exist.";
                             } else {
                                 //check disabled accts
-                                if(DBMS.isAccount(newName, false)) {
-                                    Account a = DBMS.getAccount(newName, false);
+                                if(Model.isAccount(newName, false)) {
+                                    Account a = Model.getAccount(newName, false);
                                     // rename old disabled account
                                     a.setEnabled(true); // account must be enabled before it can be updated
                                     a.setName(Utilities.renameContainer(a.getName()));
                                     a.setEnabled(false); // return account to disabled state
-                                } else if(DBMS.isCategory(newName, false)) {
-                                    Category c = DBMS.getCategory(newName, false);
+                                } else if(Model.isCategory(newName, false)) {
+                                    Category c = Model.getCategory(newName, false);
                                     // rename old disabled category
                                     c.setEnabled(true); // category must be enabled before it can be updated
                                     c.setName(Utilities.renameContainer(c.getName()));
                                     c.setEnabled(false); // return category to disabled state
-                                } else if(DBMS.isEnvelope(newName, false)) {
-                                    Envelope e = DBMS.getEnvelope(newName, false);
+                                } else if(Model.isEnvelope(newName, false)) {
+                                    Envelope e = Model.getEnvelope(newName, false);
                                     // rename old disabled envelope
                                     e.setEnabled(true); // envelope must be enabled before it can be updated
                                     e.setName(Utilities.renameContainer(e.getName()));
                                     e.setEnabled(false); // return envelope to disabled state
                                 }
-                                commandResponse = DBMS.updateAccountName(acct.getId(), newName);
+                                commandResponse = Model.updateAccountName(acct.getId(), newName);
                                 acct.setName(newName);
                             }
                         }
                         break;
                     case RENAME     + "" + CATEGORY + "" + WORD       + "" + WORD:
-                        cat = DBMS.getCategory(getToken(3).getPossibilities(), true);
+                        cat = Model.getCategory(getToken(3).getPossibilities(), true);
                         String newName2 = getToken(4).getPossibilities();
                         // checks to see if new name is already in database
-                        if(DBMS.isContainer(newName2, true)) {
+                        if(Model.isContainer(newName2, true)) {
                             commandResponse = "The name '" + newName2 + "' is already in use.";
                         } else {
                             if(cat==null) {
                                 commandResponse = "Category '" + getToken(3).getPossibilities() + "' does not exist.";
                             } else {
                                 //check disabled accts
-                                if(DBMS.isAccount(newName2, false)) {
-                                    Account a = DBMS.getAccount(newName2, false);
+                                if(Model.isAccount(newName2, false)) {
+                                    Account a = Model.getAccount(newName2, false);
                                     // rename old disabled account
                                     a.setEnabled(true); // account must be enabled before it can be updated
                                     a.setName(Utilities.renameContainer(a.getName()));
                                     a.setEnabled(false); // return account to disabled state
-                                } else if(DBMS.isCategory(newName2, false)) {
-                                    Category c = DBMS.getCategory(newName2, false);
+                                } else if(Model.isCategory(newName2, false)) {
+                                    Category c = Model.getCategory(newName2, false);
                                     // rename old disabled category
                                     c.setEnabled(true); // category must be enabled before it can be updated
                                     c.setName(Utilities.renameContainer(c.getName()));
                                     c.setEnabled(false); // return category to disabled state
-                                } else if(DBMS.isEnvelope(newName2, false)) {
-                                    Envelope e = DBMS.getEnvelope(newName2, false);
+                                } else if(Model.isEnvelope(newName2, false)) {
+                                    Envelope e = Model.getEnvelope(newName2, false);
                                     // rename old disabled envelope
                                     e.setEnabled(true); // envelope must be enabled before it can be updated
                                     e.setName(Utilities.renameContainer(e.getName()));
@@ -931,30 +931,30 @@ public class Commands {
                         }
                         break;
                     case RENAME     + "" + ENVELOPE + "" + WORD       + "" + WORD:
-                        env = DBMS.getEnvelope(getToken(3).getPossibilities(), true);
+                        env = Model.getEnvelope(getToken(3).getPossibilities(), true);
                         String newName3 = getToken(4).getPossibilities();
                         // checks to see if new name is already in database
-                        if(DBMS.isContainer(newName3, true)) {
+                        if(Model.isContainer(newName3, true)) {
                             commandResponse = "The name '" + newName3 + "' is already in use.";
                         } else {
                             if(env==null) {
                                 commandResponse = "Envelope '" + getToken(3).getPossibilities() + "' does not exist.";
                             } else {
                                 //check disabled accts
-                                if(DBMS.isAccount(newName3, false)) {
-                                    Account a = DBMS.getAccount(newName3, false);
+                                if(Model.isAccount(newName3, false)) {
+                                    Account a = Model.getAccount(newName3, false);
                                     // rename old disabled account
                                     a.setEnabled(true); // account must be enabled before it can be updated
                                     a.setName(Utilities.renameContainer(a.getName()));
                                     a.setEnabled(false); // return account to disabled state
-                                } else if(DBMS.isCategory(newName3, false)) {
-                                    Category c = DBMS.getCategory(newName3, false);
+                                } else if(Model.isCategory(newName3, false)) {
+                                    Category c = Model.getCategory(newName3, false);
                                     // rename old disabled category
                                     c.setEnabled(true); // category must be enabled before it can be updated
                                     c.setName(Utilities.renameContainer(c.getName()));
                                     c.setEnabled(false); // return category to disabled state
-                                } else if(DBMS.isEnvelope(newName3, false)) {
-                                    Envelope e = DBMS.getEnvelope(newName3, false);
+                                } else if(Model.isEnvelope(newName3, false)) {
+                                    Envelope e = Model.getEnvelope(newName3, false);
                                     // rename old disabled envelope
                                     e.setEnabled(true); // envelope must be enabled before it can be updated
                                     e.setName(Utilities.renameContainer(e.getName()));
@@ -965,18 +965,18 @@ public class Commands {
                         }
                         break;
                     case RENAME     + "" + USER     + "" + WORD       + "" + WORD:
-                        usr = DBMS.getUser(getToken(3).getPossibilities(), true);
+                        usr = Model.getUser(getToken(3).getPossibilities(), true);
                         String newName4 = getToken(4).getPossibilities();
                         // checks to see if new name is already in database
-                        if(DBMS.isUser(newName4, true)) {
+                        if(Model.isUser(newName4, true)) {
                             commandResponse = "The name '" + newName4 + "' is already in use.";
                         } else {
                             if(usr==null) {
                                 commandResponse = "User '" + getToken(3).getPossibilities() + "' does not exist.";
                             } else {
                                 //check disabled accts
-                                if(DBMS.isUser(newName4, false)) {
-                                    User u = DBMS.getUser(newName4, false);
+                                if(Model.isUser(newName4, false)) {
+                                    User u = Model.getUser(newName4, false);
                                     // rename old disabled account
                                     u.setEnabled(true); // account must be enabled before it can be updated
                                     u.setUsername(Utilities.renameUser(u.getUsername()));
@@ -1058,7 +1058,7 @@ public class Commands {
                                 }
                             }
                             // gets any accounts, categories, or envelopes that match given commandsInput...
-                            LinkedList<Object> objs = DBMS.getContainers(input, true);
+                            LinkedList<Object> objs = Model.getContainers(input, true);
                             // ...and then addes them to the possibilities list
                             for(Object obj : objs) {
                                 if(obj instanceof Account) {
@@ -1088,7 +1088,7 @@ public class Commands {
                             if(prev.tokenType==ACCT) {
                                 input = input.toLowerCase();
                                 // checks for accounts
-                                LinkedList<Account> accts = DBMS.getAccounts(input, true);
+                                LinkedList<Account> accts = Model.getAccounts(input, true);
                                 for(Account acct : accts) {
                                     possibilities.add(acct.getName());
                                     // change type to account
@@ -1098,7 +1098,7 @@ public class Commands {
                                     }
                                 }
                                 // checks for envelopes
-                                LinkedList<Envelope> envs = DBMS.getEnvelopes(input, true);
+                                LinkedList<Envelope> envs = Model.getEnvelopes(input, true);
                                 for(Envelope env : envs) {
                                     possibilities.add(env.getName());
                                     // change type to envelope
@@ -1117,7 +1117,7 @@ public class Commands {
                                     }
                                 }
                                 // checks for categories
-                                LinkedList<Category> cats = DBMS.getCategories(input, true);
+                                LinkedList<Category> cats = Model.getCategories(input, true);
                                 for(Category cat : cats) {
                                     possibilities.add(cat.getName());
                                     // change type to envelope
@@ -1127,7 +1127,7 @@ public class Commands {
                                     }
                                 }
                                 // checks for envelopes
-                                LinkedList<Envelope> envs = DBMS.getEnvelopes(input, true);
+                                LinkedList<Envelope> envs = Model.getEnvelopes(input, true);
                                 for(Envelope env : envs) {
                                     possibilities.add(env.getName());
                                     // change type to envelope
@@ -1166,7 +1166,7 @@ public class Commands {
                                 } catch(Exception e1) {}
                                 input = input.toLowerCase();
                                 // checks for accounts
-                                LinkedList<Account> accts = DBMS.getAccounts(input, true);
+                                LinkedList<Account> accts = Model.getAccounts(input, true);
                                 for(Account acct : accts) {
                                     possibilities.add(acct.getName());
                                     // change type to account
@@ -1176,7 +1176,7 @@ public class Commands {
                                     }
                                 }
                                 // checks for categories
-                                LinkedList<Category> cats = DBMS.getCategories(input, true);
+                                LinkedList<Category> cats = Model.getCategories(input, true);
                                 for(Category cat : cats) {
                                     possibilities.add(cat.getName());
                                     // change type to envelope
@@ -1186,7 +1186,7 @@ public class Commands {
                                     }
                                 }
                                 // checks for envelopes
-                                LinkedList<Envelope> envs = DBMS.getEnvelopes(input, true);
+                                LinkedList<Envelope> envs = Model.getEnvelopes(input, true);
                                 for(Envelope env : envs) {
                                     possibilities.add(env.getName());
                                     // change type to envelope
@@ -1273,7 +1273,7 @@ public class Commands {
                             } else if(prev.tokenType==WORD && prev.prev.tokenType==ENVELOPE && prev.prev.prev.tokenType==NEW) {
                                 input = input.toLowerCase();
                                 // checks for categories
-                                LinkedList<Category> cats = DBMS.getCategories(input, true);
+                                LinkedList<Category> cats = Model.getCategories(input, true);
                                 for(Category cat : cats) {
                                     possibilities.add(cat.getName());
                                     // change type to envelope

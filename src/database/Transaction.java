@@ -272,6 +272,6 @@ public class Transaction {
     
     @Override
     public String toString() {
-        return "created: " + created + " | modified: " + modified + " | id: " + id + " | aid: " + aid + " | eid: " + eid + " | uid: " + uid + " | date: " + date + " | desc: " + desc + " | amt: " + amt + " | tid: " + tid;
+        return "created: " + created + " | modified: " + modified + " | id: " + id + " | aid: " + aid + " | eid: " + eid + " | uid: " + uid + " | date: " + date + " | desc: " + desc + " | amt: " + Utilities.roundAmount(amt) + " | tid: " + tid;
     }
 }

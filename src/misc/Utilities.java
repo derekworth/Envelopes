@@ -1,6 +1,6 @@
 package misc;
 
-import database.DBMS;
+import database.Model;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
@@ -114,7 +114,7 @@ public class Utilities {
 //            if(left!=-1) { // left parenthesis found
 //                try {
 //                    String newName = oldName.substring(0, left) + "(" + (Integer.parseInt(oldName.substring(left+1, right))+1) + ")";
-//                    if(DBMS.isContainer(newName, false)) {
+//                    if(Model.isContainer(newName, false)) {
 //                        return renameContainer(newName);
 //                    } else {
 //                        return newName;
@@ -143,7 +143,7 @@ public class Utilities {
 //            if(left!=-1) { // left parenthesis found
 //                try {
 //                    String newName = oldName.substring(0, left) + "(" + (Integer.parseInt(oldName.substring(left+1, right))+1) + ")";
-//                    if(DBMS.isUser(newName, false)) {
+//                    if(Model.isUser(newName, false)) {
 //                        return renameUser(newName);
 //                    } else {
 //                        return newName;
@@ -678,5 +678,18 @@ public class Utilities {
             }
         }
         return tmp;
+    }
+    
+    /**
+     * Provides an easy and intuitive way to check the order between two strings;
+     * checks the strings are in alphabetical order as specified.
+     * @param before the first string that is tested to be alphabetically before
+     * 'after' string
+     * @param after the second string that is tested to be alphabetically after
+     * 'before' string
+     * @return true if before and after are ordered alphabetically, false otherwise
+     */
+    public static boolean isOrdered(String before, String after) {
+        return before.compareToIgnoreCase(after) <= 0;
     }
 }

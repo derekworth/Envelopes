@@ -14,118 +14,10 @@ import misc.Utilities;
  */
 public class DBMS {
     
-    private static final String DATABASE = "database.db";
-    private static final String DRIVER_NAME = "org.sqlite.JDBC";
-    private static final String URL = "jdbc:sqlite:" + DATABASE;
-    private static final int TIMEOUT = 30;
-    
-    private LinkedList<Account> accounts;
-    private LinkedList<Envelope> envelopes;
-    private LinkedList<Category> categories;
-    private LinkedList<User> users;
-    private LinkedList<Email> email;
-    private LinkedList<Transaction> transactions;
-    
-    // CONSTRUCTOR
-    
-    public DBMS() {
-        // setup database if not already done so
-        initializeDB();
-        // pull data from database
-        initializeModel();
-    }
-    
-    //==========================================================================
-    // PUBLIC METHODS
-    //==========================================================================
-    
-    public LinkedList<Account> getAccounts() {
-        return accounts;
-    }
-    
-    public LinkedList<Envelope> getEnvelopes() {
-        return envelopes;
-    }
-    
-    public LinkedList<Category> getCategories() {
-        return categories;
-    }
-    
-    public LinkedList<User> getUsers() {
-        return users;
-    }
-    
-    public LinkedList<Email> getEmail() {
-        return email;
-    }
-    
-    public LinkedList<Transaction> getTransactions() {
-        return transactions;
-    }
-    
-    //==========================================================================
-    // PRIVATE METHODS
-    //==========================================================================
-    
-    private void initializeModel() {
-        accounts     = getAccountsFromDB();
-        envelopes    = getEnvelopesFromDB();
-        categories   = getCategoriesFromDB(); // must set category amounts
-        users        = getUsersFromDB();
-        email        = getEmailFromDB();
-        transactions = getTransactionsFromDB(25, 0, null, null, false);
-        
-        setCategoryAmounts(); // sets amounts for each category
-    }
-    
-    // GETTERS
-    
-    private Account getAccount(int aid) {
-        if(aid==-1) return null;
-        for(Account a : accounts) {
-            if(a.getId()==aid) return a;
-        }
-        return null;
-    }
-    
-    private Envelope getEnvelope(int eid) {
-        if(eid==-1) return null;
-        for(Envelope e : envelopes) {
-            if(e.getId()==eid) return e;
-        }
-        return null;
-    }
-    
-    private Category getCategory(int cid) {
-        if(cid==-1) return null;
-        for(Category c : categories) {
-            if(c.getId()==cid) return c;
-        }
-        return null;
-    }
-    
-    private User getUser(int uid) {
-        if(uid==-1) return null;
-        for(User u : users) {
-            if(u.getId()==uid) return u;
-        }
-        return null;
-    }
-    
-    // SETTERS
-    
-    private void setCategoryAmounts() {
-        for(Envelope e : envelopes) {
-            if(e.getCategoryId()!=-1) {
-                Category c = getCategory(e.getCategoryId());
-                c.setAmount(c.getAmount() + e.getAmount());
-            }
-        }
-    }
-    
-    //==========================================================================
-    // PRIVATE STATIC METHODS
-    //==========================================================================
+    public static final String DATABASE = "database.db";
+    public static final String DRIVER_NAME = "org.sqlite.JDBC";
+    public static final String URL = "jdbc:sqlite:" + DATABASE;
+    public static final int TIMEOUT = 30;
     
     // DATABASE SETUP
     
@@ -133,7 +25,7 @@ public class DBMS {
      * Creates tables in database and two users (gmail and admin)
      * @return true if tables and users created, false otherwise
      */
-    private static boolean initializeDB() {
+    public static boolean initializeDB() {
         String ts = Utilities.getTimestamp();
         // initialize tables
         String [] queries = {
@@ -155,7 +47,7 @@ public class DBMS {
      * Resets database with empty tables and inserts admin and gmail user
      * accounts
      */
-    private static void resetDB() {
+    public static void resetDB() {
         String [] queries = {
             /*DROP TABLES*/
             "DROP TABLE IF EXISTS accts",
@@ -174,7 +66,7 @@ public class DBMS {
      * modified='2013-08-17 15:50:44', attempt=5 WHERE id=3")
      * @return true if successful, false otherwise
      */
-    private static boolean executeQuery(String query) {
+    public static boolean executeQuery(String query) {
         try {
             // register the driver
             Class.forName(DRIVER_NAME);
@@ -195,7 +87,7 @@ public class DBMS {
      * @param queries String array of SQL queries to update database
      * @return true if successful, false otherwise
      */
-    private static boolean executeQueries(String[] queries) {
+    public static boolean executeQueries(String[] queries) {
         try {
             // register the driver
             Class.forName(DRIVER_NAME);
@@ -221,7 +113,7 @@ public class DBMS {
      * list of categories and must be set after the linked list is generated.
      * @return Linked list of categories
      */
-    private static LinkedList<Category> getCategoriesFromDB() {
+    public static LinkedList<Category> getCategoriesFromDB() {
         try {
             // register the driver
             Class.forName(DRIVER_NAME);
@@ -237,8 +129,8 @@ public class DBMS {
                     cats.add(new Category(
                             rs.getString("created"),
                             rs.getString("modified"),
-                            rs.getInt("enabled")==1,
                             rs.getInt("id"),
+                            rs.getInt("enabled")==1,
                             rs.getString("name")));
                 }
                 return cats;
@@ -251,11 +143,10 @@ public class DBMS {
     /**
      * Pulls all envelopes from the database and inserts them into a linked list.
      * The amount in each envelope is updated prior to returning the linked list
-     * of envelopes. However, envelope categories are not set and must be
-     * updated after linked list is generated.
+     * of envelopes.
      * @return Linked list of all envelopes
      */
-    private static LinkedList<Envelope> getEnvelopesFromDB() {
+    public static LinkedList<Envelope> getEnvelopesFromDB() {
         try {
             // register the driver
             Class.forName(DRIVER_NAME);
@@ -270,11 +161,11 @@ public class DBMS {
                     Envelope e = new Envelope(
                             rs.getString("created"),
                             rs.getString("modified"),
-                            rs.getInt("enabled")==1,
                             rs.getInt("id"),
-                            rs.getInt("catid"),
+                            rs.getInt("enabled")==1,
                             rs.getString("name"),
-                            0);
+                            0,
+                            rs.getInt("catid"));
                     e.setAmount(getEnvelopeAmountFromDB(e));
                     envs.add(e);
                 }
@@ -291,7 +182,7 @@ public class DBMS {
      * of accounts.
      * @return Linked list of all accounts
      */
-    private static LinkedList<Account> getAccountsFromDB() {
+    public static LinkedList<Account> getAccountsFromDB() {
         try {
             // register the driver
             Class.forName(DRIVER_NAME);
@@ -305,8 +196,8 @@ public class DBMS {
                     Account a = new Account(
                             rs.getString("created"),
                             rs.getString("modified"),
-                            rs.getInt("enabled")==1,
                             rs.getInt("id"),
+                            rs.getInt("enabled")==1,
                             rs.getString("name"),
                             0);
                     a.setAmount(getAccountAmountFromDB(a));
@@ -326,7 +217,7 @@ public class DBMS {
      * and must be set after the linked list is generated.
      * @return Linked list of email addresses
      */
-    private static LinkedList<Email> getEmailFromDB() {
+    public static LinkedList<Email> getEmailsFromDB() {
         try {
             // register the driver
             Class.forName(DRIVER_NAME);
@@ -361,7 +252,7 @@ public class DBMS {
      *   2 = Admin
      * @return Linked list of all users
      */
-    private static LinkedList<User> getUsersFromDB() {
+    public static LinkedList<User> getUsersFromDB() {
         try {
             // register the driver
             Class.forName(DRIVER_NAME);
@@ -375,8 +266,8 @@ public class DBMS {
                     users.add(new User(
                             rs.getString("created"),
                             rs.getString("modified"),
-                            rs.getInt("enabled")==1,
                             rs.getInt("id"),
+                            rs.getInt("enabled")==1,
                             rs.getInt("type"),
                             rs.getString("un"),
                             rs.getString("pw")
@@ -401,7 +292,7 @@ public class DBMS {
      * wish to hide these transfer pairs or false otherwise.
      * @return linked list of transactions based on given filter inputs
      */
-    private static LinkedList<Transaction> getTransactionsFromDB(String from, String to, Account acct, Envelope env, boolean hideTx) {
+    public static LinkedList<Transaction> getTransactionsFromDB(String from, String to, Account acct, Envelope env, boolean hideTx) {
         if (!Utilities.isDate(from) || !Utilities.isDate(to)) { // checks for valid dates
             return null;
         }
@@ -491,7 +382,7 @@ public class DBMS {
      * wish to hide these transfer pairs or false otherwise.
      * @return linked list of transactions based on given filter inputs
      */
-    private static LinkedList<Transaction> getTransactionsFromDB(int qty, int offset, Account acct, Envelope env, boolean hideTx) {
+    public static LinkedList<Transaction> getTransactionsFromDB(int qty, int offset, Account acct, Envelope env, boolean hideTx) {
         int a, e;
         String query;
         String where = "", hideTxCriteria = "";
@@ -564,7 +455,7 @@ public class DBMS {
     
     // SETTERS
     
-    private static boolean updateEnvelopeInDB(Envelope env, boolean en, String name, int cid) {
+    public static boolean updateEnvelopeInDB(Envelope env, boolean en, String name, int cid) {
         boolean sameName = env.getName().equalsIgnoreCase(name);
         boolean sameEn   = env.isEnabled()==en;
         boolean sameCat  = env.getCategoryId()==cid;
@@ -600,7 +491,7 @@ public class DBMS {
         }
     }
     
-    private static boolean updateAccountInDB(Account acct, boolean en, String name) {
+    public static boolean updateAccountInDB(Account acct, boolean en, String name) {
         boolean sameName = acct.getName().equalsIgnoreCase(name);
         boolean sameEn   = acct.isEnabled()==en;
         
@@ -634,7 +525,7 @@ public class DBMS {
         }
     }
     
-    private static boolean updateEmailInDB(Email em, int attempt, int uid) {
+    public static boolean updateEmailInDB(Email em, int attempt, int uid) {
         boolean sameAttempt = em.getAttempt()==attempt;
         boolean sameUser    = em.getUserId()==uid;
         
@@ -664,7 +555,7 @@ public class DBMS {
         }
     }
     
-    private static boolean updateUserInDB(User usr, boolean en, String un, String pw) {
+    public static boolean updateUserInDB(User usr, boolean en, String un, String pw) {
         un = un.toLowerCase();
         boolean sameEn = usr.isEnabled()==en;
         boolean sameUn = usr.getUsername().equals(un);
@@ -698,7 +589,7 @@ public class DBMS {
         }
     }
     
-    private static boolean updateCategoryInDB(Category cat, boolean en, String name) {
+    public static boolean updateCategoryInDB(Category cat, boolean en, String name) {
         boolean sameName = cat.getName().equalsIgnoreCase(name);
         boolean sameEn   = cat.isEnabled()==en;
         
@@ -732,7 +623,7 @@ public class DBMS {
         }
     }
     
-    private static boolean updateTransactionInDB(Transaction tran, int aid, int eid, String date, String desc, double amt, int tid) {
+    public static boolean updateTransactionInDB(Transaction tran, int aid, int eid, String date, String desc, double amt, int tid) {
         boolean sameAcct = tran.getAccountId()==aid;
         boolean sameEnv  = tran.getEnvelopeId()==eid;
         boolean sameDate = tran.getDate().equals(date);
@@ -769,7 +660,7 @@ public class DBMS {
         }
     }
     
-    private static void mergeEnvelopesInDB(Envelope from, Envelope to) {
+    public static void mergeEnvelopesInDB(Envelope from, Envelope to) {
 //        // move transactions
 //        Transaction transaction, partner;
 //        while(getTransactionCount(from)>0) {
@@ -791,7 +682,7 @@ public class DBMS {
         
     // ADD TO DATABASE
     
-    private static Envelope addEnvelopeToDB(String name) {
+    public static Envelope addEnvelopeToDB(String name) {
         // format input
         name = name.toLowerCase();
         if(Utilities.isValidContainerName(name)) {
@@ -809,7 +700,7 @@ public class DBMS {
                         // execute query
                         ResultSet rs = stmt.executeQuery("SELECT id FROM envs WHERE name='" + name + "'");
                         // Envelope(String created, String modified, boolean enabled, int id, String name, double amt)
-                        return new Envelope(ts, ts, true, rs.getInt("id"), -1, name, 0);
+                        return new Envelope(ts, ts, rs.getInt("id"), true, name, 0, -1);
                     }
                 } catch (ClassNotFoundException | SQLException e) { /* do nothing */ }
             }
@@ -817,7 +708,7 @@ public class DBMS {
         return null;
     }
     
-    private static Account addAccountToDB(String name) {
+    public static Account addAccountToDB(String name) {
         // format input
         name = name.toLowerCase();
         if(Utilities.isValidContainerName(name)) {
@@ -835,7 +726,7 @@ public class DBMS {
                         // execute query
                         ResultSet rs = stmt.executeQuery("SELECT id FROM accts WHERE name='" + name + "'");
                         // Account(String created, String modified, boolean enabled, int id, String name, double amt)
-                        return new Account(ts, ts, true, rs.getInt("id"), name, 0);
+                        return new Account(ts, ts, rs.getInt("id"), true, name, 0);
                     }
                 } catch (ClassNotFoundException | SQLException e) { /* do nothing */ }
             }
@@ -843,7 +734,7 @@ public class DBMS {
         return null;
     }
     
-    private static Email addEmailToDB(String addr, User usr) {
+    public static Email addEmailToDB(String addr, User usr) {
         // formats input
         addr = addr.toLowerCase();
         // sets created/modified date/time
@@ -873,7 +764,7 @@ public class DBMS {
         return null;
     }
     
-    private static User addUserToDB(String un, String pw) {
+    public static User addUserToDB(String un, String pw) {
         // format input
         un = un.toLowerCase();
         pw = Utilities.getHash(pw);
@@ -894,14 +785,14 @@ public class DBMS {
                     // execute query
                     ResultSet rs = stmt.executeQuery("SELECT * FROM users ORDER BY id DESC LIMIT 1");
                     // User(String created, String modified, boolean enabled, int id, int type, String un, String pw)
-                    return new User(ts, ts, true, rs.getInt("id"), 0, un, pw);
+                    return new User(ts, ts, rs.getInt("id"), true, 0, un, pw);
                 }
             } catch (ClassNotFoundException | SQLException e) { /* do nothing */ }
         }
         return null;
     }
     
-    private static Category addCategoryToDB(String name) {
+    public static Category addCategoryToDB(String name) {
         // format input
         name = name.toLowerCase();
         if(Utilities.isValidContainerName(name)) {
@@ -919,7 +810,7 @@ public class DBMS {
                         // execute query
                         ResultSet rs = stmt.executeQuery("SELECT id FROM cats WHERE name='" + name + "'");
                         // create obj with appropriate attributes
-                        return new Category(ts, ts, true, rs.getInt("id"), name);
+                        return new Category(ts, ts, rs.getInt("id"), true, name);
                     }
                 } catch (ClassNotFoundException | SQLException e) { }
             }
@@ -927,7 +818,7 @@ public class DBMS {
         return null;
     }
     
-    private static Transaction addTransactionToDB(Account acct, Envelope env, User usr, String date, String desc, double amt) {
+    public static Transaction addTransactionToDB(Account acct, Envelope env, User usr, String date, String desc, double amt) {
         desc = Utilities.trimInvalidCharacters(desc);
         desc = Utilities.removeDoubleApostrophes(desc);
         desc = Utilities.doubleApostrophes(desc);
@@ -967,17 +858,17 @@ public class DBMS {
     
     // REMOVE FROM DATABASE
     
-    private static boolean removeTransactionInDB(Transaction tran) {
+    public static boolean removeTransactionInDB(Transaction tran) {
         return executeQuery("DELETE FROM trans WHERE id=" + tran.getId());
     }
         
-    private static boolean removeZeroAmtTransactionsInDB() {
+    public static boolean removeZeroAmtTransactionsInDB() {
         return executeQuery("DELETE FROM trans WHERE amt=0");
     }
     
     // HELPER METHODS
     
-    private static double getAccountAmountFromDB(Account acct) {
+    public static double getAccountAmountFromDB(Account acct) {
         try {
             // register the driver
             Class.forName(DRIVER_NAME);
@@ -1003,7 +894,7 @@ public class DBMS {
      * @return the amount of money in the specified account as of the specified date
      * or -999999999 if error occurs
      */
-    private static double getAccountAsOfAmountFromDB(Account acct, String asOfDate) {
+    public static double getAccountAsOfAmountFromDB(Account acct, String asOfDate) {
         if(!Utilities.isDate(asOfDate)) {
             return -999999999;
         }
@@ -1038,7 +929,7 @@ public class DBMS {
         }
     }
     
-    private static double getEnvelopeAmountFromDB(Envelope env) {
+    public static double getEnvelopeAmountFromDB(Envelope env) {
         try {
             // register the driver
             Class.forName(DRIVER_NAME);
@@ -1064,7 +955,7 @@ public class DBMS {
      * @return the amount of money in the specified envelope as of the specified date
      * or -999999999 if error occurs
      */
-    private static double getEnvelopeAsOfAmountFromDB(Envelope env, String asOfDate) {
+    public static double getEnvelopeAsOfAmountFromDB(Envelope env, String asOfDate) {
         if(!Utilities.isDate(asOfDate)) {
             return -999999999;
         }
@@ -1099,7 +990,7 @@ public class DBMS {
         }
     }
     
-    private static int getTransactionCountFromDB() {
+    public static int getTransactionCountFromDB() {
         try {
             // register the driver
             Class.forName(DRIVER_NAME);
@@ -1115,7 +1006,7 @@ public class DBMS {
         }
     }
     
-    private static int getTransactionCountFromDB(Account acct) {
+    public static int getTransactionCountFromDB(Account acct) {
         try {
             // register the driver
             Class.forName(DRIVER_NAME);
@@ -1131,7 +1022,7 @@ public class DBMS {
         }
     }
     
-    private static int getTransactionCountFromDB(Envelope env) {
+    public static int getTransactionCountFromDB(Envelope env) {
         try {
             // register the driver
             Class.forName(DRIVER_NAME);
@@ -1146,4 +1037,7 @@ public class DBMS {
             return -1;
         }
     }
+    
+    
+    
 }

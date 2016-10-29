@@ -1,6 +1,6 @@
 package table.models;
 
-import database.DBMS;
+import database.Model;
 import database.Email;
 import java.awt.Component;
 import java.util.LinkedList;
@@ -25,7 +25,7 @@ public final class EmailTableModel implements TableModel {
     }
     
     public void refresh() {
-        emails = DBMS.getEmail();
+        emails = Model.getEmail();
     }
     
     @Override
