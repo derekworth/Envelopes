@@ -178,6 +178,7 @@ public class Console extends javax.swing.JFrame {
     }
 
     public final void updateAccountTable() {
+        selectedAcctAmtLabel.setText(mc.getAccountAmount((String) transAccountDropdown.getSelectedItem(), ALL));
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
@@ -187,6 +188,7 @@ public class Console extends javax.swing.JFrame {
     }
 
     public final void updateEnvelopeTable() {
+        selectedEnvAmtLabel.setText(mc.getEnvelopeAmount((String) transEnvelopeDropdown.getSelectedItem(), ALL));
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {

@@ -1710,6 +1710,10 @@ public final class ModelController {
         e.addToAmount(t.getAmount());
         addToAccountTotal(t.getAmount());
         addToEnvelopeTotal(t.getAmount());
+        Category c = allCats.get(e.getCategoryID());
+        if(c!=null) {
+            c.addToAmount(t.getAmount());
+        }
         // refresh transactions in model
         refreshTransactionsFromDatabase();
         return false;
