@@ -15,7 +15,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
-import javax.swing.JProgressBar;
 import javax.swing.SwingUtilities;
 import misc.Utilities;
 import model.ModelController;
@@ -2933,7 +2932,7 @@ public class Console extends javax.swing.JFrame {
             fc.setSelectedFile(new File(Utilities.getDatestamp(0) + "_transactions" + tmpName));
         }
         int returnVal = fc.showSaveDialog(this);
-        String fileName = "";
+        String fileName;
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             File file = fc.getSelectedFile();
             fileName = file.getAbsolutePath();
