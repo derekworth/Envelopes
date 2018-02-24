@@ -1,14 +1,10 @@
 package misc;
 
-import database.Model;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
-import java.util.LinkedList;
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
 
 /**
  * Created on Sep 29, 2013
@@ -42,254 +38,159 @@ public class Utilities {
         }
     }
     
+    public static String amountToStringSimple(String strAmt) {
+        String tmp = "";
+        for(int i = 0; i < strAmt.length(); i++) {
+            if(strAmt.charAt(i)!='('
+                    && strAmt.charAt(i)!=')'
+                    && strAmt.charAt(i)!=',') {
+                tmp += strAmt.charAt(i);
+            }
+        }
+        return tmp;
+    }
+    
     /**
-     * Rounds money amounts by cutting off all digits past two decimal places
-     * @param amount The amount requiring money formating
-     * @return true if successful, false otherwise
+     * Converts an integer amount (represented in cents) into a string with
+     * decimal (e.g. -234563 converts to "-2345.63")
+     * @param intAmt integer amount in cents/pennies
+     * @return decimal string
      */
-    public static String roundAmount(double amount) {
-        String amt = Double.toString(amount);
-        boolean hasExpon = amt.contains("E");
-        int expon;
-        if(hasExpon) {
-            // pulls out exponent
-            expon = Integer.parseInt(amt.substring(amt.indexOf("E") + 1));
-            // negative expressions get rounded down to zero
-            if(expon<0) {
-                return "0.00";
-            }
-            int exponIndex = amt.indexOf("E");
-            int decimalIndex = amt.indexOf(".");
-            String beforeDecimalA = amt.substring(0, decimalIndex);
-            String beforeDecimalB = amt.substring(decimalIndex+1, decimalIndex+expon+1) + ".";
-            String afterdecimal = amt.substring(decimalIndex+expon+1, exponIndex);
-            amt = beforeDecimalA + beforeDecimalB + afterdecimal;
+    public static String amountToStringSimple(int intAmt) {
+        boolean neg = intAmt < 0;
+        // convert to string
+        String dec, amt = Integer.toString(intAmt);
+        // temporarily remove negative
+        if(neg) {
+            amt = amt.substring(1);
         }
-        amt += "00";
-        int decimalIndex = amt.indexOf(".");
-        if(amt.charAt(decimalIndex+3)=='9') {
-            if(amt.charAt(0)=='-') {
-                return roundAmount(amount-0.001);
-            }
-            return roundAmount(amount+0.001);
-        } else {
-            String roundedAmt = amt.substring(0, decimalIndex+3);
-            if(roundedAmt.equalsIgnoreCase("-0.00")) {
-                return "0.00";
-            }                
-            return roundedAmt;
+        
+        // add decimal
+        switch (amt.length()) {
+            case 1:
+                // pad with 0.0X
+                dec = "0" + amt;
+                amt = "0";
+                break;
+            case 2:
+                // pad with 0.XX
+                dec = amt;
+                amt = "0";
+                break;
+            default:
+                // no padding necessary
+                dec = amt.substring(amt.length()-2);
+                amt = amt.substring(0, amt.length()-2);
+                break;
         }
+        String amtWithCommas = "";
+        
+        for(int i = 1; i <= amt.length(); i++) {
+            amtWithCommas = amt.charAt(amt.length()-i) + amtWithCommas;
+        }
+        if(neg)
+            return "-" + amtWithCommas + "." + dec;
+        else
+            return amtWithCommas + "." + dec;
     }
     
-    public static String addCommasToAmount(double amount) {
-        String amt = roundAmount(amount);
-        // pull decimal
-        String amtWithCommas = amt.substring(amt.length()-3, amt.length());
+    /**
+     * Converts an integer amount (represented in cents) into a string with
+     * decimal and commas added (e.g. -234563 converts to "(-2,345.63)")
+     * @param intAmt integer amount in cents/pennies
+     * @return decimal string
+     */
+    public static String amountToString(int intAmt) {
+        boolean neg = intAmt < 0;
+        // convert to string
+        String dec, amt = Integer.toString(intAmt);
+        // temporarily remove negative
+        if(neg) {
+            amt = amt.substring(1);
+        }
         
-        for(int i = 1; i <= amt.length()-3; i++) {
-            if(i%3==0 && i<amt.length()-3 && amt.charAt(amt.length()-4-i)!='-') { // add comma for every 3 digits
-                amtWithCommas = "," + amt.charAt(amt.length()-3-i) + amtWithCommas;
+        // add decimal
+        switch (amt.length()) {
+            case 1:
+                // pad with 0.0X
+                dec = "0" + amt;
+                amt = "0";
+                break;
+            case 2:
+                // pad with 0.XX
+                dec = amt;
+                amt = "0";
+                break;
+            default:
+                // no padding necessary
+                dec = amt.substring(amt.length()-2);
+                amt = amt.substring(0, amt.length()-2);
+                break;
+        }
+        String amtWithCommas = "";
+        
+        for(int i = 1; i <= amt.length(); i++) {
+            if(i%3==0 && i<amt.length()) { // add comma for every 3 digits
+                amtWithCommas = "," + amt.charAt(amt.length()-i) + amtWithCommas;
             } else {
-                amtWithCommas = amt.charAt(amt.length()-3-i) + amtWithCommas;
+                amtWithCommas = amt.charAt(amt.length()-i) + amtWithCommas;
             }
         }
-        return amtWithCommas;
-    }
-
-    public static String renameContainer(String oldName) {
-        return "";
-//        int left = -1, right;
-//        // find index to left and right parenthesis
-//        int i = oldName.length() - 1;
-//        if(oldName.charAt(i)==')') { // right parenthesis found
-//            right = i;
-//            i--;
-//            // find left parenthesis
-//            for(; i>=0; i--){
-//                if(oldName.charAt(i)=='(') {
-//                    left = i;
-//                    break;
-//                }
-//            }
-//            if(left!=-1) { // left parenthesis found
-//                try {
-//                    String newName = oldName.substring(0, left) + "(" + (Integer.parseInt(oldName.substring(left+1, right))+1) + ")";
-//                    if(Model.isContainer(newName, false)) {
-//                        return renameContainer(newName);
-//                    } else {
-//                        return newName;
-//                    }
-//                } catch(Exception e) {}
-//            }
-//        }
-//        return renameContainer(oldName + "(0)");
-    }
-
-    public static String renameUser(String oldName) {
-        return "";
-//        int left = -1, right;
-//        // find index to left and right parenthesis
-//        int i = oldName.length() - 1;
-//        if(oldName.charAt(i)==')') { // right parenthesis found
-//            right = i;
-//            i--;
-//            // find left parenthesis
-//            for(; i>=0; i--){
-//                if(oldName.charAt(i)=='(') {
-//                    left = i;
-//                    break;
-//                }
-//            }
-//            if(left!=-1) { // left parenthesis found
-//                try {
-//                    String newName = oldName.substring(0, left) + "(" + (Integer.parseInt(oldName.substring(left+1, right))+1) + ")";
-//                    if(Model.isUser(newName, false)) {
-//                        return renameUser(newName);
-//                    } else {
-//                        return newName;
-//                    }
-//                } catch(Exception e) {}
-//            }
-//        }
-//        return renameUser(oldName + "(0)");
-    }
-        
-//    /**
-//     * Evaluates the given input expression and outputs the calculated value
-//     * @param expression String representation of a mathematical expression
-//     * @return the evaluated solution to the mathematical expression
-//     * @throws ScriptException thrown if expression is invalid
-//     */
-//    public static double evaluate(String expression) throws Exception {
-//        // convert number(s) to expression(s)
-//        String result = "";
-//        String tmp = "";
-//        for(int i = 0; i < expression.length(); i++) {
-//            if((expression.charAt(i)>='0' && expression.charAt(i)<='9') || expression.charAt(i)=='.') {
-//                // build number
-//                tmp += expression.charAt(i);
-//            } else {
-//                // convert number to faction and add to result
-//                result += toFraction(tmp) + expression.charAt(i);
-//                tmp = "";
-//            }
-//        }
-//        result += toFraction(tmp);
-//        expression = result;
-//        for(int i = 0; i < expression.length(); i++) {
-//            // limits expression input to the following characters: 0123456789/*+-()
-//            if ((expression.charAt(i)<'0' || expression.charAt(i)>'9')
-//                    && expression.charAt(i)!='*'
-//                    && expression.charAt(i)!='/'
-//                    && expression.charAt(i)!='+'
-//                    && expression.charAt(i)!='-'
-//                    && expression.charAt(i)!='('
-//                    && expression.charAt(i)!=')') {
-//                throw new Exception();
-//            }
-//        }
-//        ScriptEngineManager mgr = new ScriptEngineManager();
-//        ScriptEngine engine = mgr.getEngineByName("JavaScript");
-//        double solution = (double) engine.eval(expression);
-//        solution = Double.parseDouble(roundAmount(solution));
-//        return solution;
-//    }
-    
-    public static double evaluate(String expression) throws Exception {
-        double solution = Double.parseDouble(expression);
-        solution = Double.parseDouble(roundAmount(solution));
-        return solution;
+        if(neg)
+            return "(-" + amtWithCommas + "." + dec + ")";
+        else
+            return amtWithCommas + "." + dec;
     }
     
-    public static String toFraction(String number) throws Exception {
-        
-        // limits expression input to the following characters: 0123456789/*+-()
-        for(int i = 0; i < number.length(); i++) {
-            if ((number.charAt(i)<'0' || number.charAt(i)>'9')
-                    && number.charAt(i)!='.') {
-                throw new Exception();
+    public static int amountToInteger(String strAmt) {
+        // remove invalid characters
+        String tmp = "";
+        for(int i = 0; i < strAmt.length(); i++) {
+            char c = strAmt.charAt(i);
+            if((c>='0' && c<='9') || c=='.' || c=='-') {
+                tmp += c;
             }
         }
-        
-        // removes decimals
-        String result = "";
-        String whole = "";
-        String numer = "";
-        String denom = "1";
-        char curr;
-        boolean afterDec = false;
-        boolean beforeDec = false;
-        
-        // adds decimal to end if missing
-        if(!number.contains(".")) {
-            number += ".0";
+        strAmt = tmp;
+        // get sign
+        int sign = 1;
+        if(strAmt.charAt(0)=='-') {
+            sign = -1;
         }
-        // extract whole number and fraction
-        for(int i = 0; i<number.length(); i++) {
-            curr = number.charAt(i);
-            if(!afterDec) {
-                if(!beforeDec) {
-                    if(curr=='.') {
-                        afterDec = true;
-                        beforeDec = false;
-                    } else if(curr>='0' && curr<='9') {
-                        beforeDec = true;
-                        whole += curr;
-                    } else {
-                        result += curr;
-                    }
-                } else {
-                    if(curr=='.') {
-                        afterDec = true;
-                        beforeDec = false;
-                    } else if(curr>='0' && curr<='9') {
-                        whole += curr;
-                    } else {
-                        beforeDec = false;
-                        result += whole + curr;
-                        whole = "";
-                    }
-                }
-            } else {
-                if(curr>='0' && curr<='9') {
-                    numer += curr;
-                    denom += "0";
-                } else {
-                    afterDec = false;
-                    if(whole.length()>0) {
-                        if(numer.length()>0) {
-                            result += "(" + whole + "+" + numer + "/" + denom + ")";
-                        } else {
-                            result += whole;
-                        }
-                    } else {
-                        if(numer.length()>0) {
-                            result += numer + "/" + denom;
-                        }
-                    }
-                    whole = "";
-                    numer = "";
-                    denom = "1";
-                    result += curr;
-                }
-            }
-            
-            // after all characters have been processed, convert to format: whole+numer/denom
-            if(i+1==number.length()) {
-                if(whole.length()>0) {
-                    if(numer.length()>0) {
-                        result += "(" + whole + "+" + numer + "/" + denom + ")";
-                    } else {
-                        result += "(" + whole + "+0/10)";
-                    }
-                } else {
-                    if(numer.length()>0) {
-                        result += "(" + numer + "/" + denom + ")";
-                    }
-                }
+        // remove minus sign and/or extra decimal points
+        tmp = "";
+        boolean decFound = false;
+        for(int i = 0; i < strAmt.length(); i++) {
+            char c = strAmt.charAt(i);
+            if(c>='0' && c<='9') {
+                tmp += c;
+            } else if(c=='.' && !decFound) {
+                decFound = true;
+                tmp += c;
             }
         }
-        return result;
+        // find decimal
+        int decIndex = tmp.indexOf('.');
+        if(decIndex==-1) { // append to end if decimal not found
+            tmp += ".";
+            decIndex = tmp.indexOf('.');
+        }
+        // pads string with trailing zeros as necessary
+        if(decIndex==-1) {
+            // no padding necessary, no decimal found
+        } else if(decIndex==tmp.length()-1) { // decimal at end of string
+            tmp += "00";
+        } else if(decIndex==tmp.length()-2) { // decimal followed by 1 digit
+            tmp += "0";
+        } else if(decIndex<tmp.length()-3) {  // decimal followed by 3 or more digits
+            tmp = tmp.substring(0, decIndex+3);
+        }
+        // remove decimal
+        tmp = tmp.replace(".", "");
+        if(tmp.length()==0) {
+            return 0;
+        }
+        return sign * Integer.parseInt(tmp);
     }
     
     public static String getDuration(long sec) {
@@ -328,29 +229,32 @@ public class Utilities {
     }
     
     /**
-     * Provides the current getTimestamp
-     * @return getTimestamp in format: YYYY-MM-DD hh:mm:ss
+     * Provides the current timestamp
+     * @return timestamp in format: YYYY-MM-DD hh:mm:ss
      */
     public static String getTimestamp() {
         return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Calendar.getInstance().getTime());
     }
     
-    public static void printTimestamp() {
-        System.out.println("Current time: " + getTimestamp());
-    }
-    
-    public static void printLinkedList(LinkedList<Object> objs) {
-        for(Object o : objs) {
-            System.out.println(o);
-        }
-    }
-    
+    /**
+     * Provides the current timestamp (date only)
+     * @param fromToday offset from today (e.g. -1 = yesterday, 0 = today,
+     * 2 = day after tomorrow)
+     * @return timestamp in format: YYYY-MM-DD
+     */
     public static String getDatestamp(int fromToday) {
         Calendar c = Calendar.getInstance();
         c.add(Calendar.DAY_OF_MONTH, fromToday);
         return new SimpleDateFormat("yyyy-MM-dd").format(c.getTime());
     }
     
+    /**
+     * Calculates a new date from the date specified, offset by given delta
+     * @param dateString original date
+     * @param delta number of days between original date and new date (e.g. -3
+     * results in 3 days prior to original date)
+     * @return string representation of new date, formatted YYYY-MM-DD
+     */
     public static String getNewDate(String dateString, int delta) {
         
         if(!isDate(dateString)) {
@@ -399,6 +303,15 @@ public class Utilities {
         return newDate;
     }
     
+    public static String getShortDesc(String fullDesc) {
+        int i = fullDesc.indexOf(")");
+        if(i>=0) {
+            return fullDesc.substring(i+1).trim();
+        } else {
+            return fullDesc;
+        }
+    }
+    
     public static int daysInMonth(int yr, int mth) {
         // gets max days in month
         Calendar mycal = new GregorianCalendar(yr, mth-1 , 1);
@@ -406,12 +319,17 @@ public class Utilities {
         return mycal.getActualMaximum(Calendar.DAY_OF_MONTH);
     }
     
-    public static String getAddress(String addr) {
-        int a = addr.indexOf("<");
-        int b = addr.indexOf(">");
+    /**
+     * Extracts email address from email address header
+     * @param fullAddr full address including header
+     * @return address after header has been stripped
+     */
+    public static String stripHeaderFromAddress(String fullAddr) {
+        int a = fullAddr.indexOf("<");
+        int b = fullAddr.indexOf(">");
         if(a==-1 || b == -1)
-            return addr;
-        return addr.substring(a+1, b);
+            return fullAddr;
+        return fullAddr.substring(a+1, b);
     }
     
     public static String validateDate(String date) {
@@ -444,12 +362,19 @@ public class Utilities {
         
         for(int i = 1; i<=intervalCount; i++) {
             dates[i-1] = date;
-            if(intervalType==INTERVAL_TYPE_MONTHLY) {       // monthly
-                date = Utilities.getNewDate(date, -30);
-            } else if(intervalType==INTERVAL_TYPE_WEEKLY) { // weekly
-                date = Utilities.getNewDate(date, -7);
-            } else {                                        // daily
-                date = Utilities.getNewDate(date, -1);
+            switch (intervalType) {
+                case INTERVAL_TYPE_MONTHLY:
+                    // monthly
+                    date = Utilities.getNewDate(date, -30);
+                    break;
+                case INTERVAL_TYPE_WEEKLY:
+                    // weekly
+                    date = Utilities.getNewDate(date, -7);
+                    break;
+                default:
+                    // daily
+                    date = Utilities.getNewDate(date, -1);
+                    break;
             }
         }
         
@@ -481,15 +406,12 @@ public class Utilities {
         // Get the number of days in that month
         int daysInMonth = mycal.getActualMaximum(Calendar.DAY_OF_MONTH);
         
-        if (    yr<1884 || yr>2189 ||           // checks year
+        return !(yr<1884 || yr>2189 ||          // checks year
                 mth<1 || mth>12 ||              // checks month
                 day<1 || day>daysInMonth ||     // checks day
                 dateString.charAt(4)!='-' ||    // checks first dash
                 dateString.charAt(7)!='-'       // checks second dash
-                ){
-            return false;
-        }
-        return true;
+);
     }
     
     /**
@@ -515,33 +437,39 @@ public class Utilities {
             return false;
         }
         
-        if (hr<0  || hr>23 ||                  // checks hour
-           min<0 || min>59 ||                 // checks minute
-           sec<0 || sec>59 ||                 // checks second
-           timestampString.charAt(13)!=':' || // checks first colon
-           timestampString.charAt(16)!=':'){  // checks second colon
-            return false;
-        }
-        return true;
+        return !(hr<0  || hr>23 ||                  // checks hour
+                min<0 || min>59 ||                 // checks minute
+                sec<0 || sec>59 ||                 // checks second
+                timestampString.charAt(13)!=':' || // checks first colon
+                timestampString.charAt(16)!=':');
     }
     
-    // validates name begins with a letter and contains only numbers,
-    // letters, or the following characters: '-'  '('  ')'
+    public static boolean isFirstCharacterALetter(String text) {
+        // check for null/empty text
+        if(text==null || text.length()==0)
+            return false;
+        // get first character
+        char firstChar = text.charAt(0);
+        // check character for letter and return false if not a letter
+        return (firstChar>='a' && firstChar <='z') || (firstChar>='A' && firstChar <='Z');
+    }
+    
+    // validates name contains only numbers, letters, or the following characters: '-'  '('  ')'
     public static boolean isValidContainerName(String name) {
-        name = name.toLowerCase();
-        // checks if first character is a letter
-        if(name.isEmpty() || name.charAt(0)<'a' || name.charAt(0)>'z') {
+        if(name==null || name.length()==0 || !isFirstCharacterALetter(name)) {
             return false;
         }
-
+        name = name.toLowerCase();
         // check each letter
         for(int i = 0; i< name.length(); i++) {
             char c = name.charAt(i);
-            if( c!='-' && 
-                c!='(' && 
-                c!=')' &&
-              !(c>='a' && c<='z') &&
-              !(c>='0' && c<='9')) {
+            if( c=='-' || 
+                c=='(' || 
+                c==')' || 
+                (c>='a' && c<='z') ||
+                (c>='0' && c<='9')) {
+                // do nothing
+            } else {
                 return false;
             }
         }
@@ -585,7 +513,7 @@ public class Utilities {
         try {
             Double.parseDouble(amt);
             return true;
-        } catch (Exception ex) {
+        } catch (NumberFormatException ex) {
             return false;
         }
     }
@@ -652,6 +580,34 @@ public class Utilities {
         return txt;
     }
     
+    /**
+     * Removes all characters except letters, numbers, and dashes, then removes
+     * all characters up to the first letter (first char must be a letter), and
+     * finally, lowercases all letters
+     * @param name Name to be formatted
+     * @return properly formatted container name
+     */
+    public static String cleanContainerName(String name) {
+        name = name.toLowerCase();
+        String tmp = "";
+        boolean firstCharIsLetter = false;
+        for(int i = 0; i< name.length(); i++) {
+            char c = name.charAt(i);
+            if( (c>='a' && c<='z') ||                  // check character for letter
+                (c>='A' && c<='Z') ) {
+                tmp += c;
+                if(!firstCharIsLetter) {
+                    firstCharIsLetter = true;
+                }
+            } else if( c=='-' || (c>='0' && c<='9')) { // check charater for a valid non-letter
+                if(firstCharIsLetter) {
+                    tmp += c;
+                }
+            }
+        }
+        return tmp;
+    }
+    
     public static String trimInvalidCharacters(String desc) {
         String tmp = "";
         for(int i = 0; i< desc.length(); i++) {
@@ -679,17 +635,101 @@ public class Utilities {
         }
         return tmp;
     }
+
+    public static String capitalizeFirstCharacter(String desc) {
+        // uppercase the first letter of the description
+        if(desc.length()>0) { // 1 or more characters in desc
+            if(desc.charAt(0)>='a' && desc.charAt(0)<='z') { // first character in desc is lowercase letter
+                if(desc.length()==1) { // only one character in desc
+                    desc = desc.toUpperCase();
+                } else { // more than one character in desc
+                    desc = (char)(desc.charAt(0)-32) + desc.substring(1);
+                }
+            }
+        }
+        return desc;
+    }
+    
+    public static String cleanTransactionDesc(String desc) {
+        String tmp = "";
+        for(int i = 0; i< desc.length(); i++) {
+            char c = desc.charAt(i);
+            if( c=='-' || 
+                c=='#' || 
+                c=='$' || 
+                c=='&' || 
+                c==' ' || 
+                c=='\'' ||  
+                c=='(' ||  
+                c==')' ||  
+                c=='*' ||  
+                c=='<' ||  
+                c=='>' ||  
+                (c>='a' && c<='z') ||
+                (c>='A' && c<='Z') ||
+                (c>='0' && c<='9')) {
+                tmp += c;
+            }
+        }
+        desc = tmp;
+        // remove all double apostrophes
+        while (desc.contains("''")) {
+            desc = desc.replace("''", "'");
+        }
+        // add convert single to double apostrophes
+        tmp = "";
+        for(int i = 0; i < desc.length(); i++) {
+            if(desc.charAt(i)=='\'') {
+                tmp += "'";
+            }
+            tmp += desc.charAt(i);
+        }
+        // set transaction desc if empty
+        if(tmp.length() == 0) {
+            tmp = "<no description specified>";
+        }
+        return tmp;
+    }
     
     /**
-     * Provides an easy and intuitive way to check the order between two strings;
-     * checks the strings are in alphabetical order as specified.
-     * @param before the first string that is tested to be alphabetically before
-     * 'after' string
-     * @param after the second string that is tested to be alphabetically after
-     * 'before' string
-     * @return true if before and after are ordered alphabetically, false otherwise
+     * Username must consist of lowercase letters and numbers, with a letter as
+     * the first character
+     * @param un user specified username before formating 
+     * @return formated username with all alphanumeric chars removed
      */
-    public static boolean isOrdered(String before, String after) {
-        return before.compareToIgnoreCase(after) <= 0;
+    public static String cleanUsername(String un) {
+        un = un.toLowerCase();
+        String tmp = "";
+        boolean firstCharIsLetter = false;
+        for(int i = 0; i< un.length(); i++) {
+            char c = un.charAt(i);
+            // check character for letter
+            if( (c>='a' && c<='z') ||
+                (c>='A' && c<='Z') ) {
+                tmp += c;
+                if(!firstCharIsLetter) {
+                    firstCharIsLetter = true;
+                }
+            } else
+            // check charater for a valid non-letter
+            if((c>='0' && c<='9')) {
+                if(firstCharIsLetter) {
+                    tmp += c;
+                }
+            }
+        }
+        return tmp;
+    }
+    
+    public static boolean isValidEmailAddress(String addr) {
+        return addr.contains("@")
+                && !(
+                    addr.contains(" ")  || 
+                    addr.contains("\'") ||
+                    addr.contains(";")  ||
+                    addr.contains("\t") ||
+                    addr.contains("\n") ||
+                    addr.contains("\r")
+                );
     }
 }

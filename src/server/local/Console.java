@@ -1,24 +1,14 @@
 package server.local;
 
-import database.Account;
-import database.Category;
-import database.Model;
-import static database.Model.TIMEOUT;
-import static database.Model.URL;
-import database.Email;
-import database.Envelope;
-import database.Transaction;
-import database.User;
+import model.tables.EnvelopesTableModel;
+import model.tables.AccountsTableModel;
+import model.tables.TransactionsTableModel;
+import model.tables.EmailTableModel;
 import java.awt.Color;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.ServerSocket;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.LinkedList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -28,147 +18,73 @@ import javax.swing.JOptionPane;
 import javax.swing.JProgressBar;
 import javax.swing.SwingUtilities;
 import misc.Utilities;
-import server.remote.Gmail;
-import table.models.AccountsTableModel;
-import table.models.EmailTableModel;
-import table.models.EnvelopesTableModel;
-import table.models.TransactionsTableModel;
+import model.ModelController;
+import server.remote.GmailCommunicator;
 
 /**
  *
- * @author Derek Worth
+ * @author Worth
  */
 public class Console extends javax.swing.JFrame {
-    final Console thisConsole = this;
-    JProgressBar pbar = new JProgressBar(0,100);
-    public final String TITLE = "Envelopes";
-    LinkedList<String> errorMsg = new LinkedList();
-    LinkedList<String> errorMsg1 = new LinkedList();
-    
-    User currentUser;
-    User gmail;
-    
-    LinkedList<String> cmdHistory = new LinkedList();
-    int histIndex;
-    int consoleLoginFailCount = 0;
-    int serverLoginFailCount = 0;
-    boolean serverIsOn;
+
+    private final Console thisConsole = this;
+    private final String TITLE = "Envelopes";
+    private LinkedList<String> errorMsg = new LinkedList();
+    private LinkedList<String> cmdHistory = new LinkedList();
+    private int consoleLoginFailCount = 0;
+    private int serverLoginFailCount = 0;
+    private boolean serverIsOn;
     ExecutorService exec;
-    
-    private EnvelopesTableModel    envelopesTM;
-    private AccountsTableModel     accountsTM;
+    private String currUser;
+
+    private static final String ALL = "-all-";
+    private static final String NONE = "-none-";
+    private static final String UNCAT = "uncategorized";
+    private static final int DEFAULT_TRANS_COUNT = 250;
+
+    Runnable gmailServer;
+
+    private ModelController mc;
+    private GmailCommunicator gc;
+    private EnvelopesTableModel envelopesTM;
+    private AccountsTableModel accountsTM;
     private TransactionsTableModel transactionsTM;
-    private EmailTableModel        emailTM;
-        
-    Runnable gmailServer = new Runnable() {
-        @Override
-        public void run() {
-            long start = System.currentTimeMillis();
-            while(serverIsOn) {
-                try {
-                    TimeUnit.SECONDS.sleep(6);
-                    gmailServerStatus.setText("run-time ~ " + Utilities.getDuration((System.currentTimeMillis() - start)/1000));
-                    if(Gmail.receive()) {
-                        updateAll();
-                    }
-                } catch (InterruptedException ex) {
-                    
-                }
-            }
-        }
-    };
+    private EmailTableModel emailTM;
 
     public Console() {
+        this.gmailServer = new Runnable() {
+            @Override
+            public void run() {
+                long start = System.currentTimeMillis();
+                while (serverIsOn) {
+                    try {
+                        TimeUnit.SECONDS.sleep(6);
+                        gmailServerStatus.setText("run-time ~ " + Utilities.getDuration((System.currentTimeMillis() - start) / 1000));
+                        if (gc.receive()) {
+                            updateAll();
+                        }
+                    } catch (InterruptedException ex) {
+
+                    }
+                }
+            }
+        };
+
         try {
             // prevents multiple instances of console
             ServerSocket s = new ServerSocket(61234);
-            
+            // initialize all GUI components
             initComponents();
-            // initilize database if not already initialized
-            Model.initializeDatabase();
-            // set gmail credentials
-            gmail = Model.getGmail();
-            if(Gmail.isValidCredentials(gmail.getUsername(), gmail.getPassword())) {
-                gmailUsername.setText(gmail.getUsername());
-                gmailPassword.setText(gmail.getPassword());
-                // starts Gmail Server automatically on startup
-                serverToggleButton.setSelected(true);
-                // retrieve username and password from the text fields
-                serverIsOn = true;
-                exec = Executors.newSingleThreadExecutor();
-                exec.submit(gmailServer);
-                serverToggleButton.setText("Stop Server");
-                gmailServerStatus.setText("Gmail server is now ON.");
-                serverLoginFailCount = 0;
-                gmailUsername.setEnabled(false);
-                gmailPassword.setEnabled(false);
-            }
-            // initialize table models
-            envelopesTM    = new EnvelopesTableModel(this);
-            accountsTM     = new AccountsTableModel();
-            transactionsTM = new TransactionsTableModel(this);
-            emailTM        = new EmailTableModel();
-            initializeTables();
-            // populate transaction date fields
-            transFromField.setText(Utilities.getDatestamp(-28));
-            transToField.setText(Utilities.getDatestamp(0));
-            transactionDateField.setText(Utilities.getDatestamp(0));
-            // add interval options
-            intervalTypeDropdown.removeAllItems();
-            intervalTypeDropdown.addItem("monthly");
-            intervalTypeDropdown.addItem("weekly");
-            intervalTypeDropdown.addItem("daily");
-            // update all dropdowns and tables
-            updateAll();
-            // set window title
-            this.setTitle(TITLE);
-            // disable all login components 
-            enabledLoginComponents(false);
-        } catch (IOException ex) {
-            System.exit(0);
-        }
-    }
-
-    public String validateTrendInput(String input) {
-        if(input.length()>0) {
-            input = input.toLowerCase();
-            String tmp = "";
-            // remove invalid charaters
-            for(int i = 0 ; i < input.length(); i++) {
-                if((input.charAt(i)>='a' && input.charAt(i)<='z') || (input.charAt(i)=='-' && i>0) || input.charAt(i)==',') {
-                    tmp += input.charAt(i);
-                }
-            }
-            String[]names = tmp.split(",");
-            tmp = "";
-            LinkedList<String> validatedNames = new LinkedList();
-            for (String s : names) {
-                if(!validatedNames.contains(s)) { // removes duplicate entries
-                    validatedNames.add(s);        // saves for duplicate checking
-                    if(isAccount(s, true) || isEnvelope(s, true)) {
-                        tmp += s + ",";
-                    } else {
-                        tmp += "[" + s + "],";
-                    }
-                }
-            }
-            // removes last comma
-            tmp = tmp.substring(0, tmp.length()-1);
-            
-            return tmp;
-        } else {
-            return "";
-        }
-    }
-    
-    public final void updateAll() {
-        updateAllTables();
-        updateAllDropdowns();
-    }
-    
-    /****UPDATE TABLE MODELS****/
-    
-    private void initializeTables() {        
+            // initialize model controller
+            mc = new ModelController();
+            // establish Gmail communicator
+            gc = new GmailCommunicator(mc);
+            currUser = "";
+            // initialize tables with model controller
+            envelopesTM = new EnvelopesTableModel(mc);
+            accountsTM = new AccountsTableModel(mc);
+            transactionsTM = new TransactionsTableModel(mc);
+            emailTM = new EmailTableModel(mc);
             // initialized envelopes table
             envelopesTable.setModel(envelopesTM);
             envelopesTable.getColumnModel().getColumn(0).setCellRenderer(envelopesTM.getBoldRenderer());
@@ -181,35 +97,88 @@ public class Console extends javax.swing.JFrame {
             accountsTable.getColumnModel().getColumn(1).setPreferredWidth(80);
             // initialize transactions table
             transactionsTable.setModel(transactionsTM);
-            transactionsTable.getColumnModel().getColumn(0).setPreferredWidth(80);
-            transactionsTable.getColumnModel().getColumn(0).setMaxWidth(80);
+            transactionsTable.getColumnModel().getColumn(0).setPreferredWidth(100);
+            transactionsTable.getColumnModel().getColumn(0).setMaxWidth(100);
             transactionsTable.getColumnModel().getColumn(1).setPreferredWidth(240);
             transactionsTable.getColumnModel().getColumn(2).setPreferredWidth(80);
             transactionsTable.getColumnModel().getColumn(2).setMaxWidth(120);
             transactionsTable.getColumnModel().getColumn(3).setPreferredWidth(80);
             transactionsTable.getColumnModel().getColumn(3).setMaxWidth(120);
-            transactionsTable.getColumnModel().getColumn(4).setPreferredWidth(80);
+            transactionsTable.getColumnModel().getColumn(4).setPreferredWidth(100);
             transactionsTable.getColumnModel().getColumn(4).setMaxWidth(120);
-            for(int i = 0; i < transactionsTable.getColumnCount(); i++) {
+            for (int i = 0; i < transactionsTable.getColumnCount(); i++) {
                 transactionsTable.getColumnModel().getColumn(i).setCellRenderer(transactionsTM.getRenderer());
             }
             // initialize email table
             emailTable.setModel(emailTM);
-            emailTable.getColumnModel().getColumn(0).setMaxWidth(130);
-            emailTable.getColumnModel().getColumn(0).setPreferredWidth(130);
-            emailTable.getColumnModel().getColumn(1).setMaxWidth(130);
-            emailTable.getColumnModel().getColumn(1).setPreferredWidth(130);
+            emailTable.getColumnModel().getColumn(0).setMaxWidth(180);
+            emailTable.getColumnModel().getColumn(0).setPreferredWidth(180);
+            emailTable.getColumnModel().getColumn(1).setMaxWidth(180);
+            emailTable.getColumnModel().getColumn(1).setPreferredWidth(180);
             emailTable.getColumnModel().getColumn(2).setMaxWidth(60);
             emailTable.getColumnModel().getColumn(2).setPreferredWidth(60);
             emailTable.getColumnModel().getColumn(3).setMaxWidth(150);
             emailTable.getColumnModel().getColumn(3).setPreferredWidth(80);
-            for(int i = 0; i < emailTable.getColumnCount(); i++) {
+            for (int i = 0; i < emailTable.getColumnCount(); i++) {
                 emailTable.getColumnModel().getColumn(i).setCellRenderer(emailTM.getRenderer());
             }
+            // set gmail credentials
+            if (gc.isValidCredentials(mc.getGmailUsername(), mc.getGmailPassword())) {
+                gmailPassword.setText(mc.getGmailPassword());
+                gmailUsername.setText(mc.getGmailUsername());
+                // starts Gmail Server automatically on startup
+                serverToggleButton.setSelected(true);
+                // retrieve username and password from the text fields
+                serverIsOn = true;
+                exec = Executors.newSingleThreadExecutor();
+                exec.submit(gmailServer);
+                serverToggleButton.setText("Stop Server");
+                gmailServerStatus.setText("Gmail server is now ON.");
+                serverLoginFailCount = 0;
+                gmailPassword.setEnabled(false);
+                gmailUsername.setEnabled(false);
+            }
+            // populate transaction date fields
+            transFromField.setText(Utilities.getDatestamp(-28));
+            transToField.setText(Utilities.getDatestamp(0));
+            transactionDateField.setText(Utilities.getDatestamp(0));
+            // add interval options
+            intervalTypeDropdown.removeAllItems();
+            intervalTypeDropdown.addItem("monthly");
+            intervalTypeDropdown.addItem("weekly");
+            intervalTypeDropdown.addItem("daily");
+            // update
+            selectedAcctAmtLabel.setText(mc.getAccountAmount(ALL, ALL));
+            selectedEnvAmtLabel.setText(mc.getEnvelopeAmount(ALL, ALL));
+            // update all dropdowns and tables
+            updateAll();
+            // set window title
+            setTitle(TITLE);
+            // disable all login components 
+            enabledLoginComponents(false);
+        } catch (IOException ex) {
+            System.exit(0);
+        }
     }
-    
+
+    public final void updateAll() {
+        updateAllTables();
+        updateAllDropdowns();
+    }
+
+    /**
+     * **UPDATE TABLES***
+     */
+    public final void updateAllTables() {
+        updateTransactionTable();
+        updateAccountTable();
+        updateTransactionTable();
+//        updateSelectedAccount();
+//        updateSelectedEnvelope();
+        updateEmailTable();
+    }
+
     public final void updateAccountTable() {
-        accountsTM.refresh();
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
@@ -217,9 +186,8 @@ public class Console extends javax.swing.JFrame {
             }
         });
     }
-    
+
     public final void updateEnvelopeTable() {
-        envelopesTM.refresh();
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
@@ -227,10 +195,8 @@ public class Console extends javax.swing.JFrame {
             }
         });
     }
-    
+
     public final void updateTransactionTable() {
-        Model.removeZeroAmtTransactions();
-        transactionsTM.refresh();
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
@@ -238,59 +204,25 @@ public class Console extends javax.swing.JFrame {
             }
         });
     }
-    
-    public final void updateTransactionTableWithMoreTransactions() {
-        Model.removeZeroAmtTransactions();
-        transactionsTM.addMore();
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                transactionsTable.updateUI();
-            }
-        });
-    }
-    
+
     public final void updateEmailTable() {
-        emailTM.refresh();
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
                 emailTable.updateUI();
             }
         });
-    }    
-    
-    public final void updateSelectedAmount(char type, String acctSelected, String envSelected) {
-        // set selection; type: a = account; thisConsole = category; e = envelope; u = user; n = none
-        if(type == 'a') {
-            transactionsTM.setAccountForQuery(acctSelected);
-        } else if(type == 'e') {
-            transactionsTM.setEnvelopeForQuery(envSelected);
-        }
     }
-    
-    public final void exportTransactions(String fileName) {
-        transactionsTM.export(fileName);
-    }
-    
+
     public final void allowEditing(boolean isAllowed) {
         accountsTM.setEditing(isAllowed);
         envelopesTM.setEditing(isAllowed);
         transactionsTM.setEditing(isAllowed);
     }
-    
-    /****UPDATE TABLES****/
-    
-    public final void updateAllTables() {
-        updateTransactionTable();
-        updateAccountTable();
-        updateTransactionTable();
-        updateSelectedAmount('n');
-        updateEmailTable();
-    }
-    
-    /****UPDATE DROPDOWNS****/
-    
+
+    /**
+     * **UPDATE DROPDOWNS***
+     */
     public final void updateAllDropdowns() {
         updateAccountDropdowns();
         updateCategoryDropdowns();
@@ -298,26 +230,24 @@ public class Console extends javax.swing.JFrame {
         updateUserDropdowns();
         updateEmailDropdown();
     }
-    
+
     public final void updateAccountDropdowns() {
-        LinkedList<Account> accts = Model.getAccounts(true);
         // reset account dropdown lists
         transAccountDropdown.removeAllItems();
-        transAccountDropdown.addItem("-all-");
+        transAccountDropdown.addItem(ALL);
         newTransAcctDropdown.removeAllItems();
         acctTransferFrom.removeAllItems();
         acctTransferTo.removeAllItems();
         // populates account dropdown lists
-        for(Account acct : accts) {
-            transAccountDropdown.addItem(acct.getName());
-            newTransAcctDropdown.addItem(acct.getName());
-            acctTransferFrom.addItem(acct.getName());
-            acctTransferTo.addItem(acct.getName());
+        for (String name : mc.getAccountNames()) {
+            transAccountDropdown.addItem(name);
+            newTransAcctDropdown.addItem(name);
+            acctTransferFrom.addItem(name);
+            acctTransferTo.addItem(name);
         }
     }
-    
+
     public final void updateEnvelopeDropdowns() {
-        LinkedList<Envelope> envs = Model.getEnvelopes(true);
         // reset envelope dropdowns
         transEnvelopeDropdown.removeAllItems();
         newTransEnvDropdown.removeAllItems();
@@ -325,182 +255,106 @@ public class Console extends javax.swing.JFrame {
         envTransferFrom.removeAllItems();
         envTransferTo.removeAllItems();
         // poplates envelope dropdowns
-        transEnvelopeDropdown.addItem("-all-");
-        for(Envelope env : envs) {
-            newTransEnvDropdown.addItem(env.getName());
-            mergeEnvelopesList.addItem(env.getName());
-            envTransferFrom.addItem(env.getName());
-            envTransferTo.addItem(env.getName());
-            transEnvelopeDropdown.addItem(env.getName());
+        transEnvelopeDropdown.addItem(ALL);
+        for (String name : mc.getEnvelopeNames()) {
+            newTransEnvDropdown.addItem(name);
+            mergeEnvelopesList.addItem(name);
+            envTransferFrom.addItem(name);
+            envTransferTo.addItem(name);
+            transEnvelopeDropdown.addItem(name);
         }
     }
-    
+
     public final void updateCategoryDropdowns() {
-        LinkedList<Category> cats = Model.getCategories(true);
         // reset category dropdown
         transCategoryDropdown.removeAllItems();
         // populate
-        transCategoryDropdown.addItem("-none-");
-        for(Category cat : cats) {
-            transCategoryDropdown.addItem(cat.getName());
+        transCategoryDropdown.addItem(NONE);
+        for (String name : mc.getCategoryNames()) {
+            transCategoryDropdown.addItem(name);
         }
     }
-    
+
     public final void updateUserDropdowns() {
-        LinkedList<User> usrs = Model.getUsers(true);
         // reset user dropdowns
         loginUserDropdown.removeAllItems();
         removeUserDropdown.removeAllItems();
         updateUserDropdown.removeAllItems();
         emailUserDropdown.removeAllItems();
         // populate dropdowns
-        for(User usr : usrs) {
+        for (String un : mc.getUsernames()) {
             // add all users to login list
-            loginUserDropdown.addItem(usr.getUsername());
+            loginUserDropdown.addItem(un);
             // add all users to email list
-            emailUserDropdown.addItem(usr.getUsername());
-            if(currentUser!=null) { // logged in
-                if(currentUser.isAdmin()) { // user is the admin
+            emailUserDropdown.addItem(un);
+            if (currUser.length() > 0) { // logged in
+                if (mc.isUserAdmin(currUser)) { // user is the admin
                     // add all users to update list
-                    updateUserDropdown.addItem(usr.getUsername());
+                    updateUserDropdown.addItem(un);
                     // add all other users to remove list
-                    if(currentUser.getId()!=usr.getId()) {
-                        removeUserDropdown.addItem(usr.getUsername());
+                    if (!currUser.equalsIgnoreCase(un)) {
+                        removeUserDropdown.addItem(un);
                     }
                 } else { // user is a regular user
-                    if(currentUser.getId()==usr.getId()) { // logged in as regular user
+                    if (currUser.equalsIgnoreCase(un)) { // logged in as regular user
                         // add only current user to update list
-                        updateUserDropdown.addItem(usr.getUsername());
+                        updateUserDropdown.addItem(un);
                     } else {
                         // adds non-admin users that are not the current user
-                        if(!usr.isAdmin()) {
-                            removeUserDropdown.addItem(usr.getUsername());
+                        if (!mc.isUserAdmin(un)) {
+                            removeUserDropdown.addItem(un);
                         }
                     }
                 }
             }
         }
     }
-    
+
     public final void updateEmailDropdown() {
-        LinkedList<Email> em = Model.getEmail();
         // reset dropdown
         emailAddressDropdown.removeAllItems();
-        for(Email e : em) {
-            emailAddressDropdown.addItem(e.getAddress());
+        for (String addr : mc.getEmailAddresses()) {
+            emailAddressDropdown.addItem(addr);
         }
     }
-    
-    public final void updateSelectedAmount(char type) {
-        String acctSelected = (String) transAccountDropdown.getSelectedItem();
-        String envSelected = (String) transEnvelopeDropdown.getSelectedItem();
-        // set selection; type: a = account; thisConsole = category; e = envelope; u = user; n = none
-        updateSelectedAmount(type, acctSelected, envSelected);
-        // update table to reflect new selection
+
+    private void updateSelected() {
+        String acctName = (String) transAccountDropdown.getSelectedItem();
+        String envName = (String) transEnvelopeDropdown.getSelectedItem();
+        boolean hideTx = hideTransfersToggleButton.isSelected();
+        if (dateRangeCheckBox.isSelected()) {
+            String from = transFromField.getText();
+            String to = transToField.getText();
+            mc.showTransactionsByDateRange(acctName, envName, from, to, hideTx);
+        } else {
+            int to;
+            try {
+                to = Integer.parseInt(transactionQtyTextField.getText());
+                if (to < 0) {
+                    to = 0;
+                }
+            } catch (NumberFormatException e) {
+                to = DEFAULT_TRANS_COUNT;
+            }
+            mc.showTransactionsByIndexRange(acctName, envName, 1, to, hideTx);
+        }
+        selectedAcctAmtLabel.setText(mc.getAccountAmount(acctName, ALL));
+        selectedEnvAmtLabel.setText(mc.getEnvelopeAmount(envName, ALL));
         updateTransactionTable();
-        // display selected account/envelope amounts
-        if(Model.getTransactions(1).size()>0 && acctSelected!=null && envSelected!=null && (Model.isAccount(acctSelected, true) || acctSelected.equalsIgnoreCase("-all-")) && (Model.isEnvelope(envSelected, true) || envSelected.equalsIgnoreCase("-all-"))) {
-            // display account amount
-            String lastestTransactionDate = Model.getTransactions(1).getFirst().getDate();
-            selectedAcctAmt.setText(Utilities.addCommasToAmount(Model.getAccountAmount(acctSelected, Utilities.getNewDate(lastestTransactionDate, 1))));
-            selectedEnvAmt.setText(Utilities.addCommasToAmount(Model.getEnvelopeAmount(envSelected, Utilities.getNewDate(lastestTransactionDate, 1))));
-        }
     }
-    
-    /****Login and Logout****/
-    
-    private boolean attemptUserLogin() {
-        User usr = Model.getUser(loginUserDropdown.getSelectedItem().toString(), true);
-        String pw = "";
-        for(char c : userPassword.getPassword()) {
-            pw += c;
-        }
-        if(usr.getPassword().equals(Utilities.getHash(pw))) { // successful login
-            loginToggleButton.setSelected(true);
-            transactionDateField.setText(Utilities.getDatestamp(0));
-            currentUser = usr;
-            enabledLoginComponents(true);
-            consoleLoginFailCount = 0;
-            userPassword.setText("");
-            loginToggleButton.setText("Sign Out");
-            loginStatus.setText("Welcome " + currentUser.getUsername() + "! You are now signed in.");
-            updateUserDropdowns();
-            // turn OFF server while user is logged in
-            serverLogout();
-            serverToggleButton.setEnabled(false);
-            return true;
-        } else { // failed login
-            // set sign in settings
-            loginToggleButton.setSelected(false);
-            loginStatus.setText("Error(" + ++consoleLoginFailCount + "): incorrect password.");
-            return false;
-        }
-    }
-    
-    private void userLogout() {
-        currentUser = null;
-        enabledLoginComponents(false);
-        // set sign in settings
-        loginToggleButton.setText("Sign In");
-        loginStatus.setText("You are now signed out.");
-        histIndex = -1;
-        cmdHistory.clear();
-        updateUserDropdowns();
-        // turn server on after user logs out
-        attemptServerLogin();
-        serverToggleButton.setEnabled(true);
-    }
-    
-    private boolean attemptServerLogin() {
-        // retrieve username and password from the text fields
-        String srvUn, srvPw = "";
-        srvUn = gmailUsername.getText();
-        for(char c : gmailPassword.getPassword()) {
-            srvPw += c;
-        }
-        // check if un & pw are valid
-        if(Gmail.isValidCredentials(srvUn, srvPw)) {
-            gmail = Model.getGmail();
-            gmail.setUsername(srvUn);
-            gmail.setPassword(srvPw);
-            serverIsOn = true;
-            exec = Executors.newSingleThreadExecutor();
-            exec.submit(gmailServer);
-            serverToggleButton.setText("Stop Server");
-            serverToggleButton.setSelected(true);
-            gmailServerStatus.setText("Gmail server is now ON.");
-            serverLoginFailCount = 0;
-            gmailUsername.setEnabled(false);
-            gmailPassword.setEnabled(false);
-            return true;
-        }
-        serverToggleButton.setSelected(false);
-        gmailServerStatus.setText("Error(" + ++serverLoginFailCount + "): invalid username and/or password.");
-        return false;
-    }
-    
-    private void serverLogout() {
-        serverIsOn = false;
-        exec.shutdownNow();
-        serverToggleButton.setSelected(false);
-        serverToggleButton.setText("Start Server");
-        gmailServerStatus.setText("Gmail server is now OFF.");
-        gmailUsername.setEnabled(true);
-        gmailPassword.setEnabled(true);
-    }
-    
-    /****MISC****/
-    
+
+    /**
+     * **MISC***
+     */
     public final void validateTransactionFields() {
         String dateError = "date must be in the format yyyy-mm-dd";
-        String histError = "history count must be an integer";
-                
+
         boolean error1 = false, error2 = false, error3 = false;
-        
+
         // validate from date
-        if(transFromField.getText().length()>0) {
+        if (transFromField.getText().length() > 0) {
             String fromDate = Utilities.validateDate(transFromField.getText());
-            if(fromDate.length()==10) {
+            if (fromDate.length() == 10) {
                 transFromField.setText(fromDate);
                 fromLabel.setForeground(Color.BLACK);
                 fromLabel.setText("From:");
@@ -510,11 +364,11 @@ public class Console extends javax.swing.JFrame {
                 error1 = true;
             }
         }
-        
+
         // validate to date
-        if(transToField.getText().length()>0) {
+        if (transToField.getText().length() > 0) {
             String toDate = Utilities.validateDate(transToField.getText());
-            if(toDate.length()==10) {
+            if (toDate.length() == 10) {
                 transToField.setText(toDate);
                 toLabel.setForeground(Color.BLACK);
                 toLabel.setText("To:");
@@ -524,11 +378,11 @@ public class Console extends javax.swing.JFrame {
                 error2 = true;
             }
         }
-        
+
         // validate new transaction date
-        if(transactionDateField.getText().length()>0) {
+        if (transactionDateField.getText().length() > 0) {
             String transDate = Utilities.validateDate(transactionDateField.getText());
-            if(transDate.length()==10) {
+            if (transDate.length() == 10) {
                 transactionDateField.setText(transDate);
                 dateLabel.setForeground(Color.BLACK);
                 dateLabel.setText("Date:");
@@ -538,52 +392,52 @@ public class Console extends javax.swing.JFrame {
                 error3 = true;
             }
         }
-        
-        if(error1 || error2 || error3) {
+
+        if (error1 || error2 || error3) {
             addErrorMsg(dateError);
         } else {
             removeErrorMsg(dateError);
         }
     }
-    
+
     public final void addErrorMsg(String msg) {
         // add error message if it does not already exist
-        if(!errorMsg.contains(msg)){
+        if (!errorMsg.contains(msg)) {
             errorMsg.add(msg);
             String fullMsg = "ERROR: ";
             // builds new message
-            for(String m : errorMsg) {
+            for (String m : errorMsg) {
                 fullMsg += m + "; ";
             }
             // removes last "new line"
-            fullMsg = fullMsg.substring(0, fullMsg.length()-2);
+            fullMsg = fullMsg.substring(0, fullMsg.length() - 2);
             // sets new message
             message.setText(fullMsg);
         }
     }
-    
+
     public final void removeErrorMsg(String msg) {
         // removes error message if it exist
-        if(errorMsg.contains(msg)){
+        if (errorMsg.contains(msg)) {
             errorMsg.remove(msg);
             String fullMsg = "ERROR: ";
-            if(errorMsg.isEmpty()) {
+            if (errorMsg.isEmpty()) {
                 fullMsg = "";
             }
-            
+
             // builds new message
-            for(String m : errorMsg) {
+            for (String m : errorMsg) {
                 fullMsg += m + '\n';
             }
             // removes last "new line"
-            if(fullMsg.length()<0) {
-                fullMsg = fullMsg.substring(0, fullMsg.length()-1);
+            if (fullMsg.length() < 0) {
+                fullMsg = fullMsg.substring(0, fullMsg.length() - 1);
             }
             // sets new message
             message.setText(fullMsg);
         }
     }
-    
+
     public final void enabledLoginComponents(boolean isLoggedIn) {
         // update buttons
         addAccountButton.setEnabled(isLoggedIn);
@@ -600,7 +454,9 @@ public class Console extends javax.swing.JFrame {
         removeUserButton.setEnabled(isLoggedIn);
         acctTransferButton.setEnabled(isLoggedIn);
         envTransferButton.setEnabled(isLoggedIn);
-        
+        allowEmail.setEnabled(isLoggedIn);
+        blockEmail.setEnabled(isLoggedIn);
+
         // fields
         userPassword.setEnabled(!isLoggedIn);
         addUserTextField.setEnabled(isLoggedIn);
@@ -613,11 +469,7 @@ public class Console extends javax.swing.JFrame {
         transactionDateField.setEnabled(isLoggedIn);
         transactionDescriptionField.setEnabled(isLoggedIn);
         transactionAmtField.setEnabled(isLoggedIn);
-        acctTransferAmt.setEnabled(isLoggedIn);
-        acctTransferDescriptionField.setEnabled(isLoggedIn);
-        envTransferAmt.setEnabled(isLoggedIn);
-        envTransferDescriptionField.setEnabled(isLoggedIn);
-        
+
         // dropdowns
         loginUserDropdown.setEnabled(!isLoggedIn);
         mergeEnvelopesList.setEnabled(isLoggedIn);
@@ -630,12 +482,14 @@ public class Console extends javax.swing.JFrame {
         acctTransferTo.setEnabled(isLoggedIn);
         envTransferFrom.setEnabled(isLoggedIn);
         envTransferTo.setEnabled(isLoggedIn);
-        
+        emailAddressDropdown.setEnabled(isLoggedIn);
+        emailUserDropdown.setEnabled(isLoggedIn);
+
         // table editing
         allowEditing(isLoggedIn);
-        
+
         // admin option in File dropdown menu
-        if(currentUser!=null && currentUser.isAdmin()) {
+        if (currUser.length() > 0 && mc.isUserAdmin(currUser)) {
             resetDatabaseMenuItem.setEnabled(isLoggedIn);
             resetDatabaseMenuItem.setVisible(isLoggedIn);
             jSeparator3.setVisible(isLoggedIn);
@@ -645,7 +499,7 @@ public class Console extends javax.swing.JFrame {
             jSeparator3.setVisible(false);
         }
     }
-    
+
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -705,29 +559,24 @@ public class Console extends javax.swing.JFrame {
         acctTransferFrom = new javax.swing.JComboBox();
         acctTransferTo = new javax.swing.JComboBox();
         jLabel17 = new javax.swing.JLabel();
-        acctTransferAmt = new javax.swing.JTextField();
-        jLabel32 = new javax.swing.JLabel();
         jLabel33 = new javax.swing.JLabel();
         envTransferFrom = new javax.swing.JComboBox();
         envTransferTo = new javax.swing.JComboBox();
-        envTransferAmt = new javax.swing.JTextField();
         acctTransferButton = new javax.swing.JButton();
         envTransferButton = new javax.swing.JButton();
         selectedAcctAmt = new javax.swing.JLabel();
         selectedEnvAmt = new javax.swing.JLabel();
         transactionsRefreshButton = new javax.swing.JButton();
         hideTransfersToggleButton = new javax.swing.JCheckBox();
-        acctTransferDescriptionField = new javax.swing.JTextField();
-        jLabel24 = new javax.swing.JLabel();
-        envTransferDescriptionField = new javax.swing.JTextField();
         removeEnvelopeButton = new javax.swing.JButton();
         removeAccountButton = new javax.swing.JButton();
         removeCategoryButton = new javax.swing.JButton();
         setCategoryButton = new javax.swing.JButton();
         mergeEnvelopesList = new javax.swing.JComboBox();
         mergeEnvelopesButton = new javax.swing.JButton();
-        moreTransactionsButton = new javax.swing.JButton();
-        transactionQtyButton = new javax.swing.JButton();
+        transactionQtyTextField = new javax.swing.JTextField();
+        selectedAcctAmtLabel = new javax.swing.JLabel();
+        selectedEnvAmtLabel = new javax.swing.JLabel();
         message = new javax.swing.JLabel();
         adminTab = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
@@ -977,6 +826,11 @@ public class Console extends javax.swing.JFrame {
             }
         ));
         transactionsTable.setFillsViewportHeight(true);
+        transactionsTable.addPropertyChangeListener(new java.beans.PropertyChangeListener() {
+            public void propertyChange(java.beans.PropertyChangeEvent evt) {
+                transactionsTablePropertyChange(evt);
+            }
+        });
         transactionsTableScrollPane.setViewportView(transactionsTable);
 
         transactionsLabel.setText("Transactions");
@@ -1087,31 +941,11 @@ public class Console extends javax.swing.JFrame {
 
         jLabel17.setText("To:");
 
-        acctTransferAmt.addFocusListener(new java.awt.event.FocusAdapter() {
-            public void focusGained(java.awt.event.FocusEvent evt) {
-                acctTransferAmtFocusGained(evt);
-            }
-            public void focusLost(java.awt.event.FocusEvent evt) {
-                acctTransferAmtFocusLost(evt);
-            }
-        });
-
-        jLabel32.setText("Amt:");
-
         jLabel33.setText("Envelope Transfer");
 
         envTransferFrom.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
 
         envTransferTo.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
-
-        envTransferAmt.addFocusListener(new java.awt.event.FocusAdapter() {
-            public void focusGained(java.awt.event.FocusEvent evt) {
-                envTransferAmtFocusGained(evt);
-            }
-            public void focusLost(java.awt.event.FocusEvent evt) {
-                envTransferAmtFocusLost(evt);
-            }
-        });
 
         acctTransferButton.setText("Transfer");
         acctTransferButton.setEnabled(false);
@@ -1144,26 +978,6 @@ public class Console extends javax.swing.JFrame {
         hideTransfersToggleButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 hideTransfersToggleButtonActionPerformed(evt);
-            }
-        });
-
-        acctTransferDescriptionField.addFocusListener(new java.awt.event.FocusAdapter() {
-            public void focusGained(java.awt.event.FocusEvent evt) {
-                acctTransferDescriptionFieldFocusGained(evt);
-            }
-            public void focusLost(java.awt.event.FocusEvent evt) {
-                acctTransferDescriptionFieldFocusLost(evt);
-            }
-        });
-
-        jLabel24.setText("Desc:");
-
-        envTransferDescriptionField.addFocusListener(new java.awt.event.FocusAdapter() {
-            public void focusGained(java.awt.event.FocusEvent evt) {
-                envTransferDescriptionFieldFocusGained(evt);
-            }
-            public void focusLost(java.awt.event.FocusEvent evt) {
-                envTransferDescriptionFieldFocusLost(evt);
             }
         });
 
@@ -1224,19 +1038,19 @@ public class Console extends javax.swing.JFrame {
             }
         });
 
-        moreTransactionsButton.setText("Show More");
-        moreTransactionsButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                moreTransactionsButtonActionPerformed(evt);
+        transactionQtyTextField.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        transactionQtyTextField.setText("250");
+        transactionQtyTextField.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyPressed(java.awt.event.KeyEvent evt) {
+                transactionQtyTextFieldKeyPressed(evt);
             }
         });
 
-        transactionQtyButton.setText("25");
-        transactionQtyButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                transactionQtyButtonActionPerformed(evt);
-            }
-        });
+        selectedAcctAmtLabel.setFont(new java.awt.Font("Arial", 1, 12)); // NOI18N
+        selectedAcctAmtLabel.setText("<acct amt>");
+
+        selectedEnvAmtLabel.setFont(new java.awt.Font("Arial", 1, 12)); // NOI18N
+        selectedEnvAmtLabel.setText("<env amt>");
 
         javax.swing.GroupLayout transactionsPanelLayout = new javax.swing.GroupLayout(transactionsPanel);
         transactionsPanel.setLayout(transactionsPanelLayout);
@@ -1246,219 +1060,210 @@ public class Console extends javax.swing.JFrame {
                 .addContainerGap()
                 .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(transactionsPanelLayout.createSequentialGroup()
-                        .addComponent(transactionsTableScrollPane)
-                        .addGap(10, 10, 10))
-                    .addGroup(transactionsPanelLayout.createSequentialGroup()
                         .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(transactionsPanelLayout.createSequentialGroup()
+                                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                    .addComponent(transAccountDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addGroup(transactionsPanelLayout.createSequentialGroup()
+                                        .addComponent(jLabel1)
+                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addComponent(removeAccountButton, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                .addGap(24, 24, 24)
                                 .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(transactionDateField, javax.swing.GroupLayout.PREFERRED_SIZE, 85, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addGroup(transactionsPanelLayout.createSequentialGroup()
+                                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                                            .addGroup(transactionsPanelLayout.createSequentialGroup()
+                                                .addComponent(jLabel2)
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                                .addComponent(removeEnvelopeButton, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                            .addComponent(transEnvelopeDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                        .addGap(18, 18, 18)
+                                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                            .addComponent(jLabel3)
+                                            .addComponent(jLabel27))
+                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                            .addGroup(transactionsPanelLayout.createSequentialGroup()
+                                                .addComponent(transCategoryDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                                .addComponent(setCategoryButton, javax.swing.GroupLayout.PREFERRED_SIZE, 63, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                                .addComponent(removeCategoryButton, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                            .addGroup(transactionsPanelLayout.createSequentialGroup()
+                                                .addComponent(mergeEnvelopesList, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                                .addComponent(mergeEnvelopesButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
+                                    .addGroup(transactionsPanelLayout.createSequentialGroup()
+                                        .addComponent(selectedEnvAmtLabel)
+                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                        .addComponent(selectedEnvAmt))))
+                            .addGroup(transactionsPanelLayout.createSequentialGroup()
+                                .addComponent(transactionQtyTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(transactionsLabel)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                .addComponent(dateRangeCheckBox)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                .addComponent(hideTransfersToggleButton)
+                                .addGap(18, 18, 18)
+                                .addComponent(fromLabel)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(transFromField, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(toLabel)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(transToField, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                .addComponent(transactionsRefreshButton)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(exportTransactionsButton))
+                            .addGroup(transactionsPanelLayout.createSequentialGroup()
+                                .addGap(6, 6, 6)
+                                .addComponent(selectedAcctAmtLabel)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(selectedAcctAmt)))
+                        .addContainerGap(201, Short.MAX_VALUE))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, transactionsPanelLayout.createSequentialGroup()
+                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addGroup(transactionsPanelLayout.createSequentialGroup()
+                                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(transactionDateField, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
                                     .addComponent(dateLabel))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(transactionDescriptionField, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(jLabel25))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(amountLabel)
-                                    .addComponent(transactionAmtField, javax.swing.GroupLayout.PREFERRED_SIZE, 70, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(6, 6, 6)
-                                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(newTransAcctDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(jLabel18))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(jLabel19)
+                                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                                     .addGroup(transactionsPanelLayout.createSequentialGroup()
-                                        .addComponent(newTransEnvDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addComponent(newTransactionButton)))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 32, Short.MAX_VALUE)
-                                .addComponent(moreTransactionsButton))
-                            .addGroup(transactionsPanelLayout.createSequentialGroup()
-                                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                            .addComponent(jLabel12)
+                                            .addComponent(jLabel33))
+                                        .addGap(6, 6, 6))
                                     .addGroup(transactionsPanelLayout.createSequentialGroup()
-                                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                            .addComponent(transAccountDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                            .addGroup(transactionsPanelLayout.createSequentialGroup()
-                                                .addComponent(jLabel1)
-                                                .addGap(38, 38, 38)
-                                                .addComponent(removeAccountButton)))
-                                        .addGap(18, 18, 18)
                                         .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                            .addGroup(transactionsPanelLayout.createSequentialGroup()
-                                                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                                    .addGroup(transactionsPanelLayout.createSequentialGroup()
-                                                        .addComponent(jLabel2)
-                                                        .addGap(33, 33, 33)
-                                                        .addComponent(removeEnvelopeButton))
-                                                    .addComponent(transEnvelopeDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                                .addGap(18, 18, 18)
-                                                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                                                    .addComponent(jLabel3)
-                                                    .addComponent(jLabel27))
-                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                                    .addGroup(transactionsPanelLayout.createSequentialGroup()
-                                                        .addComponent(mergeEnvelopesList, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                                        .addComponent(mergeEnvelopesButton))
-                                                    .addGroup(transactionsPanelLayout.createSequentialGroup()
-                                                        .addComponent(transCategoryDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                                        .addComponent(setCategoryButton, javax.swing.GroupLayout.PREFERRED_SIZE, 63, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                                .addComponent(removeCategoryButton))
-                                            .addGroup(transactionsPanelLayout.createSequentialGroup()
-                                                .addGap(10, 10, 10)
-                                                .addComponent(selectedEnvAmt))))
-                                    .addGroup(transactionsPanelLayout.createSequentialGroup()
-                                        .addComponent(transactionQtyButton, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                            .addComponent(transactionDescriptionField, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                            .addComponent(jLabel25))
                                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addComponent(transactionsLabel)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                        .addComponent(dateRangeCheckBox)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                        .addComponent(hideTransfersToggleButton)
-                                        .addGap(18, 18, 18)
-                                        .addComponent(fromLabel)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addComponent(transFromField, javax.swing.GroupLayout.PREFERRED_SIZE, 85, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                        .addComponent(toLabel)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addComponent(transToField, javax.swing.GroupLayout.PREFERRED_SIZE, 85, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                        .addComponent(transactionsRefreshButton)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addComponent(exportTransactionsButton)))
-                                .addGap(0, 0, Short.MAX_VALUE)))
-                        .addContainerGap())
-                    .addGroup(transactionsPanelLayout.createSequentialGroup()
-                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(transactionsPanelLayout.createSequentialGroup()
-                                .addGap(10, 10, 10)
-                                .addComponent(selectedAcctAmt))
-                            .addGroup(transactionsPanelLayout.createSequentialGroup()
+                                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                            .addComponent(amountLabel)
+                                            .addComponent(transactionAmtField, javax.swing.GroupLayout.PREFERRED_SIZE, 84, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)))
                                 .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(jLabel12)
-                                    .addComponent(jLabel33))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                    .addGroup(transactionsPanelLayout.createSequentialGroup()
+                                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                            .addComponent(newTransAcctDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                            .addComponent(jLabel18))
+                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                            .addComponent(jLabel19)
+                                            .addGroup(transactionsPanelLayout.createSequentialGroup()
+                                                .addComponent(newTransEnvDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                                .addComponent(newTransactionButton, javax.swing.GroupLayout.PREFERRED_SIZE, 96, javax.swing.GroupLayout.PREFERRED_SIZE))))
                                     .addGroup(transactionsPanelLayout.createSequentialGroup()
                                         .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                             .addComponent(acctTransferFrom, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                            .addComponent(envTransferFrom, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
                                             .addComponent(jLabel13))
                                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                         .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                            .addComponent(acctTransferTo, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                            .addComponent(jLabel17))
-                                        .addGap(6, 6, 6)
-                                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                            .addComponent(acctTransferDescriptionField, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                            .addComponent(jLabel24))
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                            .addComponent(jLabel32)
+                                            .addComponent(jLabel17)
                                             .addGroup(transactionsPanelLayout.createSequentialGroup()
-                                                .addComponent(acctTransferAmt, javax.swing.GroupLayout.PREFERRED_SIZE, 70, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addComponent(acctTransferTo, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
                                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                                .addComponent(acctTransferButton))))
-                                    .addGroup(transactionsPanelLayout.createSequentialGroup()
-                                        .addComponent(envTransferFrom, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addComponent(envTransferTo, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addComponent(envTransferDescriptionField)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addComponent(envTransferAmt, javax.swing.GroupLayout.PREFERRED_SIZE, 70, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addComponent(envTransferButton)))))
-                        .addGap(0, 0, Short.MAX_VALUE))))
+                                                .addComponent(acctTransferButton))
+                                            .addGroup(transactionsPanelLayout.createSequentialGroup()
+                                                .addComponent(envTransferTo, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                                .addComponent(envTransferButton)))))
+                                .addGap(0, 0, Short.MAX_VALUE))
+                            .addComponent(transactionsTableScrollPane))
+                        .addGap(10, 10, 10))))
         );
         transactionsPanelLayout.setVerticalGroup(
             transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(transactionsPanelLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(transactionsLabel)
-                        .addComponent(transactionQtyButton))
-                    .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(dateRangeCheckBox)
-                        .addComponent(transFromField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(fromLabel)
-                        .addComponent(transToField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(toLabel)
-                        .addComponent(transactionsRefreshButton)
-                        .addComponent(hideTransfersToggleButton)
-                        .addComponent(exportTransactionsButton)))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel1, javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(removeAccountButton, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(removeEnvelopeButton, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel2, javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(jLabel3)
-                        .addComponent(mergeEnvelopesList, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(mergeEnvelopesButton, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addGroup(transactionsPanelLayout.createSequentialGroup()
+                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(dateRangeCheckBox)
+                            .addComponent(transFromField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(fromLabel)
+                            .addComponent(transToField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(toLabel)
+                            .addComponent(transactionsRefreshButton)
+                            .addComponent(hideTransfersToggleButton)
+                            .addComponent(exportTransactionsButton)
+                            .addComponent(transactionsLabel)
+                            .addComponent(transactionQtyTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(19, 19, 19)
+                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addGroup(transactionsPanelLayout.createSequentialGroup()
+                                .addComponent(jLabel1)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(transAccountDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(transactionsPanelLayout.createSequentialGroup()
+                                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(removeEnvelopeButton, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                        .addComponent(jLabel2)
+                                        .addComponent(removeAccountButton, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(transEnvelopeDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                    .addGroup(transactionsPanelLayout.createSequentialGroup()
+                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel3)
+                            .addComponent(mergeEnvelopesList, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(mergeEnvelopesButton))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                .addComponent(transCategoryDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(jLabel27)
+                                .addComponent(setCategoryButton))
+                            .addComponent(removeCategoryButton, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE))))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(transAccountDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(transCategoryDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(transEnvelopeDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel27)
-                    .addComponent(removeCategoryButton, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(setCategoryButton, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(selectedAcctAmt)
-                    .addComponent(selectedEnvAmt))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(transactionsTableScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 458, Short.MAX_VALUE)
                 .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(transactionsPanelLayout.createSequentialGroup()
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(dateLabel)
-                            .addComponent(jLabel25)
-                            .addComponent(amountLabel)
-                            .addComponent(jLabel18)
-                            .addComponent(jLabel19))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                            .addComponent(selectedAcctAmt)
+                            .addComponent(selectedEnvAmt))
+                        .addGap(28, 28, 28))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, transactionsPanelLayout.createSequentialGroup()
                         .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(transactionDescriptionField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(transactionDateField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(transactionAmtField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(newTransAcctDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(newTransEnvDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(newTransactionButton)))
-                    .addGroup(transactionsPanelLayout.createSequentialGroup()
-                        .addGap(14, 14, 14)
-                        .addComponent(moreTransactionsButton)))
-                .addGap(18, 18, 18)
+                            .addComponent(selectedAcctAmtLabel)
+                            .addComponent(selectedEnvAmtLabel))
+                        .addGap(18, 18, 18)))
+                .addComponent(transactionsTableScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 485, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(dateLabel)
+                    .addComponent(jLabel25)
+                    .addComponent(amountLabel)
+                    .addComponent(jLabel18)
+                    .addComponent(jLabel19))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(transactionDescriptionField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(transactionDateField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(transactionAmtField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(newTransAcctDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(newTransEnvDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(newTransactionButton))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jLabel13)
-                    .addComponent(jLabel17)
-                    .addComponent(jLabel32)
-                    .addComponent(jLabel24))
+                    .addComponent(jLabel17))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(acctTransferFrom, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(acctTransferTo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel12)
                     .addComponent(acctTransferButton)
-                    .addComponent(acctTransferDescriptionField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(acctTransferAmt, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jLabel12))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(envTransferFrom, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(envTransferTo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(envTransferAmt, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel33)
                     .addComponent(envTransferButton)
-                    .addComponent(envTransferDescriptionField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jLabel33))
                 .addContainerGap())
         );
 
@@ -1496,10 +1301,13 @@ public class Console extends javax.swing.JFrame {
 
         emailTable.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
-
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null}
             },
             new String [] {
-
+                "Title 1", "Title 2", "Title 3", "Title 4"
             }
         ));
         emailTable.setFillsViewportHeight(true);
@@ -1605,14 +1413,14 @@ public class Console extends javax.swing.JFrame {
         updateUserDropdown.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
 
         updateUserButton.setText("Update");
-        updateUserButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                updateUserButtonActionPerformed(evt);
-            }
-        });
         updateUserButton.addFocusListener(new java.awt.event.FocusAdapter() {
             public void focusLost(java.awt.event.FocusEvent evt) {
                 updateUserButtonFocusLost(evt);
+            }
+        });
+        updateUserButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                updateUserButtonActionPerformed(evt);
             }
         });
 
@@ -1658,16 +1466,18 @@ public class Console extends javax.swing.JFrame {
                             .addComponent(addUserPasswordField, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(addUserButton, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(accountManagementPaneLayout.createSequentialGroup()
-                        .addComponent(jLabel29)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(removeUserDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(removeUserButton, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addComponent(jLabel26)
                     .addComponent(jLabel14)
-                    .addComponent(jLabel15))
-                .addContainerGap(14, Short.MAX_VALUE))
+                    .addComponent(jLabel15)
+                    .addGroup(accountManagementPaneLayout.createSequentialGroup()
+                        .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(accountManagementPaneLayout.createSequentialGroup()
+                                .addComponent(jLabel29)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(removeUserDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(jLabel26))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(removeUserButton, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         accountManagementPaneLayout.setVerticalGroup(
             accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -1675,7 +1485,7 @@ public class Console extends javax.swing.JFrame {
                 .addContainerGap()
                 .addComponent(jLabel14)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(accountManagementPaneLayout.createSequentialGroup()
                         .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(addUserTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -1704,14 +1514,16 @@ public class Console extends javax.swing.JFrame {
                         .addGap(19, 19, 19))
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, accountManagementPaneLayout.createSequentialGroup()
                         .addComponent(updateUserButton, javax.swing.GroupLayout.PREFERRED_SIZE, 46, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(15, 15, 15)))
-                .addComponent(jLabel26)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel29)
-                    .addComponent(removeUserDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(removeUserButton))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addGap(24, 24, 24)))
+                .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(accountManagementPaneLayout.createSequentialGroup()
+                        .addComponent(jLabel26)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel29)
+                            .addComponent(removeUserDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addComponent(removeUserButton, javax.swing.GroupLayout.PREFERRED_SIZE, 46, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(44, Short.MAX_VALUE))
         );
 
         jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder(javax.swing.BorderFactory.createEtchedBorder(), "GMAIL SERVER", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Arial", 1, 18))); // NOI18N
@@ -1719,18 +1531,6 @@ public class Console extends javax.swing.JFrame {
         jLabel9.setText("Create a Gmail account specifically for this program and enter it below.");
 
         jLabel7.setText("Username:");
-
-        gmailUsername.addKeyListener(new java.awt.event.KeyAdapter() {
-            public void keyPressed(java.awt.event.KeyEvent evt) {
-                gmailUsernameKeyPressed(evt);
-            }
-        });
-
-        gmailPassword.addKeyListener(new java.awt.event.KeyAdapter() {
-            public void keyPressed(java.awt.event.KeyEvent evt) {
-                gmailPasswordKeyPressed(evt);
-            }
-        });
 
         serverToggleButton.setText("Start Server");
         serverToggleButton.addActionListener(new java.awt.event.ActionListener() {
@@ -1883,7 +1683,7 @@ public class Console extends javax.swing.JFrame {
                                 .addComponent(runTrendReportButton, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addComponent(reportProgressBar, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addGroup(reportsPanelLayout.createSequentialGroup()
-                                .addComponent(snapshotButton, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(snapshotButton, javax.swing.GroupLayout.PREFERRED_SIZE, 170, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(budgetWorksheetButton, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -1950,7 +1750,7 @@ public class Console extends javax.swing.JFrame {
                         .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(accountManagementPane, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(171, Short.MAX_VALUE))
+                .addContainerGap(152, Short.MAX_VALUE))
         );
 
         jScrollPane1.setViewportView(jPanel2);
@@ -2085,37 +1885,118 @@ public class Console extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void userPasswordKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_userPasswordKeyPressed
-        if(evt.getKeyCode()==10) {
-            attemptUserLogin();
+        if (evt.getKeyCode() == 10) {
+            String un = loginUserDropdown.getSelectedItem().toString();
+            String pw = "";
+            for (char c : userPassword.getPassword()) {
+                pw += c;
+            }
+            if (mc.getPassword(un).equals(Utilities.getHash(pw))) { // successful login
+                loginToggleButton.setSelected(true);
+                transactionDateField.setText(Utilities.getDatestamp(0));
+                currUser = un;
+                enabledLoginComponents(true);
+                consoleLoginFailCount = 0;
+                userPassword.setText("");
+                loginToggleButton.setText("Sign Out");
+                loginStatus.setText("Welcome " + currUser + "! You are now signed in.");
+                updateUserDropdowns();
+            } else { // failed login
+                // set sign in settings
+                loginToggleButton.setSelected(false);
+                userPassword.setText("");
+                loginStatus.setText("Error(" + ++consoleLoginFailCount + "): incorrect password.");
+            }
         }
     }//GEN-LAST:event_userPasswordKeyPressed
 
     private void loginToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loginToggleButtonActionPerformed
-        if(loginToggleButton.isSelected()) { // attempt to log user in
-            attemptUserLogin();
+        String userUN = loginUserDropdown.getSelectedItem().toString();
+        String userPW = mc.getPassword(userUN);
+        String inputPW = "";
+        if (loginToggleButton.isSelected()) { // attempt to log user in
+            for (char c : userPassword.getPassword()) {
+                inputPW += c;
+            }
+            if (userPW.equals(Utilities.getHash(inputPW))) { // successful login
+                transactionDateField.setText(Utilities.getDatestamp(0));
+                currUser = userUN;
+                enabledLoginComponents(true);
+                consoleLoginFailCount = 0;
+                userPassword.setText("");
+                loginToggleButton.setText("Sign Out");
+                loginStatus.setText("Welcome " + currUser + "! You are now signed in.");
+                updateUserDropdowns();
+                // shutdown server while logged in
+                serverIsOn = false;
+                exec.shutdownNow();
+                serverToggleButton.setText("Start Server");
+                gmailServerStatus.setText("Gmail server is now OFF.");
+                gmailUsername.setEnabled(true);
+                gmailPassword.setEnabled(true);
+                serverToggleButton.setEnabled(false);
+            } else { // failed login
+                // set sign in settings
+                loginToggleButton.setSelected(false);
+                userPassword.setText("");
+                loginStatus.setText("Error(" + ++consoleLoginFailCount + "): incorrect password.");
+            }
         } else { // log user out
-            userLogout();
+            currUser = "";
+            enabledLoginComponents(false);
+            // set sign in settings
+            loginToggleButton.setText("Sign In");
+            loginStatus.setText("You are now signed out.");
+            cmdHistory.clear();
+            updateUserDropdowns();
+            // attempt to start server while logged out
+            {
+                serverToggleButton.setEnabled(true);
+                // retrieve username and password from the text fields
+                String gmailUN, gmailPW = "";
+                gmailUN = gmailUsername.getText();
+                for (char c : gmailPassword.getPassword()) {
+                    gmailPW += c;
+                }
+                // check if un & pw are valid
+                if (gc.isValidCredentials(gmailUN, gmailPW)) {
+                    mc.setGmailUsername(gmailUN);
+                    mc.setGmailPassword(gmailPW);
+                    serverIsOn = true;
+                    exec = Executors.newSingleThreadExecutor();
+                    exec.submit(gmailServer);
+                    serverToggleButton.setText("Stop Server");
+                    gmailServerStatus.setText("Gmail server is now ON.");
+                    serverLoginFailCount = 0;
+                    gmailUsername.setEnabled(false);
+                    gmailPassword.setEnabled(false);
+                } else {
+                    serverToggleButton.setSelected(false);
+                    gmailServerStatus.setText("Error(" + ++serverLoginFailCount + "): invalid username and/or password.");
+                }
+            }
         }
     }//GEN-LAST:event_loginToggleButtonActionPerformed
 
     private void aboutMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_aboutMenuItemActionPerformed
         JOptionPane.showMessageDialog(this,
-                "WORTH ENVELOPES\n" +
-                "\n" +
-                "Version: 2.2\n" +
-                "Released on: 10 August 2014\n" +
-                "\n" +
-                "This application allows multiple user to share funds and keep\n" +
-                "track of spending in real-time and on the go. Simply setup a\n" +
-                "dedicated Gmail account from the \"Admin\" tab and you're ready\n" +
-                "to go. Create accounts where money actually resides, and \n" +
-                "envelopes where you want your money to go. As money comes and\n" +
-                "goes, text or email commands to the Gmail address you specified\n" +
-                "and this application will respond with updates.\n" +
-                "\n" +
-                "This version includes a console and Gmail Server. Furture updates\n" +
-                "should allow additional client consoles on multiple devices and\n" +
-                "a smartphone app interface.");
+                "ENVELOPES\n"
+                + "\n"
+                + "Version: 3.0\n"
+                + "Released on: 24 February 2018\n"
+                + "\n"
+                + "This application allows multiple users to share funds and keep\n"
+                + "track of spending in real-time and on the go. Simply setup a\n"
+                + "dedicated Gmail account, log into that account from the \"Admin\"\n"
+                + "tab and you're ready to go. Create Accounts where money actually\n"
+                + "resides, and Envelopes where you want your money to go. As\n"
+                + "money comes and goes, text or email commands to the Gmail\n"
+                + "address you specified and this application will respond with\n"
+                + "updates.\n"
+                + "\n"
+                + "NOTE: If this is your first time logging in, Admin password\n"
+                + "is 'password'. For command usage format, text/email 'help' to\n"
+                + "specified Gmail account.");
     }//GEN-LAST:event_aboutMenuItemActionPerformed
 
     private void exitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exitMenuItemActionPerformed
@@ -2123,18 +2004,18 @@ public class Console extends javax.swing.JFrame {
         String title = "Closing " + TITLE;
         int yes = 0;
         int opt = JOptionPane.showConfirmDialog(this, msg, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
-        if(opt == yes) {
+        if (opt == yes) {
             System.exit(0);
         }
     }//GEN-LAST:event_exitMenuItemActionPerformed
 
     private void resetDatabaseMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetDatabaseMenuItemActionPerformed
         String msg = "WARNING: database resets CANNOT be undone.\n"
-                   + "Are you sure you want to purge all data?";
+                + "Are you sure you want to purge all data?";
         String title = "Reset Database";
         int yes = 0;
         int opt = JOptionPane.showConfirmDialog(this, msg, title, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-        if(opt == yes) {
+        if (opt == yes) {
             // shutdown Gmail Server
             serverIsOn = false;
             exec.shutdownNow();
@@ -2143,11 +2024,11 @@ public class Console extends javax.swing.JFrame {
             gmailUsername.setEnabled(true);
             gmailPassword.setEnabled(true);
             // log user (admin) out
-            currentUser = null;
+            currUser = "";
             // disable login components
             enabledLoginComponents(false);
             // reset database
-            Model.resetDatabase();
+            mc.resetDatabase();
             // set sign in settings
             loginToggleButton.setText("Sign In");
             loginToggleButton.setSelected(false);
@@ -2155,7 +2036,6 @@ public class Console extends javax.swing.JFrame {
             gmailPassword.setText("");
             userPassword.setText("");
             loginStatus.setText("You are now signed out.");
-            histIndex = -1;
             cmdHistory.clear();
             // update all views
             updateAll();
@@ -2167,7 +2047,7 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_refreshAllMenuItemActionPerformed
 
     private void refreshTablesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshTablesMenuItemActionPerformed
-        this.updateAllTables();
+        updateAllTables();
     }//GEN-LAST:event_refreshTablesMenuItemActionPerformed
 
     private void budgetWorksheetButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_budgetWorksheetButtonActionPerformed
@@ -2183,12 +2063,12 @@ public class Console extends javax.swing.JFrame {
                     fileName = file.getAbsolutePath();
 
                     // remove file extension so we can add it after incremental append to duplicates
-                    if(fileName.endsWith(".csv")) {
-                        fileName = fileName.substring(0, fileName.length()-4);
+                    if (fileName.endsWith(".csv")) {
+                        fileName = fileName.substring(0, fileName.length() - 4);
                     }
                     File f = new File(fileName + ".csv");
                     int count = 1;
-                    while(f.exists()) {
+                    while (f.exists()) {
                         f = new File(fileName + "(" + count++ + ")" + ".csv");
                     }
 
@@ -2199,78 +2079,66 @@ public class Console extends javax.swing.JFrame {
                     budgetWorksheetButton.setEnabled(false);
 
                     // intialize variables
-                    LinkedList<Category> cats = Model.getCategories(true);
-                    LinkedList<Envelope> envs = Model.getEnvelopes(true);
                     int row = 5;
                     String C = "=", D = "=", E = "=";
 
                     // setup for progress bar value
                     reportProgressBar.setValue(0);
-                    int catCount = cats.size();
-                    int envCount = envs.size();
-                    int max = 5+catCount+envCount;
+                    int envCount = mc.getEnvelopeCCount() - 1;
+                    int max = 5 + envCount;
                     int curr = 3;
 
                     // write budget worksheet to file
                     try (FileWriter writer = new FileWriter(f)) {
                         // write header info to file
                         writer.write("Budget prepared on " + Utilities.getDatestamp(0) + "\n\n");
-                        writer.write(",Left Over,=-C" + (cats.size() + envs.size() + 7) + "\n\n");
+                        writer.write(",Left Over,=-C" + (envCount + 6) + "\n\n");
                         writer.write("Envelope,,Budget Amt,Current Amt,New Amt\n");
-                        reportProgressBar.setValue(curr*100/max);
+                        reportProgressBar.setValue(curr * 100 / max);
                         // write categorized envelopes to file
-                        for (Category cat : cats) {
-                            curr++;
-                            reportProgressBar.setValue(curr*100/max);
-                            row++;
-                            envs = Model.getEnvelopes(cat, true);
-                            int a = row + 1, b = row + envs.size();
-                            C += "C" + row + "+";
-                            D += "D" + row + "+";
-                            E += "E" + row + "+";
-                            writer.write(cat.getName().toUpperCase() + ",,=SUM(C" + a + ":C" + b + "),=SUM(D" + a + ":D" + b + "),=SUM(E" + a + ":E" + b + ")\n");
-                            for (Envelope env : envs) {
+                        for (int i = 0; i < envCount; i++) {
+                            if (mc.isCategory(i)) {
+                                String catName = mc.getEnvelopeCName(i);    // get category name
+                                String[][] envs = mc.getEnvelopes(catName); // get envelopes in specified category
+                                // update progress bar
                                 curr++;
-                                reportProgressBar.setValue(curr*100/max);
+                                reportProgressBar.setValue(curr * 100 / max);
+                                // update current row in spreadsheet
                                 row++;
-                                writer.write("," + env.getName() + ",," + Utilities.roundAmount(env.getAmount()) + ",=C" + row + "+D" + row + "\n");
-                            }
-                        }
-
-                        // write uncategorized envelopes to file
-                        envs = Model.getUncategorizedEnvelopes(true);
-                        if(envs.size()>0) {
-                            curr++;
-                            reportProgressBar.setValue(curr*100/max);
-                            row++;
-                            int a = row + 1, b = row + envs.size();
-                            C += "C" + row + "+";
-                            D += "D" + row + "+";
-                            E += "E" + row + "+";
-                            writer.write("OTHER,,=SUM(C" + a + ":C" + b + "),=SUM(D" + a + ":D" + b + "),=SUM(E" + a + ":E" + b + ")\n");
-                            for (Envelope env : envs) {
-                                curr++;
-                                reportProgressBar.setValue(curr*100/max);
-                                row++;
-                                writer.write("," + env.getName() + ",," + Utilities.roundAmount(env.getAmount()) + ",=C" + row + "+D" + row + "\n");
+                                int a = row + 1;
+                                int b = row + envs[0].length;
+                                C += "C" + row + "+";
+                                D += "D" + row + "+";
+                                E += "E" + row + "+";
+                                // print category
+                                writer.write(catName.toUpperCase() + ",,=SUM(C" + a + ":C" + b + "),=SUM(D" + a + ":D" + b + "),=SUM(E" + a + ":E" + b + ")\n");
+                                // print corresponding envelopes
+                                for (int j = 0; j < envs[0].length; j++) {
+                                    // update progress bar
+                                    curr++;
+                                    reportProgressBar.setValue(curr * 100 / max);
+                                    // update current row in spreadsheet
+                                    row++;
+                                    writer.write("," + envs[0][j] + ",," + envs[1][j] + ",=C" + row + "+D" + row + "\n");
+                                }
                             }
                         }
 
                         // write totals to file
-                        if(C.length()>0 && C.charAt(C.length()-1)=='+') {
-                            C = C.substring(0, C.length()-1);
-                            D = D.substring(0, D.length()-1);
-                            E = E.substring(0, E.length()-1);
+                        if (C.length() > 0 && C.charAt(C.length() - 1) == '+') { // removes last '+' character
+                            C = C.substring(0, C.length() - 1);
+                            D = D.substring(0, D.length() - 1);
+                            E = E.substring(0, E.length() - 1);
                             writer.write("TOTAL,," + C + "," + D + "," + E + "\n");
                         } else {
                             writer.write("TOTAL,," + 0 + "," + 0 + "," + 0 + "\n");
                         }
                         curr++;
-                        reportProgressBar.setValue(curr*100/max);
+                        reportProgressBar.setValue(curr * 100 / max);
 
                         writer.flush();
                     } catch (IOException ex) {
-                    }
+                        /* DO NOTHING */ }
 
                     reportProgressBar.setValue(0);
                     snapshotButton.setEnabled(true);
@@ -2285,8 +2153,37 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_budgetWorksheetButtonActionPerformed
 
     private void trendTextFieldFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_trendTextFieldFocusLost
-        trendTextField.setText(validateTrendInput(trendTextField.getText()));
-        if(trendTextField.getText().contains("[")) {
+        String input = trendTextField.getText();
+        if (input.length() > 0) {
+            input = input.toLowerCase();
+            // remove invalid charaters
+            String tmp = "";
+            for (int i = 0; i < input.length(); i++) {
+                if ((input.charAt(i) >= 'a' && input.charAt(i) <= 'z') || (input.charAt(i) == '-' && i > 0) || input.charAt(i) == ',') {
+                    tmp += input.charAt(i);
+                }
+            }
+            String[] names = tmp.split(",");
+            tmp = "";
+            LinkedList<String> validatedNames = new LinkedList();
+            for (String s : names) {
+                if (!validatedNames.contains(s)) { // removes duplicate entries
+                    validatedNames.add(s);
+                    if (mc.isAccount(s) || mc.isEnvelope(s)) {
+                        tmp += s + ",";
+                    } else {
+                        tmp += "[" + s + "],";
+                    }
+                }
+            }
+            // removes last comma
+
+            input = tmp.substring(0, tmp.length() - 1);
+        } else {
+            input = "";
+        }
+        trendTextField.setText(input);
+        if (trendTextField.getText().contains("[")) {
             trendReportDirectionsLabel.setText("Names within [brackets] are invalid, please fix before continuing:");
             trendReportDirectionsLabel.setForeground(Color.red);
         }
@@ -2310,12 +2207,12 @@ public class Console extends javax.swing.JFrame {
                     fileName = file.getAbsolutePath();
 
                     // remove file extension so we can add it after incremental append to duplicates
-                    if(fileName.endsWith(".csv")) {
-                        fileName = fileName.substring(0, fileName.length()-4);
+                    if (fileName.endsWith(".csv")) {
+                        fileName = fileName.substring(0, fileName.length() - 4);
                     }
                     File f = new File(fileName + ".csv");
                     int count = 1;
-                    while(f.exists()) {
+                    while (f.exists()) {
                         f = new File(fileName + "(" + count++ + ")" + ".csv");
                     }
                     // disable report buttons so only one report is run at once
@@ -2323,32 +2220,28 @@ public class Console extends javax.swing.JFrame {
                     allTransactionsButton.setEnabled(false);
                     runTrendReportButton.setEnabled(false);
                     budgetWorksheetButton.setEnabled(false);
-                    // get accounts
-                    LinkedList<Account> activeAccts = Model.getAccounts(true);
-                    // get envelopes
-                    LinkedList<Envelope> activeEnvs = Model.getEnvelopes(true);
                     // setup for progress bar value
                     reportProgressBar.setValue(0);
-                    int acctCount = activeAccts.size();
-                    int envCount = activeEnvs.size();
-                    int max = 50+acctCount+acctCount*13+envCount+envCount*13;
-                    int curr = acctCount+envCount;
-                    reportProgressBar.setValue(curr*100/max);
+                    int acctCount = mc.getAccountCount() - 1;
+                    int envCount = mc.getEnvelopeUCount() - 1;
+                    int max = 50 + acctCount + acctCount * 13 + envCount + envCount * 13;
+                    int curr = acctCount + envCount;
+                    reportProgressBar.setValue(curr * 100 / max);
                     // Get 12 most recent months:
                     String[][] twelveMths = new String[12][2];
                     // finds next month based off today's date
-                    int mth = ((Integer.parseInt(Utilities.getDatestamp(0).substring(5, 7)))%12)+1;
+                    int mth = ((Integer.parseInt(Utilities.getDatestamp(0).substring(5, 7))) % 12) + 1;
                     // finds the year of next month
                     int yr = Integer.parseInt(Utilities.getDatestamp(0).substring(0, 4));
-                    if(mth==1) {
+                    if (mth == 1) {
                         yr++;
                     }
                     String date;
-                    for(int i = 11; i>=0; i--) {
-                        if(mth<10) { // one digit
+                    for (int i = 11; i >= 0; i--) {
+                        if (mth < 10) { // one digit
                             date = Integer.toString(yr) + "-0" + Integer.toString(mth) + "-01";
-                            if(mth==1) { // reset month to Dec and decrease year
-                                mth=12;
+                            if (mth == 1) { // reset month to Dec and decrease year
+                                mth = 12;
                                 yr--;
                             } else {
                                 mth--;  // decrease month, same year
@@ -2358,7 +2251,7 @@ public class Console extends javax.swing.JFrame {
                             mth--;      // decrease month, same year
                         }
                         twelveMths[i][0] = date;
-                        switch (Integer.parseInt(date.substring(5,7))) {
+                        switch (Integer.parseInt(date.substring(5, 7))) {
                             case 2:
                                 twelveMths[i][1] = "(Jan";
                                 break;
@@ -2398,7 +2291,7 @@ public class Console extends javax.swing.JFrame {
                         }
                         twelveMths[i][1] += " " + date.substring(2, 4) + ")";
                         curr++;
-                        reportProgressBar.setValue(curr*100/max);
+                        reportProgressBar.setValue(curr * 100 / max);
                     }
 
                     // write snapshot to file
@@ -2408,61 +2301,61 @@ public class Console extends javax.swing.JFrame {
                         // WRITE ACCOUNTS TO FILE
                         writer.write("\n\nAccounts");
                         // write date header for each month, 'Mmm YY' format
-                        for(int i = 0; i < 12; i++) {
+                        for (int i = 0; i < 12; i++) {
                             writer.write("," + twelveMths[i][1]);
                             curr++;
-                            reportProgressBar.setValue(curr*100/max);
+                            reportProgressBar.setValue(curr * 100 / max);
                         }
-                        reportProgressBar.setValue(reportProgressBar.getValue()+1);
-                        for(Account a : activeAccts) {
+                        for (int i = 0; i < acctCount; i++) {
                             // write account name
-                            writer.write("\n" + a.getName());
+                            writer.write("\n" + mc.getAccountName(i));
                             curr++;
-                            reportProgressBar.setValue(curr*100/max);
+                            reportProgressBar.setValue(curr * 100 / max);
                             // write account totals by month
-                            for(int i = 0; i < 12; i++) {
-                                writer.write("," + Utilities.roundAmount(Model.getAccountAmount(a.getName(), twelveMths[i][0])));
+                            for (int j = 0; j < 12; j++) {
+                                writer.write("," + Utilities.amountToStringSimple(mc.getAccountAmount(mc.getAccountName(i), twelveMths[j][0])));
                                 curr++;
-                                reportProgressBar.setValue(curr*100/max);
+                                reportProgressBar.setValue(curr * 100 / max);
                             }
                         }
                         // totals for each month
                         writer.write("\nTotal");
-                        for(int i = 0; i < 12; i++) {
-                            writer.write("," + Utilities.roundAmount(Model.getAccountAmount("-all-", twelveMths[i][0])));
+                        for (int i = 0; i < 12; i++) {
+                            writer.write("," + Utilities.amountToStringSimple(mc.getAccountAmount("ALL", twelveMths[i][0])));
                             curr++;
-                            reportProgressBar.setValue(curr*100/max);
+                            reportProgressBar.setValue(curr * 100 / max);
                         }
+
                         // WRITE ENVELOPES TO FILE
                         writer.write("\n\nEnvelopes");
                         // write date header for each month, 'Mmm YY' format
-                        for(int i = 0; i < 12; i++) {
+                        for (int i = 0; i < 12; i++) {
                             writer.write("," + twelveMths[i][1]);
                             curr++;
-                            reportProgressBar.setValue(curr*100/max);
+                            reportProgressBar.setValue(curr * 100 / max);
                         }
-                        for(Envelope e : activeEnvs) {
+                        for (int i = 0; i < envCount; i++) {
                             // write envelope name
-                            writer.write("\n" + e.getName());
+                            writer.write("\n" + mc.getEnvelopeUName(i));
                             curr++;
-                            reportProgressBar.setValue(curr*100/max);
+                            reportProgressBar.setValue(curr * 100 / max);
                             // write envelope totals by month
-                            for(int i = 0; i < 12; i++) {
-                                writer.write("," + Utilities.roundAmount(Model.getEnvelopeAmount(e.getName(), twelveMths[i][0])));
+                            for (int j = 0; j < 12; j++) {
+                                writer.write("," + Utilities.amountToStringSimple(mc.getEnvelopeAmount(mc.getEnvelopeUName(i), twelveMths[j][0])));
                                 curr++;
-                                reportProgressBar.setValue(curr*100/max);
+                                reportProgressBar.setValue(curr * 100 / max);
                             }
                         }
                         // totals for each month
                         writer.write("\nTotal");
-                        for(int i = 0; i < 12; i++) {
-                            writer.write("," + Utilities.roundAmount(Model.getEnvelopeAmount("-all-", twelveMths[i][0])));
+                        for (int i = 0; i < 12; i++) {
+                            writer.write("," + Utilities.amountToStringSimple(mc.getEnvelopeAmount("ALL", twelveMths[i][0])));
                             curr++;
-                            reportProgressBar.setValue(curr*100/max);
+                            reportProgressBar.setValue(curr * 100 / max);
                         }
                         writer.flush();
                     } catch (IOException ex) {
-                    }
+                        /* DO NOTHING */ }
                     reportProgressBar.setValue(0);
                     snapshotButton.setEnabled(true);
                     allTransactionsButton.setEnabled(true);
@@ -2476,8 +2369,7 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_snapshotButtonActionPerformed
 
     private void allTransactionsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_allTransactionsButtonActionPerformed
-        Runnable exportAllTransactions;
-        exportAllTransactions = new Runnable() {
+        Runnable exportAllTransactions = new Runnable() {
             @Override
             public void run() {
                 JFileChooser fc = new JFileChooser();
@@ -2488,12 +2380,12 @@ public class Console extends javax.swing.JFrame {
                     File file = fc.getSelectedFile();
                     fileName = file.getAbsolutePath();
                     // remove file extension so we can add it after incremental append to duplicates
-                    if(fileName.endsWith(".csv")) {
-                        fileName = fileName.substring(0, fileName.length()-4);
+                    if (fileName.endsWith(".csv")) {
+                        fileName = fileName.substring(0, fileName.length() - 4);
                     }
                     File f = new File(fileName + ".csv");
                     int count = 1;
-                    while(f.exists()) {
+                    while (f.exists()) {
                         f = new File(fileName + "(" + count++ + ")" + ".csv");
                     }
                     // disable report buttons so only one report is run at once
@@ -2501,70 +2393,26 @@ public class Console extends javax.swing.JFrame {
                     allTransactionsButton.setEnabled(false);
                     runTrendReportButton.setEnabled(false);
                     budgetWorksheetButton.setEnabled(false);
-                    // setup for progress bar value
-                    reportProgressBar.setValue(0);
-                    int t = Model.getTransactionCount();
-                    int max = 6*t;
+
+                    // get all transactions
+                    String[] trans = mc.getAllTransactions(reportProgressBar);
                     int curr = 0;
-                    // get transactions
-                    LinkedList<Transaction> transactions = new LinkedList();
-                    try {
-                        // register the driver
-                        Class.forName("org.sqlite.JDBC");
-                        // connect to database
-                        try (Connection conn = DriverManager.getConnection(URL); Statement stmt = conn.createStatement()) {
-                            stmt.setQueryTimeout(TIMEOUT);
-                            // execute query
-                            ResultSet rs = stmt.executeQuery("SELECT id FROM trans ORDER BY date DESC, id DESC"); // get all transactions
-                            while(rs.next()) {
-                                transactions.addFirst(new Transaction(rs.getInt("id")));
-                                curr = curr+5;
-                                reportProgressBar.setValue(curr*100/max);
-                            }
-                        }
-                    } catch (ClassNotFoundException | SQLException e) {
-                    }
+                    int max = trans.length;
+
                     // write transactions to file
                     try (FileWriter writer = new FileWriter(f)) {
-                        if(Model.getTransactions(1).size()>0) { // writes only if there are 1 or more transactions
+                        if (trans.length > 1) { // writes only if there are 1 or more transactions
                             writer.write("Transactions as of " + Utilities.getDatestamp(0) + "\n\n");
-                            writer.write("Tx,Date,Description,Amount,Run Total,Account,Envelope,User");
-                            // pulls latest amount
-                            double runTot = Model.getAccountAmount("-all-", Utilities.getNewDate(Model.getTransactions(1).getFirst().getDate(), 1));
-                            double diff = 0;
-                            String tx, date, desc, amt, rt, acct, env, usr;
-                            while(!transactions.isEmpty()) {
-                                Transaction trans = transactions.pollLast();
-                                runTot -= diff;
-                                if(trans.getAccount().getId()!=-1 && trans.getEnvelope().getId()!=-1) // both env and acct specified = not a transfer (Tx)
-                                    tx = "";
-                                else
-                                    tx = "X";
-                                date = trans.getDate();
-                                desc = trans.getDescription();
-                                amt = Utilities.roundAmount(trans.getAmount());
-                                rt = Utilities.roundAmount(runTot);
-                                if(trans.getAccount().getId()!=-1)
-                                    acct = trans.getAccount().getName();
-                                else
-                                    acct = "";
-                                if(trans.getEnvelope().getId()!=-1)
-                                    env = trans.getEnvelope().getName();
-                                else
-                                    env = "";
-                                usr = trans.getUser().getUsername();
-                                writer.write("\n" + tx + "," + date + "," + desc + "," + amt + "," + rt + "," + acct + "," + env + "," + usr);
-                                curr++;
-                                reportProgressBar.setValue(curr*100/max);
-                                diff = trans.getAmount();
+                            for (String t : trans) {
+                                writer.write(t);
+                                reportProgressBar.setValue((++curr) * 100 / max);
                             }
                         } else {
                             writer.write("Transactions as of " + Utilities.getDatestamp(0) + "\n\n");
                             writer.write("<No transactions...>");
                         }
                         writer.flush();
-                    } catch (IOException ex) {
-                    }
+                    } catch (IOException ex) { /* DO NOTHING */ }
                     // enable reports buttons now that transaction pull is complete
                     reportProgressBar.setValue(0);
                     snapshotButton.setEnabled(true);
@@ -2621,7 +2469,7 @@ public class Console extends javax.swing.JFrame {
                             writer.write("Trends as of " + Utilities.getDatestamp(0) + "\n\n");
                             // write column headers (account and envelope names)
                             for(String name : acctAndEnvNames) {
-                                if(Model.isAccount(name, true)) {
+                                if(mc.isAccount(name)) {
                                     writer.write(",*" + name);
                                 } else {
                                     writer.write("," + name);
@@ -2630,18 +2478,17 @@ public class Console extends javax.swing.JFrame {
                             for (String date : dates) {
                                 writer.write("\n" + date);
                                 for (String name : acctAndEnvNames) {
-                                    if (Model.isAccount(name, true)) {
-                                        writer.write("," + Utilities.roundAmount(Model.getAccountAmount(name, Utilities.getNewDate(date, 1))));
+                                    if(mc.isAccount(name)) {
+                                        writer.write("," + Utilities.amountToStringSimple(mc.getAccountAmount(name, Utilities.getNewDate(date, 1))));
                                     } else {
-                                        writer.write("," + Utilities.roundAmount(Model.getEnvelopeAmount(name, Utilities.getNewDate(date, 1))));
+                                        writer.write("," + Utilities.amountToStringSimple(mc.getEnvelopeAmount(name, Utilities.getNewDate(date, 1))));
                                     }
                                 }
                                 curr++;
                                 reportProgressBar.setValue(curr*100/max);
                             }
                             writer.flush();
-                        } catch (IOException ex) {
-                        }
+                        } catch (IOException ex) { /* DO NOTHING */ }
                         // enable reports buttons now that transaction pull is complete
                         reportProgressBar.setValue(0);
                         snapshotButton.setEnabled(true);
@@ -2659,8 +2506,8 @@ public class Console extends javax.swing.JFrame {
         // removes non-digit characters
         String input = intervalCountTextField.getText();
         String tmp = "";
-        for(int i = 0; i < input.length(); i++) {
-            if(input.charAt(i)>='0' && input.charAt(i)<='9') {
+        for (int i = 0; i < input.length(); i++) {
+            if (input.charAt(i) >= '0' && input.charAt(i) <= '9') {
                 tmp += input.charAt(i);
             }
         }
@@ -2677,34 +2524,38 @@ public class Console extends javax.swing.JFrame {
             case 0:
                 // monthly
                 // enforces 6 to 1200 months
-                if(dur<6) {
+                if (dur < 6) {
                     intervalCountTextField.setText("6");
-                } else if(dur>1200) {
+                } else if (dur > 1200) {
                     intervalCountTextField.setText("1200");
                 } else {
                     intervalCountTextField.setText(Integer.toString(dur));
-                }   break;
+                }
+                break;
             case 1:
                 // weekly (every 7 days)
                 // enforces 4 to 5200 weeks
-                if(dur<4) {
+                if (dur < 4) {
                     intervalCountTextField.setText("4");
-                } else if(dur>5200) {
+                } else if (dur > 5200) {
                     intervalCountTextField.setText("5200");
                 } else {
                     intervalCountTextField.setText(Integer.toString(dur));
-                }   break;
+                }
+                break;
             default:
                 // daily
                 // enforces 7 to 36500 days
-                if(dur<7) {
+                if (dur < 7) {
                     intervalCountTextField.setText("7");
-                } else if(dur>36500) {
+                } else if (dur > 36500) {
                     intervalCountTextField.setText("36500");
                 } else {
                     intervalCountTextField.setText(Integer.toString(dur));
-                }   break;
+                }
+                break;
         }
+
     }//GEN-LAST:event_intervalCountTextFieldFocusLost
 
     private void intervalTypeDropdownActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_intervalTypeDropdownActionPerformed
@@ -2728,69 +2579,92 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_intervalTypeDropdownActionPerformed
 
     private void serverToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_serverToggleButtonActionPerformed
-        if(serverToggleButton.isSelected()) {
-            attemptServerLogin();
+        if (serverToggleButton.isSelected()) {
+            // retrieve username and password from the text fields
+            String un, pw = "";
+            un = gmailUsername.getText();
+            for (char c : gmailPassword.getPassword()) {
+                pw += c;
+            }
+            // check if un & pw are valid
+            if (gc.isValidCredentials(un, pw)) {
+                mc.setGmailUsername(un);
+                mc.setGmailPassword(pw);
+                serverIsOn = true;
+                exec = Executors.newSingleThreadExecutor();
+                exec.submit(gmailServer);
+                serverToggleButton.setText("Stop Server");
+                gmailServerStatus.setText("Gmail server is now ON.");
+                serverLoginFailCount = 0;
+                gmailUsername.setEnabled(false);
+                gmailPassword.setEnabled(false);
+            } else {
+                serverToggleButton.setSelected(false);
+                gmailServerStatus.setText("Error(" + ++serverLoginFailCount + "): invalid username and/or password.");
+            }
         } else {
-            serverLogout();
+            serverIsOn = false;
+            exec.shutdownNow();
+            serverToggleButton.setText("Start Server");
+            gmailServerStatus.setText("Gmail server is now OFF.");
+            gmailUsername.setEnabled(true);
+            gmailPassword.setEnabled(true);
         }
     }//GEN-LAST:event_serverToggleButtonActionPerformed
-
-    private void gmailPasswordKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_gmailPasswordKeyPressed
-        if(evt.getKeyCode()==10) { // <enter> is pressed
-            attemptServerLogin();
-        }
-    }//GEN-LAST:event_gmailPasswordKeyPressed
-
-    private void gmailUsernameKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_gmailUsernameKeyPressed
-        if(evt.getKeyCode()==10) { // <enter> is pressed
-            attemptServerLogin();
-        }
-    }//GEN-LAST:event_gmailUsernameKeyPressed
 
     private void updateUserButtonFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_updateUserButtonFocusLost
         usersMessage.setText("");
     }//GEN-LAST:event_updateUserButtonFocusLost
 
     private void updateUserButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_updateUserButtonActionPerformed
-        String userToUpdate = (String) updateUserDropdown.getSelectedItem();
-        User usr = Model.getUser(userToUpdate, true);
-        String un = updateUserTextField.getText();
+        String oldUsername = (String) updateUserDropdown.getSelectedItem();
+        String newUsername = updateUserTextField.getText();
         String pw = "";
         char[] password = updateUserPasswordField.getPassword();
-        for(char c : password) {
+        for (char c : password) {
             pw += c;
         }
-        un = un.trim();
+        newUsername = newUsername.trim();
         pw = pw.trim();
-        if(un.length()==0 && pw.length()==0) {
+        if (newUsername.length() == 0 && pw.length() == 0) {
             // do nothing
-        } else if (un.length()==0) {
+        } else if (newUsername.length() == 0) {
             // update only password
-            if(Utilities.isValidPassword(pw)) {
-                usr.setPassword(pw);
+            if (Utilities.isValidPassword(pw)) {
+                mc.setUserPassword(oldUsername, pw);
                 updateUserPasswordField.setText("");
             } else {
                 usersMessage.setText("ERROR: password must contain at least 4 characters with no whitespaces.");
             }
-        } else if (pw.length()==0) {
+        } else if (pw.length() == 0) {
             // update only username
-            if(Utilities.isValidUsername(un)) {
-                usr.setUsername(un);
+            if (Utilities.isValidUsername(newUsername)) {
+                if (oldUsername.equalsIgnoreCase(currUser)) {
+                    currUser = newUsername;
+                    loginStatus.setText("Welcome " + currUser + "! You are now signed in.");
+                }
+                mc.renameUser(oldUsername, newUsername);
                 updateUserDropdowns();
+                updateEmailTable();
                 updateUserTextField.setText("");
             } else {
                 usersMessage.setText("ERROR: username must begin with a letter and contain only letters and numbers.");
             }
         } else {
             // update both username and password
-            if(!Utilities.isValidUsername(un)) {
+            if (!Utilities.isValidUsername(newUsername)) {
                 usersMessage.setText("ERROR: username must begin with a letter and contain only letters and numbers.");
-            } else if(!Utilities.isValidPassword(pw)) {
+            } else if (!Utilities.isValidPassword(pw)) {
                 usersMessage.setText("ERROR: password must contain at least 4 characters with no whitespaces.");
             } else {
-                usr.setUsername(un);
-                usr.setPassword(pw);
+                mc.setUserPassword(oldUsername, pw);
+                if (oldUsername.equalsIgnoreCase(currUser)) {
+                    currUser = newUsername;
+                    loginStatus.setText("Welcome " + currUser + "! You are now signed in.");
+                }
+                mc.renameUser(oldUsername, newUsername);
                 updateUserDropdowns();
+                updateEmailTable();
                 updateUserTextField.setText("");
                 updateUserPasswordField.setText("");
             }
@@ -2798,8 +2672,8 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_updateUserButtonActionPerformed
 
     private void removeUserButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeUserButtonActionPerformed
-        String un = (String) removeUserDropdown.getSelectedItem();
-        Model.getUser(un, true).setEnabled(false);
+        String username = (String) removeUserDropdown.getSelectedItem();
+        mc.disableUser(username);
         updateUserDropdowns();
     }//GEN-LAST:event_removeUserButtonActionPerformed
 
@@ -2808,24 +2682,24 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_addUserButtonFocusLost
 
     private void addUserButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addUserButtonActionPerformed
-        String un = addUserTextField.getText();
+        String username = addUserTextField.getText();
         String pw = "";
         char[] password = addUserPasswordField.getPassword();
-        for(char c : password) {
+        for (char c : password) {
             pw += c;
         }
-        un = un.trim();
+        username = username.trim();
         pw = pw.trim();
-        if(un.length()==0 || pw.length()==0) {
+        if (username.length() == 0 || pw.length() == 0) {
             usersMessage.setText("ERROR: username and/or password cannot be blank.");
-        } else if(Model.isUser(un, true)) {
+        } else if (mc.isUserEnabled(username)) {
             usersMessage.setText("ERROR: user already exists with that name.");
-        } else if(!Utilities.isValidUsername(un)) {
+        } else if (!Utilities.isValidUsername(username)) {
             usersMessage.setText("ERROR: username must begin with a letter and contain only letters and numbers.");
-        } else if(!Utilities.isValidPassword(pw)) {
+        } else if (!Utilities.isValidPassword(pw)) {
             usersMessage.setText("ERROR: password must contain at least 4 characters with no whitespaces.");
         } else {
-            Model.addUser(un, pw);
+            mc.addUser(username, pw);
             addUserTextField.setText("");
             addUserPasswordField.setText("");
             updateUserDropdowns();
@@ -2833,58 +2707,36 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_addUserButtonActionPerformed
 
     private void allowEmailActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_allowEmailActionPerformed
-        Email tmp = Model.getEmail((String) emailAddressDropdown.getSelectedItem());
-        User usr = Model.getUser((String) emailUserDropdown.getSelectedItem(), true);
-        if(tmp!=null && usr!=null) {
-            tmp.setAttempt(0);
-            tmp.setUser(usr);
+        String addr = (String) emailAddressDropdown.getSelectedItem();
+        String usr = (String) emailUserDropdown.getSelectedItem();
+
+        if (mc.isEmailAlreadyAdded(addr) && mc.isUserEnabled(usr)) {
+            mc.setEmailUser(addr, usr);
         }
         updateEmailTable();
     }//GEN-LAST:event_allowEmailActionPerformed
 
     private void blockEmailActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_blockEmailActionPerformed
-        Email tmp = Model.getEmail((String) emailAddressDropdown.getSelectedItem());
-        if(tmp!=null) {
-            tmp.setAttempt(99);
-            tmp.setUser(null);
-        }
+        String addr = (String) emailAddressDropdown.getSelectedItem();
+        mc.blockEmail(addr);
         updateEmailTable();
     }//GEN-LAST:event_blockEmailActionPerformed
-
-    private void transactionQtyButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_transactionQtyButtonActionPerformed
-        String text = transactionQtyButton.getText();
-        if(text.equalsIgnoreCase("25")) {
-            transactionQtyButton.setText("50");
-        } else if(text.equalsIgnoreCase("50")) {
-            transactionQtyButton.setText("100");
-        } else {
-            transactionQtyButton.setText("25");
-        }
-        validateTransactionFields();
-        updateTransactionTable();
-    }//GEN-LAST:event_transactionQtyButtonActionPerformed
-
-    private void moreTransactionsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_moreTransactionsButtonActionPerformed
-        validateTransactionFields();
-        updateTransactionTableWithMoreTransactions();
-    }//GEN-LAST:event_moreTransactionsButtonActionPerformed
 
     private void mergeEnvelopesButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_mergeEnvelopesButtonActionPerformed
         String mergeFromEnvName = (String) transEnvelopeDropdown.getSelectedItem();
         String mergeToEnvName = (String) mergeEnvelopesList.getSelectedItem();
-        if(mergeFromEnvName!=null && mergeToEnvName!=null && !mergeFromEnvName.equalsIgnoreCase(mergeToEnvName) && !mergeFromEnvName.equalsIgnoreCase("-all-")) {
-            Envelope mergeFromEnv = Model.getEnvelope(mergeFromEnvName, true);
-            Envelope mergeToEnv = Model.getEnvelope(mergeToEnvName, true);
+
+        if (mergeFromEnvName != null && mergeToEnvName != null && !mergeFromEnvName.equalsIgnoreCase(mergeToEnvName) && !mergeFromEnvName.equalsIgnoreCase(ALL)) {
             // give user second chance to back out of the merger
             String msg = "WARNING: merging two envelopes CANNOT be undone.\n"
-            + "Are you sure you want to move all transactions\n"
-            + "from '" + mergeFromEnvName + "' into '" + mergeToEnvName + "',\n"
-            + "and then remove '" + mergeFromEnvName + "'?";
+                    + "Are you sure you want to move all transactions\n"
+                    + "from '" + mergeFromEnvName + "' into '" + mergeToEnvName + "',\n"
+                    + "and then remove '" + mergeFromEnvName + "'?";
             String title = "Merge Envelopes";
             int yes = 0;
             int opt = JOptionPane.showConfirmDialog(this, msg, title, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-            if(opt == yes) {
-                Model.mergeEnvelopes(mergeFromEnv, mergeToEnv);
+            if (opt == yes) {
+                mc.mergeEnvelopes(mergeFromEnvName, mergeToEnvName);
                 updateEnvelopeTable();
                 updateEnvelopeDropdowns();
             }
@@ -2894,10 +2746,12 @@ public class Console extends javax.swing.JFrame {
     private void setCategoryButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setCategoryButtonActionPerformed
         String envName = (String) transEnvelopeDropdown.getSelectedItem();
         String catName = (String) transCategoryDropdown.getSelectedItem();
-        if(envName!=null && catName!=null && !envName.equalsIgnoreCase("-all-")) {
-            Envelope env = Model.getEnvelope(envName, true);
-            Category cat = Model.getCategory(catName, true);
-            env.setCategory(cat);
+        if (envName != null && catName != null && !envName.equalsIgnoreCase(ALL)) {
+            if(catName.equalsIgnoreCase(NONE)) {
+                mc.setEnvelopeCategory(envName, UNCAT);
+            } else {
+                mc.setEnvelopeCategory(envName, catName);
+            }
             updateEnvelopeTable();
             updateTransactionTable();
         }
@@ -2905,14 +2759,8 @@ public class Console extends javax.swing.JFrame {
 
     private void removeCategoryButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeCategoryButtonActionPerformed
         String catName = (String) transCategoryDropdown.getSelectedItem();
-        if(catName!=null && !catName.equalsIgnoreCase("-none-")) {
-            Category cat = Model.getCategory(catName, true);
-            LinkedList<Envelope> envs = Model.getEnvelopes(cat, true);
-            // remove category from envelopes
-            for(Envelope env : envs) {
-                env.setCategory(null);
-            }
-            cat.setEnabled(false);
+        if (catName != null && !catName.equalsIgnoreCase(NONE)) {
+            mc.removeCategory(catName);
             updateEnvelopeTable();
             updateCategoryDropdowns();
         }
@@ -2924,10 +2772,8 @@ public class Console extends javax.swing.JFrame {
 
     private void removeAccountButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeAccountButtonActionPerformed
         String acctName = (String) transAccountDropdown.getSelectedItem();
-        if(acctName!=null && !acctName.equalsIgnoreCase("-all-")) {
-            Account acct = Model.getAccount(acctName, true);
-            if(Utilities.roundAmount(acct.getAmount()).equalsIgnoreCase("0.00")) {
-                acct.setEnabled(false);
+        if (acctName != null && !acctName.equalsIgnoreCase(ALL)) {
+            if (mc.disableAccount(acctName)) {
                 updateAccountTable();
                 updateAccountDropdowns();
             } else {
@@ -2942,15 +2788,12 @@ public class Console extends javax.swing.JFrame {
 
     private void removeEnvelopeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeEnvelopeButtonActionPerformed
         String envName = (String) transEnvelopeDropdown.getSelectedItem();
-        if(envName!=null && !envName.equalsIgnoreCase("-all-")) {
-            Envelope env = Model.getEnvelope(envName, true);
-            if(Model.getTransactionCount(env)==0) {
-                env.setCategory(null);
-                env.setEnabled(false);
+        if (envName != null && !envName.equalsIgnoreCase(ALL)) {
+            if (mc.removeEnvelope(envName)) {
                 updateEnvelopeTable();
                 updateEnvelopeDropdowns();
             } else {
-                message.setText("ERROR: '" + envName + "' must not have any transactions before it can be removed--please move transactions manually or by using the merge button");
+                message.setText("ERROR: '" + envName + "' must not have any transactions before it can be removed; please move transactions manually or by using the merge button");
             }
         }
     }//GEN-LAST:event_removeEnvelopeButtonActionPerformed
@@ -2959,63 +2802,33 @@ public class Console extends javax.swing.JFrame {
         message.setText("");
     }//GEN-LAST:event_removeEnvelopeButtonFocusLost
 
-    private void envTransferDescriptionFieldFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_envTransferDescriptionFieldFocusLost
-        if(!Utilities.isValidDescription(envTransferDescriptionField.getText())) {
-            addErrorMsg("Env Transfer Desc max 100 characters and must contain only letters, numbers, and/or the following: - ( ) @ # $ % &");
-            envTransferDescriptionField.setForeground(Color.RED);
-        }
-    }//GEN-LAST:event_envTransferDescriptionFieldFocusLost
-
-    private void envTransferDescriptionFieldFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_envTransferDescriptionFieldFocusGained
-        removeErrorMsg("Env Transfer Desc max 100 characters and must contain only letters, numbers, and/or the following: - ( ) @ # $ % &");
-        envTransferDescriptionField.setForeground(Color.BLACK);
-    }//GEN-LAST:event_envTransferDescriptionFieldFocusGained
-
-    private void acctTransferDescriptionFieldFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_acctTransferDescriptionFieldFocusLost
-        if(!Utilities.isValidDescription(acctTransferDescriptionField.getText())) {
-            addErrorMsg("Acct Transfer Desc max 100 characters and must contain only letters, numbers, and/or the following: - ( ) @ # $ % &");
-            acctTransferDescriptionField.setForeground(Color.RED);
-        }
-    }//GEN-LAST:event_acctTransferDescriptionFieldFocusLost
-
-    private void acctTransferDescriptionFieldFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_acctTransferDescriptionFieldFocusGained
-        removeErrorMsg("Acct Transfer Desc max 100 characters and must contain only letters, numbers, and/or the following: - ( ) @ # $ % &");
-        acctTransferDescriptionField.setForeground(Color.BLACK);
-    }//GEN-LAST:event_acctTransferDescriptionFieldFocusGained
-
     private void hideTransfersToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_hideTransfersToggleButtonActionPerformed
         validateTransactionFields();
-        updateTransactionTable();
+        updateSelected();
     }//GEN-LAST:event_hideTransfersToggleButtonActionPerformed
 
     private void transactionsRefreshButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_transactionsRefreshButtonActionPerformed
         validateTransactionFields();
-        updateTransactionTable();
+        updateSelected();
     }//GEN-LAST:event_transactionsRefreshButtonActionPerformed
 
     private void envTransferButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_envTransferButtonActionPerformed
-        Envelope from = Model.getEnvelope((String) envTransferFrom.getSelectedItem(), true);
-        Envelope to   = Model.getEnvelope((String) envTransferTo.getSelectedItem(), true);
-        String amt = envTransferAmt.getText();
-        String desc = envTransferDescriptionField.getText();
+        String date = transactionDateField.getText();
+        String desc = transactionDescriptionField.getText();
+        String amt = transactionAmtField.getText();
+        String from = (String) envTransferFrom.getSelectedItem();
+        String to = (String) envTransferTo.getSelectedItem();
 
-        if(Utilities.isValidAmount(amt)
-            && Utilities.isValidDescription(desc)
-            && !from.getName().equalsIgnoreCase(to.getName())
-            && currentUser!=null) {
-            if(desc.length()>0) {
-                desc = " " + desc;
-            }
-            double diff = Double.parseDouble(amt);
-            //DBMS.addTransaction(acct, env, Usr, Date, desc, amt)
-            String date = Utilities.getTimestamp().substring(0, 10);
-            Transaction t1 = Model.addTransaction("", from.getName(), currentUser.getUsername(), date, "(" + from.getName() + " > " + to.getName() + ")" + desc, -diff, "");
-            Transaction t2 = Model.addTransaction("", to.getName(),   currentUser.getUsername(), date, "(" + from.getName() + " > " + to.getName() + ")" + desc, diff, "");
-            Model.setTransferRelationship(t1, t2);
-
-            updateAllTables();
-            envTransferAmt.setText("");
-            envTransferDescriptionField.setText("");
+        if (Utilities.isDate(date)
+                && Utilities.isValidDescription(desc)
+                && Utilities.isValidAmount(amt)
+                && !from.equalsIgnoreCase(to)
+                && !currUser.equalsIgnoreCase("")) {
+            mc.addTransfer(date, desc, amt, from, to, currUser);
+            updateEnvelopeTable();
+            updateTransactionTable();
+            transactionAmtField.setText("");
+            transactionDescriptionField.setText("");
             message.setText("");
         } else {
             message.setText("ERROR: transfer not completed");
@@ -3023,82 +2836,40 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_envTransferButtonActionPerformed
 
     private void acctTransferButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_acctTransferButtonActionPerformed
-        Account from = Model.getAccount((String) acctTransferFrom.getSelectedItem(), true);
-        Account to   = Model.getAccount((String) acctTransferTo.getSelectedItem(), true);
-        String amt = acctTransferAmt.getText();
-        String desc = acctTransferDescriptionField.getText();
-        if(Utilities.isValidAmount(amt)
-            && Utilities.isValidDescription(desc)
-            && !from.getName().equalsIgnoreCase(to.getName())
-            && currentUser!=null) {
-            if(desc.length()>0) {
-                desc = " " + desc;
-            }
-            double diff = Double.parseDouble(amt);
-            String date = Utilities.getTimestamp().substring(0, 10);
-            // Model.addTransaction(acct, env, Usr, Date, desc, amt, runTot)
-            Transaction t1 = Model.addTransaction(from.getName(), "", currentUser.getUsername(), date, "*(" + from.getName() + " > " + to.getName() + ")" + desc, -diff, "");
-            Transaction t2 = Model.addTransaction(to.getName(),   "", currentUser.getUsername(), date, "*(" + from.getName() + " > " + to.getName() + ")" + desc, diff, "");
-            Model.setTransferRelationship(t1, t2);
+        String date = transactionDateField.getText();
+        String desc = transactionDescriptionField.getText();
+        String amt = transactionAmtField.getText();
+        String from = (String) acctTransferFrom.getSelectedItem();
+        String to = (String) acctTransferTo.getSelectedItem();
 
-            updateAllTables();
-            acctTransferAmt.setText("");
-            acctTransferDescriptionField.setText("");
+        if (Utilities.isDate(date)
+                && Utilities.isValidDescription(desc)
+                && Utilities.isValidAmount(amt)
+                && !from.equalsIgnoreCase(to)
+                && !currUser.equalsIgnoreCase("")) {
+            mc.addTransfer(date, desc, amt, from, to, currUser);
+            updateAccountTable();
+            updateTransactionTable();
+            transactionAmtField.setText("");
+            transactionDescriptionField.setText("");
             message.setText("");
         } else {
             message.setText("ERROR: transfer not completed");
         }
     }//GEN-LAST:event_acctTransferButtonActionPerformed
 
-    private void envTransferAmtFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_envTransferAmtFocusLost
-        if(envTransferAmt.getText().length()>0) {
-            try {
-                double amt = Utilities.evaluate(envTransferAmt.getText());
-                envTransferAmt.setText(Utilities.roundAmount(amt));
-            } catch(Exception ex) {
-                addErrorMsg("env transfer amount must be in the form of a decimal");
-                envTransferAmt.setForeground(Color.RED);
-            }
-        }
-    }//GEN-LAST:event_envTransferAmtFocusLost
-
-    private void envTransferAmtFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_envTransferAmtFocusGained
-        removeErrorMsg("env transfer amount must be in the form of a decimal");
-        envTransferAmt.setForeground(Color.BLACK);
-    }//GEN-LAST:event_envTransferAmtFocusGained
-
-    private void acctTransferAmtFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_acctTransferAmtFocusLost
-        if(acctTransferAmt.getText().length()>0) {
-            try {
-                double amt = Utilities.evaluate(acctTransferAmt.getText());
-                acctTransferAmt.setText(Utilities.roundAmount(amt));
-            } catch(Exception ex) {
-                addErrorMsg("acct transfer amount must be in the form of a decimal");
-                acctTransferAmt.setForeground(Color.RED);
-            }
-        }
-    }//GEN-LAST:event_acctTransferAmtFocusLost
-
-    private void acctTransferAmtFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_acctTransferAmtFocusGained
-        removeErrorMsg("acct transfer amount must be in the form of a decimal");
-        acctTransferAmt.setForeground(Color.BLACK);
-    }//GEN-LAST:event_acctTransferAmtFocusGained
-
     private void newTransactionButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_newTransactionButtonActionPerformed
         String date = transactionDateField.getText();
         String desc = transactionDescriptionField.getText();
         String amt = transactionAmtField.getText();
-        Account acct = Model.getAccount((String) newTransAcctDropdown.getSelectedItem(), true);
-        Envelope env = Model.getEnvelope((String) newTransEnvDropdown.getSelectedItem(), true);
+        String acct = (String) newTransAcctDropdown.getSelectedItem();
+        String env = (String) newTransEnvDropdown.getSelectedItem();
 
-        if(Utilities.isDate(date)
-            && Utilities.isValidDescription(desc)
-            && Utilities.isValidAmount(amt)
-            && acct!=null
-            && env!=null
-            && currentUser!=null) {
-            double diff = Double.parseDouble(amt);
-            Model.addTransaction(acct.getName(), env.getName(), currentUser.getUsername(), date, Utilities.removeDoubleApostrophes(desc), diff, "");
+        if (Utilities.isDate(date)
+                && Utilities.isValidDescription(desc)
+                && Utilities.isValidAmount(amt)
+                && !currUser.equalsIgnoreCase("")) {
+            mc.addTransaction(date, desc, amt, acct, currUser, env);
             updateAccountTable();
             updateEnvelopeTable();
             updateTransactionTable();
@@ -3111,11 +2882,11 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_newTransactionButtonActionPerformed
 
     private void transactionAmtFieldFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_transactionAmtFieldFocusLost
-        if(transactionAmtField.getText().length()>0) {
+        if (transactionAmtField.getText().length() > 0) {
             try {
-                double amt = Utilities.evaluate(transactionAmtField.getText());
-                transactionAmtField.setText(Utilities.roundAmount(amt));
-            } catch(Exception ex) {
+                int amtInt = Utilities.amountToInteger(transactionAmtField.getText());
+                transactionAmtField.setText(Utilities.amountToStringSimple(amtInt));
+            } catch (Exception ex) {
                 addErrorMsg("amount must be in the form of a decimal");
                 transactionAmtField.setForeground(Color.RED);
             }
@@ -3128,7 +2899,7 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_transactionAmtFieldFocusGained
 
     private void transactionDescriptionFieldFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_transactionDescriptionFieldFocusLost
-        if(!Utilities.isValidDescription(transactionDescriptionField.getText())) {
+        if (!Utilities.isValidDescription(transactionDescriptionField.getText())) {
             addErrorMsg("max 100 characters for desc and must contain only letters, numbers, and/or the following: - ( ) @ # $ % &");
             transactionDescriptionField.setForeground(Color.RED);
         }
@@ -3149,14 +2920,14 @@ public class Console extends javax.swing.JFrame {
         String acctSelected = "_" + (String) transAccountDropdown.getSelectedItem();
         String envSelected = "_" + (String) transEnvelopeDropdown.getSelectedItem();
 
-        if(acctSelected.equalsIgnoreCase("_-all-")) {
+        if (acctSelected.equalsIgnoreCase("_-all-")) {
             acctSelected = "";
         }
-        if(envSelected.equalsIgnoreCase("_-all-")) {
+        if (envSelected.equalsIgnoreCase("_-all-")) {
             envSelected = "";
         }
         String tmpName = acctSelected + envSelected;
-        if (tmpName.length()==0) {
+        if (tmpName.length() == 0) {
             fc.setSelectedFile(new File(Utilities.getDatestamp(0) + "_transactions"));
         } else {
             fc.setSelectedFile(new File(Utilities.getDatestamp(0) + "_transactions" + tmpName));
@@ -3166,91 +2937,45 @@ public class Console extends javax.swing.JFrame {
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             File file = fc.getSelectedFile();
             fileName = file.getAbsolutePath();
+            transactionsTM.export(fileName);
         }
-        exportTransactions(fileName);
     }//GEN-LAST:event_exportTransactionsButtonActionPerformed
 
     private void transEnvelopeDropdownActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_transEnvelopeDropdownActionPerformed
-        updateSelectedAmount('e');
+        updateSelected();
     }//GEN-LAST:event_transEnvelopeDropdownActionPerformed
 
     private void transAccountDropdownActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_transAccountDropdownActionPerformed
-        updateSelectedAmount('a');
+        updateSelected();
     }//GEN-LAST:event_transAccountDropdownActionPerformed
 
     private void dateRangeCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dateRangeCheckBoxActionPerformed
-        if(dateRangeCheckBox.isSelected()) {
+        if (dateRangeCheckBox.isSelected()) {
             transFromField.setEnabled(true);
             transToField.setEnabled(true);
-            transactionQtyButton.setEnabled(false);
-            moreTransactionsButton.setEnabled(false);
+            transactionQtyTextField.setEnabled(false);
         } else {
             transFromField.setEnabled(false);
             transToField.setEnabled(false);
-            transactionQtyButton.setEnabled(true);
-            moreTransactionsButton.setEnabled(true);
+            transactionQtyTextField.setEnabled(true);
         }
+        validateTransactionFields();
+        updateSelected();
     }//GEN-LAST:event_dateRangeCheckBoxActionPerformed
 
     private void addCategoryButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addCategoryButtonActionPerformed
         // get name from textfield
-        String newCatName = newCategoryField.getText();
+        String newCatName = newCategoryField.getText().toLowerCase();
         newCatName = newCatName.trim();
         // only take action if textfield is not empty
-        if(newCatName.length()>0) {
-            // check for duplicate naming
-            if(Model.isContainer(newCatName, true)) {        // name is in use by enabled acct, cat, or env
-                if(Model.isAccount(newCatName, true)) {
-                    message.setText("ERROR: the name '" + newCatName + "' is already taken by an account");
-                    newCategoryField.setForeground(Color.RED);
-                } else if(Model.isCategory(newCatName, true)) {
-                    message.setText("ERROR: the name '" + newCatName + "' is already taken by another category");
-                    newCategoryField.setForeground(Color.RED);
-                } else if (Model.isEnvelope(newCatName, true)) {
-                    message.setText("ERROR: the name '" + newCatName + "' is already taken by an envelope");
-                    newCategoryField.setForeground(Color.RED);
-                } else {
-                    message.setText("ERROR: account '" + newCatName + "' not created");
-                    newCategoryField.setForeground(Color.RED);
-                }
-            } else { // name not in use by enabled acct, cat, or env
-                // validates text meets naming criteria
-                boolean firstCharNotLetter = !Utilities.isFirstCharacterALetter(newCatName);
-                boolean lengthExceeded     = newCatName.length()>20;
-                boolean invalidName        = !Utilities.isValidContainerName(newCatName);
-                if(firstCharNotLetter && lengthExceeded) {
-                    message.setText("ERROR: name must start with a letter and is limited to 20 characters");
-                    newCategoryField.setForeground(Color.RED);
-                } else if(firstCharNotLetter) {
-                    message.setText("ERROR: name must start with a letter");
-                    newCategoryField.setForeground(Color.RED);
-                } else if(lengthExceeded) {
-                    message.setText("ERROR: name is limited to 20 characters (you entered " + newCatName.length() + ")");
-                    newCategoryField.setForeground(Color.RED);
-                } else if(invalidName) {
-                    message.setText("ERROR: name must only contain letters, numbers, and/or dashes (no spaces)");
-                    newCategoryField.setForeground(Color.RED);
-                } else {
-                    // renames disabled container that matches the specified name
-                    if(Model.isAccount(newCatName, false)) {
-                        Account acct = Model.getAccount(newCatName, false);
-                        acct.setEnabled(true);
-                        acct.setName(Utilities.renameContainer(newCatName));
-                        acct.setEnabled(false);
-                    } else if(Model.isCategory(newCatName, false)) {
-                        Category cat = Model.getCategory(newCatName, false);
-                        cat.setEnabled(true);
-                    } else if (Model.isEnvelope(newCatName, false)) {
-                        Envelope env = Model.getEnvelope(newCatName, false);
-                        env.setEnabled(true);
-                        env.setName(Utilities.renameContainer(newCatName));
-                        env.setEnabled(false);
-                    }
-                    Model.addCategory(newCatName);
-                    updateEnvelopeTable();
-                    updateCategoryDropdowns();
-                    newCategoryField.setText("");
-                }
+        if (newCatName.length() > 0) {
+            if (mc.addCategory(newCatName)) {
+                updateEnvelopeTable();
+                updateCategoryDropdowns();
+                newCategoryField.setText("");
+            } else {
+                message.setText("ERROR: could not create category '" + newCatName + "', try a different name.");
+                newCategoryField.setForeground(Color.RED);
             }
         } else {
             message.setText("ERROR: name cannot be blank");
@@ -3263,65 +2988,19 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_addCategoryButtonFocusLost
 
     private void newCategoryFieldKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_newCategoryFieldKeyPressed
-        if(evt.getKeyCode()==10) { // <enter> is pressed
+        if (evt.getKeyCode() == 10) { // <enter> is pressed
             // get name from textfield
-            String newCatName = newCategoryField.getText();
+            String newCatName = newCategoryField.getText().toLowerCase();
             newCatName = newCatName.trim();
             // only take action if textfield is not empty
-            if(newCatName.length()>0) {
-                // check for duplicate naming
-                if(Model.isContainer(newCatName, true)) {        // name is in use by enabled acct, cat, or env
-                    if(Model.isAccount(newCatName, true)) {
-                        message.setText("ERROR: the name '" + newCatName + "' is already taken by an account");
-                        newCategoryField.setForeground(Color.RED);
-                    } else if(Model.isCategory(newCatName, true)) {
-                        message.setText("ERROR: the name '" + newCatName + "' is already taken by another category");
-                        newCategoryField.setForeground(Color.RED);
-                    } else if (Model.isEnvelope(newCatName, true)) {
-                        message.setText("ERROR: the name '" + newCatName + "' is already taken by an envelope");
-                        newCategoryField.setForeground(Color.RED);
-                    } else {
-                        message.setText("ERROR: account '" + newCatName + "' not created");
-                        newCategoryField.setForeground(Color.RED);
-                    }
-                } else { // name not in use by enabled acct, cat, or env
-                    // validates text meets naming criteria
-                    boolean firstCharNotLetter = !Utilities.isFirstCharacterALetter(newCatName);
-                    boolean lengthExceeded     = newCatName.length()>20;
-                    boolean invalidName        = !Utilities.isValidContainerName(newCatName);
-                    if(firstCharNotLetter && lengthExceeded) {
-                        message.setText("ERROR: name must start with a letter and is limited to 20 characters");
-                        newCategoryField.setForeground(Color.RED);
-                    } else if(firstCharNotLetter) {
-                        message.setText("ERROR: name must start with a letter");
-                        newCategoryField.setForeground(Color.RED);
-                    } else if(lengthExceeded) {
-                        message.setText("ERROR: name is limited to 20 characters (you entered " + newCatName.length() + ")");
-                        newCategoryField.setForeground(Color.RED);
-                    } else if(invalidName) {
-                        message.setText("ERROR: name must only contain letters, numbers, and/or dashes (no spaces)");
-                        newCategoryField.setForeground(Color.RED);
-                    } else {
-                        // renames disabled container that matches the specified name
-                        if(Model.isAccount(newCatName, false)) {
-                            Account acct = Model.getAccount(newCatName, false);
-                            acct.setEnabled(true);
-                            acct.setName(Utilities.renameContainer(newCatName));
-                            acct.setEnabled(false);
-                        } else if(Model.isCategory(newCatName, false)) {
-                            Category cat = Model.getCategory(newCatName, false);
-                            cat.setEnabled(true);
-                        } else if (Model.isEnvelope(newCatName, false)) {
-                            Envelope env = Model.getEnvelope(newCatName, false);
-                            env.setEnabled(true);
-                            env.setName(Utilities.renameContainer(newCatName));
-                            env.setEnabled(false);
-                        }
-                        Model.addCategory(newCatName);
-                        updateEnvelopeTable();
-                        updateCategoryDropdowns();
-                        newCategoryField.setText("");
-                    }
+            if (newCatName.length() > 0) {
+                if (mc.addCategory(newCatName)) {
+                    updateEnvelopeTable();
+                    updateCategoryDropdowns();
+                    newCategoryField.setText("");
+                } else {
+                    message.setText("ERROR: could not create category '" + newCatName + "', try a different name.");
+                    newCategoryField.setForeground(Color.RED);
                 }
             } else {
                 message.setText("ERROR: name cannot be blank");
@@ -3334,63 +3013,17 @@ public class Console extends javax.swing.JFrame {
 
     private void addEnvelopeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addEnvelopeButtonActionPerformed
         // get name from textfield
-        String newEnvName = newEnvelopeField.getText();
+        String newEnvName = newEnvelopeField.getText().toLowerCase();
         newEnvName = newEnvName.trim();
         // only take action if textfield is not empty
-        if(newEnvName.length()>0) {
-            // check for duplicate naming
-            if(Model.isContainer(newEnvName, true)) {        // name is in use by enabled acct, cat, or env
-                if(Model.isAccount(newEnvName, true)) {
-                    message.setText("ERROR: the name '" + newEnvName + "' is already taken by an account");
-                    newEnvelopeField.setForeground(Color.RED);
-                } else if(Model.isCategory(newEnvName, true)) {
-                    message.setText("ERROR: the name '" + newEnvName + "' is already taken by a category");
-                    newEnvelopeField.setForeground(Color.RED);
-                } else if (Model.isEnvelope(newEnvName, true)) {
-                    message.setText("ERROR: the name '" + newEnvName + "' is already taken by another envelope");
-                    newEnvelopeField.setForeground(Color.RED);
-                } else {
-                    message.setText("ERROR: account '" + newEnvName + "' not created");
-                    newEnvelopeField.setForeground(Color.RED);
-                }
-            } else { // name not in use by enabled acct, cat, or env
-                // validates text meets naming criteria
-                boolean firstCharNotLetter = !Utilities.isFirstCharacterALetter(newEnvName);
-                boolean lengthExceeded     = newEnvName.length()>20;
-                boolean invalidName        = !Utilities.isValidContainerName(newEnvName);
-                if(firstCharNotLetter && lengthExceeded) {
-                    message.setText("ERROR: name must start with a letter and is limited to 20 characters");
-                    newEnvelopeField.setForeground(Color.RED);
-                } else if(firstCharNotLetter) {
-                    message.setText("ERROR: name must start with a letter");
-                    newEnvelopeField.setForeground(Color.RED);
-                } else if(lengthExceeded) {
-                    message.setText("ERROR: name is limited to 20 characters (you entered " + newEnvName.length() + ")");
-                    newEnvelopeField.setForeground(Color.RED);
-                } else if(invalidName) {
-                    message.setText("ERROR: name must only contain letters, numbers, and/or dashes (no spaces)");
-                    newEnvelopeField.setForeground(Color.RED);
-                } else {
-                    // renames disabled container that matches the specified name
-                    if(Model.isAccount(newEnvName, false)) {
-                        Account acct = Model.getAccount(newEnvName, false);
-                        acct.setEnabled(true);
-                        acct.setName(Utilities.renameContainer(newEnvName));
-                        acct.setEnabled(false);
-                    } else if(Model.isCategory(newEnvName, false)) {
-                        Category cat = Model.getCategory(newEnvName, false);
-                        cat.setEnabled(true);
-                        cat.setName(Utilities.renameContainer(newEnvName));
-                        cat.setEnabled(false);
-                    } else if (Model.isEnvelope(newEnvName, false)) {
-                        Envelope env = Model.getEnvelope(newEnvName, false);
-                        env.setEnabled(true);
-                    }
-                    Model.addEnvelope(newEnvName);
-                    updateEnvelopeTable();
-                    updateEnvelopeDropdowns();
-                    newEnvelopeField.setText("");
-                }
+        if (newEnvName.length() > 0) {
+            if (mc.addEnvelope(newEnvName)) {
+                updateEnvelopeTable();
+                updateEnvelopeDropdowns();
+                newEnvelopeField.setText("");
+            } else {
+                message.setText("ERROR: could not create envelope '" + newEnvName + "', try a different name.");
+                newEnvelopeField.setForeground(Color.RED);
             }
         } else {
             message.setText("ERROR: name cannot be blank");
@@ -3403,65 +3036,19 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_addEnvelopeButtonFocusLost
 
     private void newEnvelopeFieldKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_newEnvelopeFieldKeyPressed
-        if(evt.getKeyCode()==10) { // <enter> is pressed
+        if (evt.getKeyCode() == 10) { // <enter> is pressed
             // get name from textfield
-            String newEnvName = newEnvelopeField.getText();
+            String newEnvName = newEnvelopeField.getText().toLowerCase();
             newEnvName = newEnvName.trim();
             // only take action if textfield is not empty
-            if(newEnvName.length()>0) {
-                // check for duplicate naming
-                if(Model.isContainer(newEnvName, true)) {        // name is in use by enabled acct, cat, or env
-                    if(Model.isAccount(newEnvName, true)) {
-                        message.setText("ERROR: the name '" + newEnvName + "' is already taken by an account");
-                        newEnvelopeField.setForeground(Color.RED);
-                    } else if(Model.isCategory(newEnvName, true)) {
-                        message.setText("ERROR: the name '" + newEnvName + "' is already taken by a category");
-                        newEnvelopeField.setForeground(Color.RED);
-                    } else if (Model.isEnvelope(newEnvName, true)) {
-                        message.setText("ERROR: the name '" + newEnvName + "' is already taken by another envelope");
-                        newEnvelopeField.setForeground(Color.RED);
-                    } else {
-                        message.setText("ERROR: account '" + newEnvName + "' not created");
-                        newEnvelopeField.setForeground(Color.RED);
-                    }
-                } else { // name not in use by enabled acct, cat, or env
-                    // validates text meets naming criteria
-                    boolean firstCharNotLetter = !Utilities.isFirstCharacterALetter(newEnvName);
-                    boolean lengthExceeded     = newEnvName.length()>20;
-                    boolean invalidName        = !Utilities.isValidContainerName(newEnvName);
-                    if(firstCharNotLetter && lengthExceeded) {
-                        message.setText("ERROR: name must start with a letter and is limited to 20 characters");
-                        newEnvelopeField.setForeground(Color.RED);
-                    } else if(firstCharNotLetter) {
-                        message.setText("ERROR: name must start with a letter");
-                        newEnvelopeField.setForeground(Color.RED);
-                    } else if(lengthExceeded) {
-                        message.setText("ERROR: name is limited to 20 characters (you entered " + newEnvName.length() + ")");
-                        newEnvelopeField.setForeground(Color.RED);
-                    } else if(invalidName) {
-                        message.setText("ERROR: name must only contain letters, numbers, and/or dashes (no spaces)");
-                        newEnvelopeField.setForeground(Color.RED);
-                    } else {
-                        // renames disabled container that matches the specified name
-                        if(Model.isAccount(newEnvName, false)) {
-                            Account acct = Model.getAccount(newEnvName, false);
-                            acct.setEnabled(true);
-                            acct.setName(Utilities.renameContainer(newEnvName));
-                            acct.setEnabled(false);
-                        } else if(Model.isCategory(newEnvName, false)) {
-                            Category cat = Model.getCategory(newEnvName, false);
-                            cat.setEnabled(true);
-                            cat.setName(Utilities.renameContainer(newEnvName));
-                            cat.setEnabled(false);
-                        } else if (Model.isEnvelope(newEnvName, false)) {
-                            Envelope env = Model.getEnvelope(newEnvName, false);
-                            env.setEnabled(true);
-                        }
-                        Model.addEnvelope(newEnvName);
-                        updateEnvelopeTable();
-                        updateEnvelopeDropdowns();
-                        newEnvelopeField.setText("");
-                    }
+            if (newEnvName.length() > 0) {
+                if (mc.addEnvelope(newEnvName)) {
+                    updateEnvelopeTable();
+                    updateEnvelopeDropdowns();
+                    newEnvelopeField.setText("");
+                } else {
+                    message.setText("ERROR: could not create envelope '" + newEnvName + "', try a different name.");
+                    newEnvelopeField.setForeground(Color.RED);
                 }
             } else {
                 message.setText("ERROR: name cannot be blank");
@@ -3473,12 +3060,13 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_newEnvelopeFieldKeyPressed
 
     private void categorizedCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_categorizedCheckBoxActionPerformed
+        mc.setCategorized(categorizedCheckBox.isSelected());
         updateEnvelopeTable();
         envelopesTable.updateUI();
     }//GEN-LAST:event_categorizedCheckBoxActionPerformed
 
     private void envelopesTablePropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_envelopesTablePropertyChange
-        if(evt.getPropertyName().equalsIgnoreCase("tableCellEditor") && evt.getNewValue()==null) {
+        if (evt.getPropertyName().equalsIgnoreCase("tableCellEditor") && evt.getNewValue() == null) {
             updateEnvelopeDropdowns();
             updateEnvelopeTable();
             updateCategoryDropdowns();
@@ -3487,65 +3075,17 @@ public class Console extends javax.swing.JFrame {
 
     private void addAccountButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addAccountButtonActionPerformed
         // get name from textfield
-        String newAcctName = newAccountField.getText();
+        String newAcctName = newAccountField.getText().toLowerCase();
         newAcctName = newAcctName.trim();
         // only take action if textfield is not empty
-        if(newAcctName.length()>0) {
-            // check for duplicate naming
-            if(Model.isContainer(newAcctName, true)) {        // name is in use by enabled acct, cat, or env
-                if(Model.isAccount(newAcctName, true)) {
-                    message.setText("ERROR: the name '" + newAcctName + "' is already taken by another account");
-                    newAccountField.setForeground(Color.RED);
-                } else if(Model.isCategory(newAcctName, true)) {
-                    message.setText("ERROR: the name '" + newAcctName + "' is already taken by a category");
-                    newAccountField.setForeground(Color.RED);
-                } else if (Model.isEnvelope(newAcctName, true)) {
-                    message.setText("ERROR: the name '" + newAcctName + "' is already taken by an envelope");
-                    newAccountField.setForeground(Color.RED);
-                } else {
-                    message.setText("ERROR: account '" + newAcctName + "' not created");
-                    newAccountField.setForeground(Color.RED);
-                }
-            } else { // name not in use by enabled acct, cat, or env
-                // validates text meets naming criteria
-                boolean firstCharNotLetter = !Utilities.isFirstCharacterALetter(newAcctName);
-                boolean lengthExceeded     = newAcctName.length()>20;
-                boolean invalidName        = !Utilities.isValidContainerName(newAcctName);
-                if(firstCharNotLetter && lengthExceeded) {
-                    message.setText("ERROR: name must start with a letter and is limited to 20 characters");
-                    newAccountField.setForeground(Color.RED);
-                } else if(firstCharNotLetter) {
-                    message.setText("ERROR: name must start with a letter");
-                    newAccountField.setForeground(Color.RED);
-                } else if(lengthExceeded) {
-                    message.setText("ERROR: name is limited to 20 characters (you entered " + newAcctName.length() + ")");
-                    newAccountField.setForeground(Color.RED);
-                } else if(invalidName) {
-                    message.setText("ERROR: name must only contain letters, numbers, and/or dashes (no spaces)");
-                    newAccountField.setForeground(Color.RED);
-                } else {
-                    // renames disabled container that matches the specified name
-                    if(Model.isContainer(newAcctName, false)) {  // name is in use by disabled acct, cat, or env
-                        if(Model.isAccount(newAcctName, false)) {
-                            Account acct = Model.getAccount(newAcctName, false);
-                            acct.setEnabled(true);
-                        } else if(Model.isCategory(newAcctName, false)) {
-                            Category cat = Model.getCategory(newAcctName, false);
-                            cat.setEnabled(true);
-                            cat.setName(Utilities.renameContainer(newAcctName));
-                            cat.setEnabled(false);
-                        } else if (Model.isEnvelope(newAcctName, false)) {
-                            Envelope env = Model.getEnvelope(newAcctName, false);
-                            env.setEnabled(true);
-                            env.setName(Utilities.renameContainer(newAcctName));
-                            env.setEnabled(false);
-                        }
-                    }
-                    Model.addAccount(newAcctName);
-                    updateAccountTable();
-                    updateAccountDropdowns();
-                    newAccountField.setText("");
-                }
+        if (newAcctName.length() > 0) {
+            if (mc.addAccount(newAcctName)) {
+                updateAccountTable();
+                updateAccountDropdowns();
+                newAccountField.setText("");
+            } else {
+                message.setText("ERROR: could not create account '" + newAcctName + "', try a different name.");
+                newAccountField.setForeground(Color.RED);
             }
         } else {
             message.setText("ERROR: name cannot be blank");
@@ -3558,67 +3098,19 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_addAccountButtonFocusLost
 
     private void newAccountFieldKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_newAccountFieldKeyPressed
-        if(evt.getKeyCode()==10) { // <enter> is pressed
+        if (evt.getKeyCode() == 10) { // <enter> is pressed
             // get name from textfield
-            String newAcctName = newAccountField.getText();
+            String newAcctName = newAccountField.getText().toLowerCase();
             newAcctName = newAcctName.trim();
             // only take action if textfield is not empty
-            if(newAcctName.length()>0) {
-                // check for duplicate naming
-                if(Model.isContainer(newAcctName, true)) {        // name is in use by enabled acct, cat, or env
-                    if(Model.isAccount(newAcctName, true)) {
-                        message.setText("ERROR: the name '" + newAcctName + "' is already taken by another account");
-                        newAccountField.setForeground(Color.RED);
-                    } else if(Model.isCategory(newAcctName, true)) {
-                        message.setText("ERROR: the name '" + newAcctName + "' is already taken by a category");
-                        newAccountField.setForeground(Color.RED);
-                    } else if (Model.isEnvelope(newAcctName, true)) {
-                        message.setText("ERROR: the name '" + newAcctName + "' is already taken by an envelope");
-                        newAccountField.setForeground(Color.RED);
-                    } else {
-                        message.setText("ERROR: account '" + newAcctName + "' not created");
-                        newAccountField.setForeground(Color.RED);
-                    }
-                } else { // name not in use by enabled acct, cat, or env
-                    // validates text meets naming criteria
-                    boolean firstCharNotLetter = !Utilities.isFirstCharacterALetter(newAcctName);
-                    boolean lengthExceeded     = newAcctName.length()>20;
-                    boolean invalidName        = !Utilities.isValidContainerName(newAcctName);
-                    if(firstCharNotLetter && lengthExceeded) {
-                        message.setText("ERROR: name must start with a letter and is limited to 20 characters");
-                        newAccountField.setForeground(Color.RED);
-                    } else if(firstCharNotLetter) {
-                        message.setText("ERROR: name must start with a letter");
-                        newAccountField.setForeground(Color.RED);
-                    } else if(lengthExceeded) {
-                        message.setText("ERROR: name is limited to 20 characters (you entered " + newAcctName.length() + ")");
-                        newAccountField.setForeground(Color.RED);
-                    } else if(invalidName) {
-                        message.setText("ERROR: name must only contain letters, numbers, and/or dashes (no spaces)");
-                        newAccountField.setForeground(Color.RED);
-                    } else {
-                        // renames disabled container that matches the specified name
-                        if(Model.isContainer(newAcctName, false)) {  // name is in use by disabled acct, cat, or env
-                            if(Model.isAccount(newAcctName, false)) {
-                                Account acct = Model.getAccount(newAcctName, false);
-                                acct.setEnabled(true);
-                            } else if(Model.isCategory(newAcctName, false)) {
-                                Category cat = Model.getCategory(newAcctName, false);
-                                cat.setEnabled(true);
-                                cat.setName(Utilities.renameContainer(newAcctName));
-                                cat.setEnabled(false);
-                            } else if (Model.isEnvelope(newAcctName, false)) {
-                                Envelope env = Model.getEnvelope(newAcctName, false);
-                                env.setEnabled(true);
-                                env.setName(Utilities.renameContainer(newAcctName));
-                                env.setEnabled(false);
-                            }
-                        }
-                        Model.addAccount(newAcctName);
-                        updateAccountTable();
-                        updateAccountDropdowns();
-                        newAccountField.setText("");
-                    }
+            if (newAcctName.length() > 0) {
+                if (mc.addAccount(newAcctName)) {
+                    updateAccountTable();
+                    updateAccountDropdowns();
+                    newAccountField.setText("");
+                } else {
+                    message.setText("ERROR: could not create account '" + newAcctName + "', try a different name.");
+                    newAccountField.setForeground(Color.RED);
                 }
             } else {
                 message.setText("ERROR: name cannot be blank");
@@ -3630,11 +3122,26 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_newAccountFieldKeyPressed
 
     private void accountsTablePropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_accountsTablePropertyChange
-        if(evt.getPropertyName().equalsIgnoreCase("tableCellEditor") && evt.getNewValue()==null) {
+        if (evt.getPropertyName().equalsIgnoreCase("tableCellEditor") && evt.getNewValue() == null) {
             updateAccountDropdowns();
             updateAccountTable();
         }
     }//GEN-LAST:event_accountsTablePropertyChange
+
+    private void transactionQtyTextFieldKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_transactionQtyTextFieldKeyPressed
+        if (evt.getKeyCode() == 10) { // <enter> is pressed
+            validateTransactionFields();
+            updateSelected();
+        }
+    }//GEN-LAST:event_transactionQtyTextFieldKeyPressed
+
+    private void transactionsTablePropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_transactionsTablePropertyChange
+        if (evt.getPropertyName().equalsIgnoreCase("tableCellEditor") && evt.getNewValue()==null) {
+            updateSelected();
+            updateEnvelopeTable();
+            updateAccountTable();
+        }
+    }//GEN-LAST:event_transactionsTablePropertyChange
 
     /**
      * @param args the command line arguments
@@ -3671,9 +3178,7 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JMenuItem aboutMenuItem;
     private javax.swing.JPanel accountManagementPane;
     public javax.swing.JTable accountsTable;
-    private javax.swing.JTextField acctTransferAmt;
     private javax.swing.JButton acctTransferButton;
-    private javax.swing.JTextField acctTransferDescriptionField;
     public javax.swing.JComboBox acctTransferFrom;
     public javax.swing.JComboBox acctTransferTo;
     private javax.swing.JButton addAccountButton;
@@ -3695,9 +3200,7 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JPanel emailPane;
     public javax.swing.JTable emailTable;
     public javax.swing.JComboBox emailUserDropdown;
-    private javax.swing.JTextField envTransferAmt;
     private javax.swing.JButton envTransferButton;
-    private javax.swing.JTextField envTransferDescriptionField;
     public javax.swing.JComboBox envTransferFrom;
     public javax.swing.JComboBox envTransferTo;
     private javax.swing.JPanel envelopesTab;
@@ -3729,7 +3232,6 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel21;
     private javax.swing.JLabel jLabel22;
     private javax.swing.JLabel jLabel23;
-    private javax.swing.JLabel jLabel24;
     private javax.swing.JLabel jLabel25;
     private javax.swing.JLabel jLabel26;
     private javax.swing.JLabel jLabel27;
@@ -3737,7 +3239,6 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel30;
     private javax.swing.JLabel jLabel31;
-    private javax.swing.JLabel jLabel32;
     private javax.swing.JLabel jLabel33;
     private javax.swing.JLabel jLabel36;
     private javax.swing.JLabel jLabel37;
@@ -3760,7 +3261,6 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JButton mergeEnvelopesButton;
     public javax.swing.JComboBox mergeEnvelopesList;
     private javax.swing.JLabel message;
-    private javax.swing.JButton moreTransactionsButton;
     private javax.swing.JTextField newAccountField;
     private javax.swing.JTextField newCategoryField;
     private javax.swing.JTextField newEnvelopeField;
@@ -3779,7 +3279,9 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JMenuItem resetDatabaseMenuItem;
     private javax.swing.JButton runTrendReportButton;
     private javax.swing.JLabel selectedAcctAmt;
+    private javax.swing.JLabel selectedAcctAmtLabel;
     private javax.swing.JLabel selectedEnvAmt;
+    private javax.swing.JLabel selectedEnvAmtLabel;
     private javax.swing.JToggleButton serverToggleButton;
     private javax.swing.JButton setCategoryButton;
     private javax.swing.JButton snapshotButton;
@@ -3794,7 +3296,7 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JTextField transactionAmtField;
     private javax.swing.JTextField transactionDateField;
     private javax.swing.JTextField transactionDescriptionField;
-    public javax.swing.JButton transactionQtyButton;
+    private javax.swing.JTextField transactionQtyTextField;
     private javax.swing.JLabel transactionsLabel;
     private javax.swing.JPanel transactionsPanel;
     private javax.swing.JButton transactionsRefreshButton;
