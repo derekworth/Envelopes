@@ -1699,6 +1699,7 @@ public final class ModelController {
     }
     
     public boolean addTransaction(String date, String desc, String amt, String acct, String user, String env) {
+        desc = Utilities.capitalizeFirstCharacter(desc);
         Account    a = getAccount(acct);
         Envelope   e = getEnvelope(env);
         Credential u = getUser(user);
