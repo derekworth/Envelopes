@@ -61,13 +61,18 @@ public final class EnvelopesTableModel implements TableModel {
 
     @Override
     public boolean isCellEditable(int row, int col) {
-        return mc.isEnvelope(row) && canEdit && col==0;
+        return (mc.isEnvelope(row) || mc.isCategory(row)) && canEdit && col==0;
     }
 
     @Override
     public void setValueAt(Object aValue, int row, int col) {
         String newName = (String) aValue;
-        mc.renameEnvelope(mc.getEnvelopeName(row), newName);
+        if(mc.isEnvelope(row)) {
+            mc.renameEnvelope(mc.getEnvelopeName(row), newName);
+        } else if(mc.isCategory(row)) {
+            mc.renameCategory(mc.getEnvelopeName(row), newName);
+        }
+        
     }
 
     @Override
