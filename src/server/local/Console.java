@@ -35,7 +35,7 @@ import server.remote.GmailCommunicator;
  */
 public class Console extends javax.swing.JFrame {
     
-    private static final String VER = "2018-03-05";
+    private static final String VER = "2018-03-04";
 
     private final Console thisConsole = this;
     private final String TITLE = "Envelopes";
@@ -62,6 +62,7 @@ public class Console extends javax.swing.JFrame {
     private EmailTableModel emailTM;
 
     public Console() {
+        checkForLatestVersion();
         gmailServer = new Runnable() {
             @Override
             public void run() {
@@ -169,7 +170,6 @@ public class Console extends javax.swing.JFrame {
         } catch (IOException ex) {
             System.exit(0);
         }
-        checkForLatestVersion();
     }
     
     private void checkForLatestVersion() {
@@ -193,8 +193,7 @@ public class Console extends javax.swing.JFrame {
                 int yes = 0;
                 int opt = JOptionPane.showConfirmDialog(this, msg, title, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
                 if (opt == yes) {
-                    saveUrl("Envelopes.jar","https://github.com/derekworth/Famliy-Envelopes/blob/master/Envelopes.jar");
-                    System.exit(0);
+                    saveUrl("Envelopes.jar","https://github.com/derekworth/Famliy-Envelopes/blob/master/Envelopes.jar?raw=true");
                 }
                 
             } catch (IOException ex) { /* DO NOTHING */ }
