@@ -163,7 +163,7 @@ public class Console extends javax.swing.JFrame {
             // update all dropdowns and tables
             updateAll();
             // set window title
-            setTitle(TITLE);
+            setTitle(TITLE + " " + VER);
             // disable all login components 
             enabledLoginComponents(false);
         } catch (IOException ex) {
@@ -184,12 +184,11 @@ public class Console extends javax.swing.JFrame {
                         }
                     }
                 }
-                // pop-up indicating you should pull latest update.
-                System.out.println("Out of date, please pull latest repository");
-                
-                
+                // pop-up indicating you should pull latest update
                 String msg = "A newer version of Envelopes is available.\n"
-                        + "Would you like to update it now?";
+                        + "Would you like to update it now?\n\n"
+                        + "NOTE: You must re-open Envelopes after\n"
+                        + "download is complete.";
                 String title = "Software Update";
                 int yes = 0;
                 int opt = JOptionPane.showConfirmDialog(this, msg, title, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
