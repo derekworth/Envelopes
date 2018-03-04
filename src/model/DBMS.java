@@ -36,6 +36,7 @@ class DBMS {
             "DROP TABLE IF EXISTS trans",
             "DROP TABLE IF EXISTS creds",
             "DROP TABLE IF EXISTS email",
+            "DROP TABLE IF EXISTS ver",
             /*INITIALIZE DATABASE*/
             "CREATE TABLE accts (id INTEGER NOT NULL PRIMARY KEY, created TEXT NOT NULL, modified TEXT NOT NULL, name TEXT NOT NULL UNIQUE, enabled INTEGER NOT NULL DEFAULT 1)",
             "CREATE TABLE cats  (id INTEGER NOT NULL PRIMARY KEY, created TEXT NOT NULL, modified TEXT NOT NULL, name TEXT NOT NULL UNIQUE)",
@@ -43,6 +44,7 @@ class DBMS {
             "CREATE TABLE trans (id INTEGER NOT NULL PRIMARY KEY, created TEXT NOT NULL, modified TEXT NOT NULL, acctid INTEGER NOT NULL, envid INTEGER NOT NULL, userid INTEGER NOT NULL, date TEXT NOT NULL, desc TEXT NOT NULL, amt INTEGER NOT NULL, txid INTEGER DEFAULT -1, FOREIGN KEY (acctid) REFERENCES accts (id), FOREIGN KEY (envid) REFERENCES envs (id), FOREIGN KEY (userid) REFERENCES creds (id))",
             "CREATE TABLE creds (id INTEGER NOT NULL PRIMARY KEY, created TEXT NOT NULL, modified TEXT NOT NULL, type INTEGER NOT NULL, un TEXT NOT NULL UNIQUE, pw TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1)",
             "CREATE TABLE email (id INTEGER NOT NULL PRIMARY KEY, created TEXT NOT NULL, modified TEXT NOT NULL, attempt INTEGER NOT NULL, userid INTEGER NOT NULL, addr TEXT NOT NULL UNIQUE, FOREIGN KEY (userid) REFERENCES creds (id))",
+            "CREATE TABLE ver   (id INTEGER NOT NULL PRIMARY KEY, date TEXT NOT NULL UNIQUE)",
             /*INITIALIZE ADMIN AND GMAIL CREDENTIALS*/
             "INSERT INTO creds (created, modified, type, un, pw) VALUES ('" + ts + "', '" + ts + "', 1, 'admin', '" + Utilities.getHash("password") + "')",
             "INSERT INTO creds (created, modified, type, un, pw) VALUES ('" + ts + "', '" + ts + "', 2, 'gmail_username', 'gmail_password')",

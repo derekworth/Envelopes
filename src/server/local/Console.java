@@ -5,10 +5,19 @@ import model.tables.AccountsTableModel;
 import model.tables.TransactionsTableModel;
 import model.tables.EmailTableModel;
 import java.awt.Color;
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.MalformedURLException;
 import java.net.ServerSocket;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.LinkedList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -25,6 +34,8 @@ import server.remote.GmailCommunicator;
  * @author Worth
  */
 public class Console extends javax.swing.JFrame {
+    
+    private static final String VER = "2018-03-04";
 
     private final Console thisConsole = this;
     private final String TITLE = "Envelopes";
@@ -157,6 +168,53 @@ public class Console extends javax.swing.JFrame {
             enabledLoginComponents(false);
         } catch (IOException ex) {
             System.exit(0);
+        }
+        checkForLatestVersion();
+    }
+    
+    private void checkForLatestVersion() {
+        try {
+            URL oracle = new URL("https://github.com/derekworth/Famliy-Envelopes/blob/master/README.md");
+            try (BufferedReader in = new BufferedReader( new InputStreamReader(oracle.openStream()) )) {
+                String inputLine;
+                while ((inputLine = in.readLine()) != null) {
+                    if(inputLine.contains("Last Updated")) {
+                        if(inputLine.contains(VER)) {
+                            return;
+                        }
+                    }
+                }
+                // pop-up indicating you should pull latest update.
+                System.out.println("Out of date, please pull latest repository");
+                
+                
+                String msg = "A newer version of Envelopes is available.\n"
+                        + "Would you like to update it now?";
+                String title = "Software Update";
+                int yes = 0;
+                int opt = JOptionPane.showConfirmDialog(this, msg, title, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+                if (opt == yes) {
+                    saveUrl("Envelopes.jar","https://github.com/derekworth/Famliy-Envelopes/blob/master/Envelopes.jar");
+                    System.exit(0);
+                }
+                
+            } catch (IOException ex) { /* DO NOTHING */ }
+        } catch (MalformedURLException ex) { /* DO NOTHING */ }
+    }
+    
+    private void saveUrl(final String filename, final String urlString) {
+        try {
+            BufferedInputStream in = new BufferedInputStream(new URL(urlString).openStream());
+            FileOutputStream fout = new FileOutputStream(filename);
+            final byte data[] = new byte[1024];
+            int count;
+            while ((count = in.read(data, 0, 1024)) != -1) {
+                fout.write(data, 0, count);
+            }
+            in.close();
+            fout.close();
+        } catch (IOException ex) {
+            /* DO NOTHING */
         }
     }
 
