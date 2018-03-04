@@ -164,7 +164,7 @@ public class Console extends javax.swing.JFrame {
             // update all dropdowns and tables
             updateAll();
             // set window title
-            setTitle(TITLE + " " + VER);
+            setTitle(TITLE);
             // disable all login components 
             enabledLoginComponents(false);
         } catch (IOException ex) {
@@ -186,14 +186,13 @@ public class Console extends javax.swing.JFrame {
                 }
                 // pop-up indicating you should pull latest update
                 String msg = "A newer version of Envelopes is available.\n"
-                        + "Would you like to update it now?\n\n"
-                        + "NOTE: You must re-open Envelopes after\n"
-                        + "download is complete.";
+                           + "Would you like to update it now?";
                 String title = "Software Update";
                 int yes = 0;
                 int opt = JOptionPane.showConfirmDialog(this, msg, title, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
                 if (opt == yes) {
                     saveUrl("Envelopes.jar","https://github.com/derekworth/Famliy-Envelopes/blob/master/Envelopes.jar?raw=true");
+                    System.exit(0);
                 }
                 
             } catch (IOException ex) { /* DO NOTHING */ }
@@ -211,8 +210,11 @@ public class Console extends javax.swing.JFrame {
             }
             in.close();
             fout.close();
+            JOptionPane.showMessageDialog(this, "Update successful!!!\n\n"
+                                              + "NOTE: You must re-open Envelopes.");
         } catch (IOException ex) {
-            /* DO NOTHING */
+            JOptionPane.showMessageDialog(this, "ERROR: update failed. Please check Internet\n"
+                                              + "connection and try again.");
         }
     }
 
@@ -2039,7 +2041,8 @@ public class Console extends javax.swing.JFrame {
                 "ENVELOPES\n"
                 + "\n"
                 + "Version: 3.0\n"
-                + "Released on: 24 February 2018\n"
+                + "Released on: 2018-02-24\n"
+                + "Updated on: " + VER + "\n"
                 + "\n"
                 + "This application allows multiple users to share funds and keep\n"
                 + "track of spending in real-time and on the go. Simply setup a\n"
