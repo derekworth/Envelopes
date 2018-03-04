@@ -1125,7 +1125,7 @@ public final class ModelController {
     
     public boolean isEmailAuthenticated(String addr) {
         Email em = this.getEmail(addr);
-        return em!=null & em.getAttempt()==0 && em.getUserID()!=-1;
+        return em!=null && em.getAttempt()==0 && em.getUserID()!=-1;
     }
     
     public boolean setEmailUser(String addr, String username) {

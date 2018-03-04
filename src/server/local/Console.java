@@ -51,19 +51,19 @@ public class Console extends javax.swing.JFrame {
     private EmailTableModel emailTM;
 
     public Console() {
-        this.gmailServer = new Runnable() {
+        gmailServer = new Runnable() {
             @Override
             public void run() {
                 long start = System.currentTimeMillis();
+                int count = 1;
                 while (serverIsOn) {
                     try {
-                        TimeUnit.SECONDS.sleep(6);
-                        gmailServerStatus.setText("run-time ~ " + Utilities.getDuration((System.currentTimeMillis() - start) / 1000));
                         if (gc.receive()) {
                             updateAll();
                         }
+                        TimeUnit.SECONDS.sleep(6);
+                        gmailServerStatus.setText("run-time ~ " + Utilities.getDuration((System.currentTimeMillis() - start) / 1000));
                     } catch (InterruptedException ex) {
-
                     }
                 }
             }
@@ -457,6 +457,7 @@ public class Console extends javax.swing.JFrame {
         envTransferButton.setEnabled(isLoggedIn);
         allowEmail.setEnabled(isLoggedIn);
         blockEmail.setEnabled(isLoggedIn);
+        serverToggleButton.setEnabled(!isLoggedIn);
 
         // fields
         userPassword.setEnabled(!isLoggedIn);
@@ -499,6 +500,84 @@ public class Console extends javax.swing.JFrame {
             resetDatabaseMenuItem.setVisible(false);
             jSeparator3.setVisible(false);
         }
+    }
+    
+    public final void attemptLogin() {
+        String un = loginUserDropdown.getSelectedItem().toString();
+        String pw = "";
+        for (char c : userPassword.getPassword()) {
+            pw += c;
+        }
+        if (mc.getPassword(un).equals(Utilities.getHash(pw))) { // successful login
+            transactionDateField.setText(Utilities.getDatestamp(0));
+            currUser = un;
+            enabledLoginComponents(true);
+            consoleLoginFailCount = 0;
+            userPassword.setText("");
+            loginToggleButton.setSelected(true);
+            loginToggleButton.setText("Sign Out");
+            loginStatus.setText("Welcome " + currUser + "! You are now signed in.");
+            updateUserDropdowns();
+            // shutdown server while logged in
+            shutdownServer();
+        } else { // failed login
+            // set sign in settings
+            loginToggleButton.setSelected(false);
+            userPassword.setText("");
+            loginStatus.setText("Error(" + ++consoleLoginFailCount + "): incorrect password.");
+        }
+    }
+    
+    public final void logout() {
+        currUser = "";
+        enabledLoginComponents(false);
+        // set sign in settings
+        loginToggleButton.setText("Sign In");
+        loginStatus.setText("You are now signed out.");
+        cmdHistory.clear();
+        updateUserDropdowns();
+        // attempt to start server while logged out
+        attemptStartServer();
+    }
+    
+    public final void attemptStartServer() {
+        // retrieve username and password from the text fields
+        String gmailUN, gmailPW = "";
+        gmailUN = gmailUsername.getText();
+        for (char c : gmailPassword.getPassword()) {
+            gmailPW += c;
+        }
+        // check if un & pw are valid
+        if (gc.isValidCredentials(gmailUN, gmailPW)) {
+            // update model
+            mc.setGmailUsername(gmailUN);
+            mc.setGmailPassword(gmailPW);
+            // update view
+            serverToggleButton.setText("Stop Server");
+            gmailServerStatus.setText("Gmail server is now ON.");
+            serverLoginFailCount = 0;
+            gmailUsername.setEnabled(false);
+            gmailPassword.setEnabled(false);
+            // turn on server
+            serverIsOn = true;
+            exec = Executors.newSingleThreadExecutor();
+            exec.submit(gmailServer);
+        } else {
+            serverToggleButton.setSelected(false);
+            gmailServerStatus.setText("Error(" + ++serverLoginFailCount + "): invalid username and/or password.");
+        }
+    }
+    
+    public final void shutdownServer() {
+        // update view
+        serverToggleButton.setText("Start Server");
+        serverToggleButton.setSelected(false);
+        gmailServerStatus.setText("Gmail server is now OFF.");
+        gmailUsername.setEnabled(true);
+        gmailPassword.setEnabled(true);
+        // turn on server
+        serverIsOn = false;
+        exec.shutdownNow();
     }
 
     /**
@@ -1887,95 +1966,15 @@ public class Console extends javax.swing.JFrame {
 
     private void userPasswordKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_userPasswordKeyPressed
         if (evt.getKeyCode() == 10) {
-            String un = loginUserDropdown.getSelectedItem().toString();
-            String pw = "";
-            for (char c : userPassword.getPassword()) {
-                pw += c;
-            }
-            if (mc.getPassword(un).equals(Utilities.getHash(pw))) { // successful login
-                loginToggleButton.setSelected(true);
-                transactionDateField.setText(Utilities.getDatestamp(0));
-                currUser = un;
-                enabledLoginComponents(true);
-                consoleLoginFailCount = 0;
-                userPassword.setText("");
-                loginToggleButton.setText("Sign Out");
-                loginStatus.setText("Welcome " + currUser + "! You are now signed in.");
-                updateUserDropdowns();
-            } else { // failed login
-                // set sign in settings
-                loginToggleButton.setSelected(false);
-                userPassword.setText("");
-                loginStatus.setText("Error(" + ++consoleLoginFailCount + "): incorrect password.");
-            }
+            attemptLogin();
         }
     }//GEN-LAST:event_userPasswordKeyPressed
 
     private void loginToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loginToggleButtonActionPerformed
-        String userUN = loginUserDropdown.getSelectedItem().toString();
-        String userPW = mc.getPassword(userUN);
-        String inputPW = "";
         if (loginToggleButton.isSelected()) { // attempt to log user in
-            for (char c : userPassword.getPassword()) {
-                inputPW += c;
-            }
-            if (userPW.equals(Utilities.getHash(inputPW))) { // successful login
-                transactionDateField.setText(Utilities.getDatestamp(0));
-                currUser = userUN;
-                enabledLoginComponents(true);
-                consoleLoginFailCount = 0;
-                userPassword.setText("");
-                loginToggleButton.setText("Sign Out");
-                loginStatus.setText("Welcome " + currUser + "! You are now signed in.");
-                updateUserDropdowns();
-                // shutdown server while logged in
-                serverIsOn = false;
-                exec.shutdownNow();
-                serverToggleButton.setText("Start Server");
-                gmailServerStatus.setText("Gmail server is now OFF.");
-                gmailUsername.setEnabled(true);
-                gmailPassword.setEnabled(true);
-                serverToggleButton.setEnabled(false);
-            } else { // failed login
-                // set sign in settings
-                loginToggleButton.setSelected(false);
-                userPassword.setText("");
-                loginStatus.setText("Error(" + ++consoleLoginFailCount + "): incorrect password.");
-            }
+            attemptLogin();
         } else { // log user out
-            currUser = "";
-            enabledLoginComponents(false);
-            // set sign in settings
-            loginToggleButton.setText("Sign In");
-            loginStatus.setText("You are now signed out.");
-            cmdHistory.clear();
-            updateUserDropdowns();
-            // attempt to start server while logged out
-            {
-                serverToggleButton.setEnabled(true);
-                // retrieve username and password from the text fields
-                String gmailUN, gmailPW = "";
-                gmailUN = gmailUsername.getText();
-                for (char c : gmailPassword.getPassword()) {
-                    gmailPW += c;
-                }
-                // check if un & pw are valid
-                if (gc.isValidCredentials(gmailUN, gmailPW)) {
-                    mc.setGmailUsername(gmailUN);
-                    mc.setGmailPassword(gmailPW);
-                    serverIsOn = true;
-                    exec = Executors.newSingleThreadExecutor();
-                    exec.submit(gmailServer);
-                    serverToggleButton.setText("Stop Server");
-                    gmailServerStatus.setText("Gmail server is now ON.");
-                    serverLoginFailCount = 0;
-                    gmailUsername.setEnabled(false);
-                    gmailPassword.setEnabled(false);
-                } else {
-                    serverToggleButton.setSelected(false);
-                    gmailServerStatus.setText("Error(" + ++serverLoginFailCount + "): invalid username and/or password.");
-                }
-            }
+            logout();
         }
     }//GEN-LAST:event_loginToggleButtonActionPerformed
 
@@ -1997,7 +1996,7 @@ public class Console extends javax.swing.JFrame {
                 + "\n"
                 + "NOTE: If this is your first time logging in, Admin password\n"
                 + "is 'password'. For command usage format, text/email 'help' to\n"
-                + "specified Gmail account.");
+                + "your specified Gmail account.");
     }//GEN-LAST:event_aboutMenuItemActionPerformed
 
     private void exitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exitMenuItemActionPerformed
@@ -2581,35 +2580,9 @@ public class Console extends javax.swing.JFrame {
 
     private void serverToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_serverToggleButtonActionPerformed
         if (serverToggleButton.isSelected()) {
-            // retrieve username and password from the text fields
-            String un, pw = "";
-            un = gmailUsername.getText();
-            for (char c : gmailPassword.getPassword()) {
-                pw += c;
-            }
-            // check if un & pw are valid
-            if (gc.isValidCredentials(un, pw)) {
-                mc.setGmailUsername(un);
-                mc.setGmailPassword(pw);
-                serverIsOn = true;
-                exec = Executors.newSingleThreadExecutor();
-                exec.submit(gmailServer);
-                serverToggleButton.setText("Stop Server");
-                gmailServerStatus.setText("Gmail server is now ON.");
-                serverLoginFailCount = 0;
-                gmailUsername.setEnabled(false);
-                gmailPassword.setEnabled(false);
-            } else {
-                serverToggleButton.setSelected(false);
-                gmailServerStatus.setText("Error(" + ++serverLoginFailCount + "): invalid username and/or password.");
-            }
+            attemptStartServer();
         } else {
-            serverIsOn = false;
-            exec.shutdownNow();
-            serverToggleButton.setText("Start Server");
-            gmailServerStatus.setText("Gmail server is now OFF.");
-            gmailUsername.setEnabled(true);
-            gmailPassword.setEnabled(true);
+            shutdownServer();
         }
     }//GEN-LAST:event_serverToggleButtonActionPerformed
 

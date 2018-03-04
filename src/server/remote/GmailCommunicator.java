@@ -186,7 +186,6 @@ public class GmailCommunicator {
                 // delete messgage from sender
                 m.setFlag(Flags.Flag.DELETED,true);
             }
-            
             inbox.close(true);
             store.close();
             return count>0;
