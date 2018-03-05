@@ -224,28 +224,25 @@ public final class ModelController {
             if(t.getID()==id) return t;
         }
         // get from databse if not in model
-        return DBMS.getTransaction(id);
+        Transaction t = DBMS.getTransaction(id);
+        // update account name as applicable
+        int acctid = t.getAccountID();
+        if(acctid!=-1) {
+            Account acct = allAccts.get(acctid);
+            if(acct!=null) {
+                t.setAccountName(acct.getName());
+            }
+        }
+        // update envelopename as applicable
+        int envid  = t.getEnvelopeID();
+        if(envid!=-1) {
+            Envelope env = allEnvs.get(envid);
+            if(env!=null) {
+                t.setEnvelopeName(env.getName());
+            }
+        }
+        return t;
     }
-    
-//    /**
-//     * Updates running total based on given input amount for all transactions
-//     * @param currAmt Amount currently in given envelope/account; set to empty
-//     * string to omit running total from all transactions
-//     */
-//    private void refreshTransactionRunTotals(String currAmt) {
-//        if(currAmt.length()==0) {
-//            for(Transaction t : listOfTrans) {
-//                t.setRunningTotal(Record.EMPTY_NAME);
-//            }
-//            return;
-//        }
-//        // convert amount to integer
-//        int amt = Utilities.amountToInteger(currAmt);
-//        for(Transaction t : listOfTrans) {
-//            t.setRunningTotal(Utilities.amountToString(amt));
-//            amt -= t.getAmount();
-//        }
-//    }
  
     //---------------
     // Account getters/setters
@@ -1676,10 +1673,6 @@ public final class ModelController {
                 desc = "(" + t2.getEnvelopeName() + " > " + t1.getEnvelopeName() + ") " + desc;
             } else {
                 desc = "(" + t1.getEnvelopeName() + " > " + t2.getEnvelopeName() + ") " + desc;
-            }
-            // append account transfer indicator to desc
-            if(t1.getEnvelopeID()!=-1) {
-                desc = "*" + desc;
             }
             // update in model
             t2.setDesc(desc);

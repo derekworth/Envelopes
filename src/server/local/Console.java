@@ -11,13 +11,10 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.ServerSocket;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.LinkedList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -186,7 +183,7 @@ public class Console extends javax.swing.JFrame {
                 }
                 // pop-up indicating you should pull latest update
                 String msg = "A newer version of Envelopes is available.\n"
-                           + "Would you like to update it now?";
+                           + "Would you like to update now?";
                 String title = "Software Update";
                 int yes = 0;
                 int opt = JOptionPane.showConfirmDialog(this, msg, title, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
@@ -201,14 +198,15 @@ public class Console extends javax.swing.JFrame {
     
     private void saveUrl(final String filename, final String urlString) {
         try {
-            BufferedInputStream in = new BufferedInputStream(new URL(urlString).openStream());
-            FileOutputStream fout = new FileOutputStream(filename);
-            final byte data[] = new byte[1024];
-            int count;
-            while ((count = in.read(data, 0, 1024)) != -1) {
-                fout.write(data, 0, count);
+            FileOutputStream fout;
+            try (BufferedInputStream in = new BufferedInputStream(new URL(urlString).openStream())) {
+                fout = new FileOutputStream(filename);
+                final byte data[] = new byte[1024];
+                int count;
+                while ((count = in.read(data, 0, 1024)) != -1) {
+                    fout.write(data, 0, count);
+                }
             }
-            in.close();
             fout.close();
             JOptionPane.showMessageDialog(this, "Update successful!!!\n\n"
                                               + "NOTE: You must re-open Envelopes.");
