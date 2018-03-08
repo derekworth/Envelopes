@@ -21,6 +21,7 @@ class DBMS {
     static final int TIMEOUT = 30;
     
     // DATABASE SETUP
+    
     /**
      * Resets database with empty tables, and then inserts admin and gmail user
      * accounts along with sample envelopes/accounts
@@ -44,11 +45,22 @@ class DBMS {
             "CREATE TABLE trans (id INTEGER NOT NULL PRIMARY KEY, created TEXT NOT NULL, modified TEXT NOT NULL, acctid INTEGER NOT NULL, envid INTEGER NOT NULL, userid INTEGER NOT NULL, date TEXT NOT NULL, desc TEXT NOT NULL, amt INTEGER NOT NULL, txid INTEGER DEFAULT -1, FOREIGN KEY (acctid) REFERENCES accts (id), FOREIGN KEY (envid) REFERENCES envs (id), FOREIGN KEY (userid) REFERENCES creds (id))",
             "CREATE TABLE creds (id INTEGER NOT NULL PRIMARY KEY, created TEXT NOT NULL, modified TEXT NOT NULL, type INTEGER NOT NULL, un TEXT NOT NULL UNIQUE, pw TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1)",
             "CREATE TABLE email (id INTEGER NOT NULL PRIMARY KEY, created TEXT NOT NULL, modified TEXT NOT NULL, attempt INTEGER NOT NULL, userid INTEGER NOT NULL, addr TEXT NOT NULL UNIQUE, FOREIGN KEY (userid) REFERENCES creds (id))",
-            "CREATE TABLE ver   (id INTEGER NOT NULL PRIMARY KEY, date TEXT NOT NULL UNIQUE)",
             /*INITIALIZE ADMIN AND GMAIL CREDENTIALS*/
             "INSERT INTO creds (created, modified, type, un, pw) VALUES ('" + ts + "', '" + ts + "', 1, 'admin', '" + Utilities.getHash("password") + "')",
-            "INSERT INTO creds (created, modified, type, un, pw) VALUES ('" + ts + "', '" + ts + "', 2, 'gmail_username', 'gmail_password')",
-            /*INITIALIZE SAMPLE ACCOUNTS*/
+            "INSERT INTO creds (created, modified, type, un, pw) VALUES ('" + ts + "', '" + ts + "', 2, 'gmail_username', 'gmail_password')"
+        };
+        updateDatabase(queries);
+    }
+    
+    /**
+     * Resets database with empty tables, and then inserts admin and gmail user
+     * accounts along with sample envelopes/accounts
+     */
+    static void configureExample() {
+        String ts = Utilities.getTimestamp();
+        // initialize tables
+        String[] queries = {
+            /*INITIALIZE EXAMPLE ACCOUNTS*/
             "INSERT INTO accts (created, modified, name) VALUES ('" + ts + "', '" + ts + "', 'cash')",
             "INSERT INTO accts (created, modified, name) VALUES ('" + ts + "', '" + ts + "', 'checking')",
             "INSERT INTO accts (created, modified, name) VALUES ('" + ts + "', '" + ts + "', 'savings')",
@@ -56,7 +68,7 @@ class DBMS {
             "INSERT INTO accts (created, modified, name) VALUES ('" + ts + "', '" + ts + "', 'ira-traditional')",
             "INSERT INTO accts (created, modified, name) VALUES ('" + ts + "', '" + ts + "', 'visa')",
             "INSERT INTO accts (created, modified, name) VALUES ('" + ts + "', '" + ts + "', 'mastercard')",
-            /*INITIALIZE SAMPLE CATEGORIES*/
+            /*INITIALIZE EXAMPLE CATEGORIES*/
             "INSERT INTO cats (created, modified, name, id) VALUES ('" + ts + "', '" + ts + "', 'giving', 1)",
             "INSERT INTO cats (created, modified, name, id) VALUES ('" + ts + "', '" + ts + "', 'save', 2)",
             "INSERT INTO cats (created, modified, name, id) VALUES ('" + ts + "', '" + ts + "', 'housing', 3)",
@@ -69,7 +81,7 @@ class DBMS {
             "INSERT INTO cats (created, modified, name, id) VALUES ('" + ts + "', '" + ts + "', 'personal', 10)",
             "INSERT INTO cats (created, modified, name, id) VALUES ('" + ts + "', '" + ts + "', 'recreation', 11)",
             "INSERT INTO cats (created, modified, name, id) VALUES ('" + ts + "', '" + ts + "', 'debts', 12)",
-            /*INITIALIZE SAMPLE ENVELOPES*/
+            /*INITIALIZE EXAMPLE ENVELOPES*/
             "INSERT INTO envs (created, modified, name, catid) VALUES ('" + ts + "', '" + ts + "', 'tithes', 1)",
             "INSERT INTO envs (created, modified, name, catid) VALUES ('" + ts + "', '" + ts + "', 'charity', 1)",
             "INSERT INTO envs (created, modified, name, catid) VALUES ('" + ts + "', '" + ts + "', 'emergency', 2)",

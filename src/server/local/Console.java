@@ -19,6 +19,8 @@ import java.util.LinkedList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
@@ -32,7 +34,7 @@ import server.remote.GmailCommunicator;
  */
 public class Console extends javax.swing.JFrame {
     
-    private static final String VER = "2018-03-05";
+    private static final String VER = "2018-03-07";
 
     private final Console thisConsole = this;
     private final String TITLE = "Envelopes";
@@ -57,9 +59,12 @@ public class Console extends javax.swing.JFrame {
     private AccountsTableModel accountsTM;
     private TransactionsTableModel transactionsTM;
     private EmailTableModel emailTM;
+    
+    private ServerSocket socket;
 
     public Console() {
         checkForLatestVersion();
+        
         gmailServer = new Runnable() {
             @Override
             public void run() {
@@ -77,12 +82,13 @@ public class Console extends javax.swing.JFrame {
                 }
             }
         };
-
+        
         try {
             // prevents multiple instances of console
-            ServerSocket s = new ServerSocket(61234);
+            socket = new ServerSocket(61234);
             // initialize all GUI components
             initComponents();
+            
             // initialize model controller
             mc = new ModelController();
             // establish Gmail communicator
@@ -131,6 +137,7 @@ public class Console extends javax.swing.JFrame {
                 emailTable.getColumnModel().getColumn(i).setCellRenderer(emailTM.getRenderer());
             }
             // set gmail credentials
+            exec = Executors.newSingleThreadExecutor();
             if (gc.isValidCredentials(mc.getGmailUsername(), mc.getGmailPassword())) {
                 gmailPassword.setText(mc.getGmailPassword());
                 gmailUsername.setText(mc.getGmailUsername());
@@ -138,7 +145,6 @@ public class Console extends javax.swing.JFrame {
                 serverToggleButton.setSelected(true);
                 // retrieve username and password from the text fields
                 serverIsOn = true;
-                exec = Executors.newSingleThreadExecutor();
                 exec.submit(gmailServer);
                 serverToggleButton.setText("Stop Server");
                 gmailServerStatus.setText("Gmail server is now ON.");
@@ -227,9 +233,7 @@ public class Console extends javax.swing.JFrame {
     public final void updateAllTables() {
         updateTransactionTable();
         updateAccountTable();
-        updateTransactionTable();
-//        updateSelectedAccount();
-//        updateSelectedEnvelope();
+        updateEnvelopeTable();
         updateEmailTable();
     }
 
@@ -589,6 +593,7 @@ public class Console extends javax.swing.JFrame {
         enabledLoginComponents(false);
         // set sign in settings
         loginToggleButton.setText("Sign In");
+        loginToggleButton.setSelected(false);
         loginStatus.setText("You are now signed out.");
         cmdHistory.clear();
         updateUserDropdowns();
@@ -777,8 +782,6 @@ public class Console extends javax.swing.JFrame {
         loginStatus = new javax.swing.JLabel();
         menuBar = new javax.swing.JMenuBar();
         fileMenu = new javax.swing.JMenu();
-        refreshAllMenuItem = new javax.swing.JMenuItem();
-        refreshTablesMenuItem = new javax.swing.JMenuItem();
         aboutMenuItem = new javax.swing.JMenuItem();
         exitMenuItem = new javax.swing.JMenuItem();
         jSeparator3 = new javax.swing.JPopupMenu.Separator();
@@ -1933,24 +1936,6 @@ public class Console extends javax.swing.JFrame {
 
         fileMenu.setText("File");
 
-        refreshAllMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.ALT_MASK | java.awt.event.InputEvent.CTRL_MASK));
-        refreshAllMenuItem.setText("Refresh All");
-        refreshAllMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                refreshAllMenuItemActionPerformed(evt);
-            }
-        });
-        fileMenu.add(refreshAllMenuItem);
-
-        refreshTablesMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.CTRL_MASK));
-        refreshTablesMenuItem.setText("Refresh Tables");
-        refreshTablesMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                refreshTablesMenuItemActionPerformed(evt);
-            }
-        });
-        fileMenu.add(refreshTablesMenuItem);
-
         aboutMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_A, java.awt.event.InputEvent.CTRL_MASK));
         aboutMenuItem.setText("About");
         aboutMenuItem.addActionListener(new java.awt.event.ActionListener() {
@@ -2073,39 +2058,20 @@ public class Console extends javax.swing.JFrame {
         int yes = 0;
         int opt = JOptionPane.showConfirmDialog(this, msg, title, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
         if (opt == yes) {
-            // shutdown Gmail Server
-            serverIsOn = false;
-            exec.shutdownNow();
-            serverToggleButton.setText("Start Server");
-            gmailServerStatus.setText("Gmail server is now OFF.");
-            gmailUsername.setEnabled(true);
-            gmailPassword.setEnabled(true);
             // log user (admin) out
-            currUser = "";
-            // disable login components
-            enabledLoginComponents(false);
+            logout();
+            // shutdown Gmail Server
+            shutdownServer();
             // reset database
             mc.resetDatabase();
             // set sign in settings
-            loginToggleButton.setText("Sign In");
-            loginToggleButton.setSelected(false);
             gmailUsername.setText("");
             gmailPassword.setText("");
             userPassword.setText("");
-            loginStatus.setText("You are now signed out.");
-            cmdHistory.clear();
             // update all views
             updateAll();
         }
     }//GEN-LAST:event_resetDatabaseMenuItemActionPerformed
-
-    private void refreshAllMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshAllMenuItemActionPerformed
-        updateAll();
-    }//GEN-LAST:event_refreshAllMenuItemActionPerformed
-
-    private void refreshTablesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshTablesMenuItemActionPerformed
-        updateAllTables();
-    }//GEN-LAST:event_refreshTablesMenuItemActionPerformed
 
     private void budgetWorksheetButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_budgetWorksheetButtonActionPerformed
         Runnable budgetWorksheet = new Runnable() {
@@ -3298,8 +3264,6 @@ public class Console extends javax.swing.JFrame {
     public javax.swing.JComboBox newTransAcctDropdown;
     public javax.swing.JComboBox newTransEnvDropdown;
     private javax.swing.JButton newTransactionButton;
-    private javax.swing.JMenuItem refreshAllMenuItem;
-    private javax.swing.JMenuItem refreshTablesMenuItem;
     private javax.swing.JButton removeAccountButton;
     private javax.swing.JButton removeCategoryButton;
     private javax.swing.JButton removeEnvelopeButton;

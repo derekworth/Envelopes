@@ -54,6 +54,7 @@ public final class ModelController {
         LinkedList<Account> acctsTmp = DBMS.getAccounts();
         if(acctsTmp==null) { // list will be null if database hasn't been initialized
             DBMS.initializeDatabase();     // create new database
+            //DBMS.configureExample();
             acctsTmp = DBMS.getAccounts(); // pull accounts
         }
         acctsTmp.sort(Container.NAME_COMPARATOR);
@@ -94,17 +95,16 @@ public final class ModelController {
                 }
             }
         }
-        if(!envsTmp.isEmpty()) {
-            Category uncat = new Category(-1,Record.EMPTY_NAME,Record.EMPTY_NAME, UNCAT, 0);
-            listOfEnvsC.add(uncat);           // populate linked list w/ uncategorized category
-            allCats.put(-1, uncat);
-            int uncatTot = 0;
-            for(Envelope env : envsTmp) {
-                listOfEnvsC.add(env);        // populate linked list w/ uncategorized envelopes
-                uncatTot += env.getAmount(); // calculate uncategorized total
-            }
-            uncat.setAmount(uncatTot);       // populate uncategorized total
+        // add uncategorized category (always exists)
+        Category uncat = new Category(-1,Record.EMPTY_NAME,Record.EMPTY_NAME, UNCAT, 0);
+        listOfEnvsC.add(uncat);           // populate linked list w/ uncategorized category
+        allCats.put(-1, uncat);
+        int uncatTot = 0;
+        for(Envelope env : envsTmp) {
+            listOfEnvsC.add(env);        // populate linked list w/ uncategorized envelopes
+            uncatTot += env.getAmount(); // calculate uncategorized total
         }
+        uncat.setAmount(uncatTot);       // populate uncategorized total
         listOfEnvsC.add(envsTotal);          // populate total
         
         // Populate credentials
@@ -226,6 +226,7 @@ public final class ModelController {
         // get from databse if not in model
         Transaction t = DBMS.getTransaction(id);
         // update account name as applicable
+        if(t==null) return null;
         int acctid = t.getAccountID();
         if(acctid!=-1) {
             Account acct = allAccts.get(acctid);
@@ -851,6 +852,7 @@ public final class ModelController {
     //---------------
     
     public String[] getCategoryNames() {
+        if(allCats.isEmpty()) return new String[0];
         String[] names = new String[allCats.size()-1];
         int i = 0;
         for(Container c : listOfEnvsC) {
