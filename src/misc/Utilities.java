@@ -303,10 +303,13 @@ public class Utilities {
         return newDate;
     }
     
-    public static String getShortDesc(String fullDesc) {
-        int i = fullDesc.indexOf(")");
-        if(i>=0) {
-            return fullDesc.substring(i+1).trim();
+    public static String getDescMinusTxInfo(String fullDesc) {
+        int h = fullDesc.indexOf("*");
+        int i = fullDesc.indexOf("(");
+        int j = fullDesc.indexOf(">");
+        int k = fullDesc.indexOf(")");
+        if((i==0 || (h==0 && i==1)) && i<j && j<k) {
+            return fullDesc.substring(k+1).trim();
         } else {
             return fullDesc;
         }
@@ -659,7 +662,8 @@ public class Utilities {
                 c=='$' || 
                 c=='&' || 
                 c==' ' || 
-                c=='\'' ||  
+                c=='\'' || 
+                c=='/' ||  
                 c=='(' ||  
                 c==')' ||  
                 c=='*' ||  

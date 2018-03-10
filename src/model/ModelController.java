@@ -1518,7 +1518,7 @@ public final class ModelController {
         Transaction t1 = listOfTrans.get(index);
         if(t1==null) return false;
         desc = Utilities.cleanTransactionDesc(desc);
-        desc = Utilities.getShortDesc(desc);
+        desc = Utilities.getDescMinusTxInfo(desc);
         // update transfer transaction if exists
         Transaction t2 = getTransaction(t1.getTransferID());
         if(t2!=null) {
@@ -1625,7 +1625,7 @@ public final class ModelController {
         t1.setAccountID(a2.getID());
         t1.setAccountName(a2.getName());
         // get description with transfer header removed
-        String desc = Utilities.getShortDesc(t1.getDesc());
+        String desc = Utilities.getDescMinusTxInfo(t1.getDesc());
         // update description of transfer transaction if exists
         Transaction t2 = getTransaction(t1.getTransferID());
         if(t2!=null) {
@@ -1666,7 +1666,7 @@ public final class ModelController {
         t1.setEnvelopeID(e2.getID());
         t1.setEnvelopeName(e2.getName());
         // get description with transfer header removed
-        String desc = Utilities.getShortDesc(t1.getDesc());
+        String desc = Utilities.getDescMinusTxInfo(t1.getDesc());
         // update description of transfer transaction if exists
         Transaction t2 = getTransaction(t1.getTransferID());
         if(t2!=null) {
