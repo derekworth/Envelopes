@@ -487,7 +487,7 @@
                                                   <Component id="amountLabel" min="-2" max="-2" attributes="0"/>
                                               </Group>
                                               <EmptySpace max="-2" attributes="0"/>
-                                              <Group type="103" groupAlignment="0" attributes="0">
+                                              <Group type="103" groupAlignment="0" max="-2" attributes="0">
                                                   <Group type="102" alignment="0" attributes="0">
                                                       <Group type="103" groupAlignment="1" max="-2" attributes="0">
                                                           <Group type="102" alignment="1" attributes="0">
@@ -503,8 +503,8 @@
                                                       </Group>
                                                       <EmptySpace max="-2" attributes="0"/>
                                                       <Group type="103" groupAlignment="0" attributes="0">
-                                                          <Component id="acctTransferButton" min="-2" max="-2" attributes="0"/>
-                                                          <Component id="envTransferButton" min="-2" max="-2" attributes="0"/>
+                                                          <Component id="acctTransferButton" max="32767" attributes="0"/>
+                                                          <Component id="envTransferButton" max="32767" attributes="0"/>
                                                       </Group>
                                                   </Group>
                                                   <Group type="102" alignment="0" attributes="0">
@@ -518,7 +518,7 @@
                                                           <Group type="102" alignment="0" attributes="0">
                                                               <Component id="newTransEnvDropdown" min="-2" pref="120" max="-2" attributes="0"/>
                                                               <EmptySpace max="-2" attributes="0"/>
-                                                              <Component id="newTransactionButton" min="-2" pref="96" max="-2" attributes="0"/>
+                                                              <Component id="newTransactionButton" min="-2" pref="137" max="-2" attributes="0"/>
                                                           </Group>
                                                       </Group>
                                                   </Group>
@@ -860,7 +860,7 @@
                     </Component>
                     <Component class="javax.swing.JButton" name="newTransactionButton">
                       <Properties>
-                        <Property name="text" type="java.lang.String" value="Add Trans"/>
+                        <Property name="text" type="java.lang.String" value="Add Transaction"/>
                         <Property name="enabled" type="boolean" value="false"/>
                       </Properties>
                       <Events>

@@ -32,7 +32,7 @@ import server.remote.GmailCommunicator;
  */
 public class Console extends javax.swing.JFrame {
     
-    private static final String VER = "2018-03-11";
+    private static final String VER = "2018-03-10";
 
     private final Console thisConsole = this;
     private final String TITLE = "Envelopes";
@@ -1052,7 +1052,7 @@ public class Console extends javax.swing.JFrame {
 
         newTransEnvDropdown.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
 
-        newTransactionButton.setText("Add Trans");
+        newTransactionButton.setText("Add Transaction");
         newTransactionButton.setEnabled(false);
         newTransactionButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -1261,7 +1261,7 @@ public class Console extends javax.swing.JFrame {
                                     .addComponent(transactionAmtField, javax.swing.GroupLayout.PREFERRED_SIZE, 84, javax.swing.GroupLayout.PREFERRED_SIZE)
                                     .addComponent(amountLabel))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                                     .addGroup(transactionsPanelLayout.createSequentialGroup()
                                         .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                                             .addGroup(transactionsPanelLayout.createSequentialGroup()
@@ -1274,8 +1274,8 @@ public class Console extends javax.swing.JFrame {
                                                 .addComponent(acctTransferTo, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)))
                                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                         .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                            .addComponent(acctTransferButton)
-                                            .addComponent(envTransferButton)))
+                                            .addComponent(acctTransferButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                            .addComponent(envTransferButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
                                     .addGroup(transactionsPanelLayout.createSequentialGroup()
                                         .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                             .addComponent(newTransAcctDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -1286,7 +1286,7 @@ public class Console extends javax.swing.JFrame {
                                             .addGroup(transactionsPanelLayout.createSequentialGroup()
                                                 .addComponent(newTransEnvDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
                                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                                .addComponent(newTransactionButton, javax.swing.GroupLayout.PREFERRED_SIZE, 96, javax.swing.GroupLayout.PREFERRED_SIZE)))))))
+                                                .addComponent(newTransactionButton, javax.swing.GroupLayout.PREFERRED_SIZE, 137, javax.swing.GroupLayout.PREFERRED_SIZE)))))))
                         .addGap(0, 56, Short.MAX_VALUE)))
                 .addContainerGap())
         );
