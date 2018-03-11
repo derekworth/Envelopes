@@ -32,7 +32,7 @@ import server.remote.GmailCommunicator;
  */
 public class Console extends javax.swing.JFrame {
     
-    private static final String VER = "2018-03-10";
+    private static final String VER = "2018-03-11";
 
     private final Console thisConsole = this;
     private final String TITLE = "Envelopes";
@@ -693,12 +693,8 @@ public class Console extends javax.swing.JFrame {
         newTransactionButton = new javax.swing.JButton();
         jLabel18 = new javax.swing.JLabel();
         jLabel19 = new javax.swing.JLabel();
-        jLabel12 = new javax.swing.JLabel();
-        jLabel13 = new javax.swing.JLabel();
         acctTransferFrom = new javax.swing.JComboBox();
         acctTransferTo = new javax.swing.JComboBox();
-        jLabel17 = new javax.swing.JLabel();
-        jLabel33 = new javax.swing.JLabel();
         envTransferFrom = new javax.swing.JComboBox();
         envTransferTo = new javax.swing.JComboBox();
         acctTransferButton = new javax.swing.JButton();
@@ -753,11 +749,11 @@ public class Console extends javax.swing.JFrame {
         jLabel7 = new javax.swing.JLabel();
         gmailUsername = new javax.swing.JTextField();
         gmailPassword = new javax.swing.JPasswordField();
-        serverToggleButton = new javax.swing.JToggleButton();
         jLabel8 = new javax.swing.JLabel();
         gmailServerStatus = new javax.swing.JLabel();
         jLabel20 = new javax.swing.JLabel();
         jLabel23 = new javax.swing.JLabel();
+        serverToggleButton = new javax.swing.JToggleButton();
         usersMessage = new javax.swing.JLabel();
         reportsPanel = new javax.swing.JPanel();
         jLabel36 = new javax.swing.JLabel();
@@ -937,7 +933,7 @@ public class Console extends javax.swing.JFrame {
                     .addComponent(addEnvelopeButton)
                     .addComponent(newEnvelopeField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(EnvelopesScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 405, Short.MAX_VALUE)
+                .addComponent(EnvelopesScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 186, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(categorizedCheckBox)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -1064,21 +1060,13 @@ public class Console extends javax.swing.JFrame {
             }
         });
 
-        jLabel18.setText("Account:");
+        jLabel18.setText("Account/To:");
 
-        jLabel19.setText("Envelope:");
-
-        jLabel12.setText("Account Transfer");
-
-        jLabel13.setText("From:");
+        jLabel19.setText("Envelope/From:");
 
         acctTransferFrom.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
 
         acctTransferTo.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
-
-        jLabel17.setText("To:");
-
-        jLabel33.setText("Envelope Transfer");
 
         envTransferFrom.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
 
@@ -1196,6 +1184,7 @@ public class Console extends javax.swing.JFrame {
             .addGroup(transactionsPanelLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(transactionsTableScrollPane, javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(transactionsPanelLayout.createSequentialGroup()
                         .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(transactionsPanelLayout.createSequentialGroup()
@@ -1258,61 +1247,48 @@ public class Console extends javax.swing.JFrame {
                                 .addGap(6, 6, 6)
                                 .addComponent(selectedAcctAmtLabel)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(selectedAcctAmt)))
-                        .addContainerGap(201, Short.MAX_VALUE))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, transactionsPanelLayout.createSequentialGroup()
-                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                .addComponent(selectedAcctAmt))
                             .addGroup(transactionsPanelLayout.createSequentialGroup()
                                 .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                     .addComponent(transactionDateField, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
                                     .addComponent(dateLabel))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(transactionDescriptionField, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(jLabel25))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(transactionAmtField, javax.swing.GroupLayout.PREFERRED_SIZE, 84, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(amountLabel))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                     .addGroup(transactionsPanelLayout.createSequentialGroup()
-                                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                                            .addComponent(jLabel12)
-                                            .addComponent(jLabel33))
-                                        .addGap(6, 6, 6))
-                                    .addGroup(transactionsPanelLayout.createSequentialGroup()
-                                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                            .addComponent(transactionDescriptionField, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                            .addComponent(jLabel25))
+                                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                                            .addGroup(transactionsPanelLayout.createSequentialGroup()
+                                                .addComponent(envTransferFrom, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                                .addComponent(envTransferTo, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                            .addGroup(transactionsPanelLayout.createSequentialGroup()
+                                                .addComponent(acctTransferFrom, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                                .addComponent(acctTransferTo, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)))
                                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                         .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                            .addComponent(amountLabel)
-                                            .addComponent(transactionAmtField, javax.swing.GroupLayout.PREFERRED_SIZE, 84, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)))
-                                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                            .addComponent(acctTransferButton)
+                                            .addComponent(envTransferButton)))
                                     .addGroup(transactionsPanelLayout.createSequentialGroup()
                                         .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                             .addComponent(newTransAcctDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                            .addComponent(jLabel18))
+                                            .addComponent(jLabel19))
                                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                         .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                            .addComponent(jLabel19)
+                                            .addComponent(jLabel18)
                                             .addGroup(transactionsPanelLayout.createSequentialGroup()
                                                 .addComponent(newTransEnvDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
                                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                                .addComponent(newTransactionButton, javax.swing.GroupLayout.PREFERRED_SIZE, 96, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                                    .addGroup(transactionsPanelLayout.createSequentialGroup()
-                                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                            .addComponent(acctTransferFrom, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                            .addComponent(envTransferFrom, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                            .addComponent(jLabel13))
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                            .addComponent(jLabel17)
-                                            .addGroup(transactionsPanelLayout.createSequentialGroup()
-                                                .addComponent(acctTransferTo, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                                .addComponent(acctTransferButton))
-                                            .addGroup(transactionsPanelLayout.createSequentialGroup()
-                                                .addComponent(envTransferTo, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                                .addComponent(envTransferButton)))))
-                                .addGap(0, 0, Short.MAX_VALUE))
-                            .addComponent(transactionsTableScrollPane))
-                        .addGap(10, 10, 10))))
+                                                .addComponent(newTransactionButton, javax.swing.GroupLayout.PREFERRED_SIZE, 96, javax.swing.GroupLayout.PREFERRED_SIZE)))))))
+                        .addGap(0, 56, Short.MAX_VALUE)))
+                .addContainerGap())
         );
         transactionsPanelLayout.setVerticalGroup(
             transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -1357,50 +1333,43 @@ public class Console extends javax.swing.JFrame {
                                 .addComponent(jLabel27)
                                 .addComponent(setCategoryButton))
                             .addComponent(removeCategoryButton, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(transactionsPanelLayout.createSequentialGroup()
                         .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(selectedAcctAmt)
                             .addComponent(selectedEnvAmt))
                         .addGap(28, 28, 28))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, transactionsPanelLayout.createSequentialGroup()
-                        .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(selectedAcctAmtLabel)
-                            .addComponent(selectedEnvAmtLabel))
-                        .addGap(18, 18, 18)))
-                .addComponent(transactionsTableScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 485, Short.MAX_VALUE)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(selectedAcctAmtLabel)
+                        .addComponent(selectedEnvAmtLabel)))
+                .addGap(17, 17, 17)
+                .addComponent(transactionsTableScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 355, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(jLabel19)
+                        .addComponent(jLabel18)
+                        .addComponent(amountLabel)
+                        .addComponent(jLabel25))
+                    .addComponent(dateLabel, javax.swing.GroupLayout.Alignment.TRAILING))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(dateLabel)
-                    .addComponent(jLabel25)
-                    .addComponent(amountLabel)
-                    .addComponent(jLabel18)
-                    .addComponent(jLabel19))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(transactionDescriptionField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(transactionDateField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(transactionAmtField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(newTransAcctDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(newTransEnvDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(newTransactionButton))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel13)
-                    .addComponent(jLabel17))
+                    .addComponent(newTransactionButton)
+                    .addComponent(transactionAmtField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(transactionDescriptionField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(transactionDateField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(acctTransferFrom, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(acctTransferTo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(acctTransferButton)
-                    .addComponent(jLabel12))
+                    .addComponent(acctTransferButton))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(envTransferFrom, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(envTransferTo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(envTransferButton)
-                    .addComponent(jLabel33))
+                    .addComponent(envTransferButton))
                 .addContainerGap())
         );
 
@@ -1669,13 +1638,6 @@ public class Console extends javax.swing.JFrame {
 
         jLabel7.setText("Username:");
 
-        serverToggleButton.setText("Start Server");
-        serverToggleButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                serverToggleButtonActionPerformed(evt);
-            }
-        });
-
         jLabel8.setText("Password:");
 
         gmailServerStatus.setText("Server is currently off.");
@@ -1683,6 +1645,13 @@ public class Console extends javax.swing.JFrame {
         jLabel20.setText("@gmail.com");
 
         jLabel23.setText("(Once server is running, send commands to that address via text or email)");
+
+        serverToggleButton.setText("Start Server");
+        serverToggleButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                serverToggleButtonActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
@@ -3214,12 +3183,9 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel11;
-    private javax.swing.JLabel jLabel12;
-    private javax.swing.JLabel jLabel13;
     private javax.swing.JLabel jLabel14;
     private javax.swing.JLabel jLabel15;
     private javax.swing.JLabel jLabel16;
-    private javax.swing.JLabel jLabel17;
     private javax.swing.JLabel jLabel18;
     private javax.swing.JLabel jLabel19;
     private javax.swing.JLabel jLabel2;
@@ -3234,7 +3200,6 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel30;
     private javax.swing.JLabel jLabel31;
-    private javax.swing.JLabel jLabel33;
     private javax.swing.JLabel jLabel36;
     private javax.swing.JLabel jLabel37;
     private javax.swing.JLabel jLabel5;

@@ -212,7 +212,7 @@
                                   <Component id="newEnvelopeField" alignment="3" min="-2" max="-2" attributes="0"/>
                               </Group>
                               <EmptySpace max="-2" attributes="0"/>
-                              <Component id="EnvelopesScrollPane" pref="405" max="32767" attributes="0"/>
+                              <Component id="EnvelopesScrollPane" pref="186" max="32767" attributes="0"/>
                               <EmptySpace max="-2" attributes="0"/>
                               <Component id="categorizedCheckBox" min="-2" max="-2" attributes="0"/>
                               <EmptySpace max="-2" attributes="0"/>
@@ -390,9 +390,10 @@
                   <Layout>
                     <DimensionLayout dim="0">
                       <Group type="103" groupAlignment="0" attributes="0">
-                          <Group type="102" alignment="0" attributes="0">
+                          <Group type="102" attributes="0">
                               <EmptySpace max="-2" attributes="0"/>
                               <Group type="103" groupAlignment="0" attributes="0">
+                                  <Component id="transactionsTableScrollPane" alignment="1" max="32767" attributes="0"/>
                                   <Group type="102" attributes="0">
                                       <Group type="103" groupAlignment="0" attributes="0">
                                           <Group type="102" attributes="0">
@@ -470,47 +471,50 @@
                                               <EmptySpace max="-2" attributes="0"/>
                                               <Component id="selectedAcctAmt" min="-2" max="-2" attributes="0"/>
                                           </Group>
-                                      </Group>
-                                      <EmptySpace pref="201" max="32767" attributes="0"/>
-                                  </Group>
-                                  <Group type="102" alignment="1" attributes="0">
-                                      <Group type="103" groupAlignment="1" attributes="0">
-                                          <Group type="102" alignment="1" attributes="0">
+                                          <Group type="102" alignment="0" attributes="0">
                                               <Group type="103" groupAlignment="0" attributes="0">
-                                                  <Component id="transactionDateField" alignment="0" min="-2" pref="100" max="-2" attributes="0"/>
-                                                  <Component id="dateLabel" alignment="0" min="-2" max="-2" attributes="0"/>
+                                                  <Component id="transactionDateField" min="-2" pref="100" max="-2" attributes="0"/>
+                                                  <Component id="dateLabel" min="-2" max="-2" attributes="0"/>
                                               </Group>
                                               <EmptySpace max="-2" attributes="0"/>
-                                              <Group type="103" groupAlignment="1" attributes="0">
-                                                  <Group type="102" alignment="1" attributes="0">
-                                                      <Group type="103" groupAlignment="1" attributes="0">
-                                                          <Component id="jLabel12" min="-2" max="-2" attributes="0"/>
-                                                          <Component id="jLabel33" min="-2" max="-2" attributes="0"/>
-                                                      </Group>
-                                                      <EmptySpace min="-2" pref="6" max="-2" attributes="0"/>
-                                                  </Group>
-                                                  <Group type="102" alignment="1" attributes="0">
-                                                      <Group type="103" groupAlignment="0" attributes="0">
-                                                          <Component id="transactionDescriptionField" alignment="0" min="-2" pref="200" max="-2" attributes="0"/>
-                                                          <Component id="jLabel25" alignment="0" min="-2" max="-2" attributes="0"/>
-                                                      </Group>
-                                                      <EmptySpace max="-2" attributes="0"/>
-                                                      <Group type="103" groupAlignment="0" attributes="0">
-                                                          <Component id="amountLabel" min="-2" max="-2" attributes="0"/>
-                                                          <Component id="transactionAmtField" min="-2" pref="84" max="-2" attributes="0"/>
-                                                      </Group>
-                                                      <EmptySpace max="-2" attributes="0"/>
-                                                  </Group>
-                                              </Group>
                                               <Group type="103" groupAlignment="0" attributes="0">
+                                                  <Component id="transactionDescriptionField" min="-2" pref="200" max="-2" attributes="0"/>
+                                                  <Component id="jLabel25" min="-2" max="-2" attributes="0"/>
+                                              </Group>
+                                              <EmptySpace max="-2" attributes="0"/>
+                                              <Group type="103" groupAlignment="0" attributes="0">
+                                                  <Component id="transactionAmtField" min="-2" pref="84" max="-2" attributes="0"/>
+                                                  <Component id="amountLabel" min="-2" max="-2" attributes="0"/>
+                                              </Group>
+                                              <EmptySpace max="-2" attributes="0"/>
+                                              <Group type="103" groupAlignment="0" attributes="0">
+                                                  <Group type="102" alignment="0" attributes="0">
+                                                      <Group type="103" groupAlignment="1" max="-2" attributes="0">
+                                                          <Group type="102" alignment="1" attributes="0">
+                                                              <Component id="envTransferFrom" min="-2" pref="120" max="-2" attributes="0"/>
+                                                              <EmptySpace max="-2" attributes="0"/>
+                                                              <Component id="envTransferTo" min="-2" pref="120" max="-2" attributes="0"/>
+                                                          </Group>
+                                                          <Group type="102" alignment="1" attributes="0">
+                                                              <Component id="acctTransferFrom" min="-2" pref="120" max="-2" attributes="0"/>
+                                                              <EmptySpace max="-2" attributes="0"/>
+                                                              <Component id="acctTransferTo" min="-2" pref="120" max="-2" attributes="0"/>
+                                                          </Group>
+                                                      </Group>
+                                                      <EmptySpace max="-2" attributes="0"/>
+                                                      <Group type="103" groupAlignment="0" attributes="0">
+                                                          <Component id="acctTransferButton" min="-2" max="-2" attributes="0"/>
+                                                          <Component id="envTransferButton" min="-2" max="-2" attributes="0"/>
+                                                      </Group>
+                                                  </Group>
                                                   <Group type="102" alignment="0" attributes="0">
                                                       <Group type="103" groupAlignment="0" attributes="0">
                                                           <Component id="newTransAcctDropdown" alignment="0" min="-2" pref="120" max="-2" attributes="0"/>
-                                                          <Component id="jLabel18" alignment="0" min="-2" max="-2" attributes="0"/>
+                                                          <Component id="jLabel19" alignment="0" min="-2" max="-2" attributes="0"/>
                                                       </Group>
                                                       <EmptySpace max="-2" attributes="0"/>
                                                       <Group type="103" groupAlignment="0" attributes="0">
-                                                          <Component id="jLabel19" min="-2" max="-2" attributes="0"/>
+                                                          <Component id="jLabel18" min="-2" max="-2" attributes="0"/>
                                                           <Group type="102" alignment="0" attributes="0">
                                                               <Component id="newTransEnvDropdown" min="-2" pref="120" max="-2" attributes="0"/>
                                                               <EmptySpace max="-2" attributes="0"/>
@@ -518,35 +522,13 @@
                                                           </Group>
                                                       </Group>
                                                   </Group>
-                                                  <Group type="102" alignment="0" attributes="0">
-                                                      <Group type="103" groupAlignment="0" attributes="0">
-                                                          <Component id="acctTransferFrom" alignment="0" min="-2" pref="120" max="-2" attributes="0"/>
-                                                          <Component id="envTransferFrom" alignment="0" min="-2" pref="120" max="-2" attributes="0"/>
-                                                          <Component id="jLabel13" alignment="0" min="-2" max="-2" attributes="0"/>
-                                                      </Group>
-                                                      <EmptySpace max="-2" attributes="0"/>
-                                                      <Group type="103" groupAlignment="0" attributes="0">
-                                                          <Component id="jLabel17" min="-2" max="-2" attributes="0"/>
-                                                          <Group type="102" alignment="0" attributes="0">
-                                                              <Component id="acctTransferTo" min="-2" pref="120" max="-2" attributes="0"/>
-                                                              <EmptySpace max="-2" attributes="0"/>
-                                                              <Component id="acctTransferButton" min="-2" max="-2" attributes="0"/>
-                                                          </Group>
-                                                          <Group type="102" alignment="0" attributes="0">
-                                                              <Component id="envTransferTo" min="-2" pref="120" max="-2" attributes="0"/>
-                                                              <EmptySpace max="-2" attributes="0"/>
-                                                              <Component id="envTransferButton" min="-2" max="-2" attributes="0"/>
-                                                          </Group>
-                                                      </Group>
-                                                  </Group>
                                               </Group>
-                                              <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
                                           </Group>
-                                          <Component id="transactionsTableScrollPane" max="32767" attributes="0"/>
                                       </Group>
-                                      <EmptySpace min="-2" pref="10" max="-2" attributes="0"/>
+                                      <EmptySpace min="0" pref="56" max="32767" attributes="0"/>
                                   </Group>
                               </Group>
+                              <EmptySpace max="-2" attributes="0"/>
                           </Group>
                       </Group>
                     </DimensionLayout>
@@ -605,7 +587,6 @@
                                       </Group>
                                   </Group>
                               </Group>
-                              <EmptySpace max="-2" attributes="0"/>
                               <Group type="103" groupAlignment="0" attributes="0">
                                   <Group type="102" attributes="0">
                                       <Group type="103" groupAlignment="3" attributes="0">
@@ -614,50 +595,43 @@
                                       </Group>
                                       <EmptySpace min="-2" pref="28" max="-2" attributes="0"/>
                                   </Group>
-                                  <Group type="102" alignment="1" attributes="0">
-                                      <Group type="103" groupAlignment="3" attributes="0">
-                                          <Component id="selectedAcctAmtLabel" alignment="3" min="-2" max="-2" attributes="0"/>
-                                          <Component id="selectedEnvAmtLabel" alignment="3" min="-2" max="-2" attributes="0"/>
-                                      </Group>
-                                      <EmptySpace type="separate" max="-2" attributes="0"/>
+                                  <Group type="103" alignment="1" groupAlignment="3" attributes="0">
+                                      <Component id="selectedAcctAmtLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                                      <Component id="selectedEnvAmtLabel" alignment="3" min="-2" max="-2" attributes="0"/>
                                   </Group>
                               </Group>
-                              <Component id="transactionsTableScrollPane" pref="485" max="32767" attributes="0"/>
+                              <EmptySpace min="-2" pref="17" max="-2" attributes="0"/>
+                              <Component id="transactionsTableScrollPane" pref="355" max="32767" attributes="0"/>
+                              <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                              <Group type="103" groupAlignment="0" attributes="0">
+                                  <Group type="103" alignment="0" groupAlignment="3" attributes="0">
+                                      <Component id="jLabel19" alignment="3" min="-2" max="-2" attributes="0"/>
+                                      <Component id="jLabel18" alignment="3" min="-2" max="-2" attributes="0"/>
+                                      <Component id="amountLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                                      <Component id="jLabel25" alignment="3" min="-2" max="-2" attributes="0"/>
+                                  </Group>
+                                  <Component id="dateLabel" alignment="1" min="-2" max="-2" attributes="0"/>
+                              </Group>
                               <EmptySpace max="-2" attributes="0"/>
                               <Group type="103" groupAlignment="3" attributes="0">
-                                  <Component id="dateLabel" alignment="3" min="-2" max="-2" attributes="0"/>
-                                  <Component id="jLabel25" alignment="3" min="-2" max="-2" attributes="0"/>
-                                  <Component id="amountLabel" alignment="3" min="-2" max="-2" attributes="0"/>
-                                  <Component id="jLabel18" alignment="3" min="-2" max="-2" attributes="0"/>
-                                  <Component id="jLabel19" alignment="3" min="-2" max="-2" attributes="0"/>
-                              </Group>
-                              <EmptySpace min="-2" max="-2" attributes="0"/>
-                              <Group type="103" groupAlignment="3" attributes="0">
-                                  <Component id="transactionDescriptionField" alignment="3" min="-2" max="-2" attributes="0"/>
-                                  <Component id="transactionDateField" alignment="3" min="-2" max="-2" attributes="0"/>
-                                  <Component id="transactionAmtField" alignment="3" min="-2" max="-2" attributes="0"/>
                                   <Component id="newTransAcctDropdown" alignment="3" min="-2" max="-2" attributes="0"/>
                                   <Component id="newTransEnvDropdown" alignment="3" min="-2" max="-2" attributes="0"/>
                                   <Component id="newTransactionButton" alignment="3" min="-2" max="-2" attributes="0"/>
-                              </Group>
-                              <EmptySpace max="-2" attributes="0"/>
-                              <Group type="103" groupAlignment="0" attributes="0">
-                                  <Component id="jLabel13" alignment="0" min="-2" max="-2" attributes="0"/>
-                                  <Component id="jLabel17" min="-2" max="-2" attributes="0"/>
+                                  <Component id="transactionAmtField" alignment="3" min="-2" max="-2" attributes="0"/>
+                                  <Component id="transactionDescriptionField" alignment="3" min="-2" max="-2" attributes="0"/>
+                                  <Component id="transactionDateField" alignment="3" min="-2" max="-2" attributes="0"/>
                               </Group>
                               <EmptySpace max="-2" attributes="0"/>
                               <Group type="103" groupAlignment="3" attributes="0">
                                   <Component id="acctTransferFrom" alignment="3" min="-2" max="-2" attributes="0"/>
                                   <Component id="acctTransferTo" alignment="3" min="-2" max="-2" attributes="0"/>
                                   <Component id="acctTransferButton" alignment="3" min="-2" max="-2" attributes="0"/>
-                                  <Component id="jLabel12" alignment="3" min="-2" max="-2" attributes="0"/>
                               </Group>
                               <EmptySpace max="-2" attributes="0"/>
                               <Group type="103" groupAlignment="3" attributes="0">
                                   <Component id="envTransferFrom" alignment="3" min="-2" max="-2" attributes="0"/>
                                   <Component id="envTransferTo" alignment="3" min="-2" max="-2" attributes="0"/>
                                   <Component id="envTransferButton" alignment="3" min="-2" max="-2" attributes="0"/>
-                                  <Component id="jLabel33" alignment="3" min="-2" max="-2" attributes="0"/>
                               </Group>
                               <EmptySpace max="-2" attributes="0"/>
                           </Group>
@@ -895,22 +869,12 @@
                     </Component>
                     <Component class="javax.swing.JLabel" name="jLabel18">
                       <Properties>
-                        <Property name="text" type="java.lang.String" value="Account:"/>
+                        <Property name="text" type="java.lang.String" value="Account/To:"/>
                       </Properties>
                     </Component>
                     <Component class="javax.swing.JLabel" name="jLabel19">
                       <Properties>
-                        <Property name="text" type="java.lang.String" value="Envelope:"/>
-                      </Properties>
-                    </Component>
-                    <Component class="javax.swing.JLabel" name="jLabel12">
-                      <Properties>
-                        <Property name="text" type="java.lang.String" value="Account Transfer"/>
-                      </Properties>
-                    </Component>
-                    <Component class="javax.swing.JLabel" name="jLabel13">
-                      <Properties>
-                        <Property name="text" type="java.lang.String" value="From:"/>
+                        <Property name="text" type="java.lang.String" value="Envelope/From:"/>
                       </Properties>
                     </Component>
                     <Component class="javax.swing.JComboBox" name="acctTransferFrom">
@@ -942,16 +906,6 @@
                       <AuxValues>
                         <AuxValue name="JavaCodeGenerator_VariableModifier" type="java.lang.Integer" value="1"/>
                       </AuxValues>
-                    </Component>
-                    <Component class="javax.swing.JLabel" name="jLabel17">
-                      <Properties>
-                        <Property name="text" type="java.lang.String" value="To:"/>
-                      </Properties>
-                    </Component>
-                    <Component class="javax.swing.JLabel" name="jLabel33">
-                      <Properties>
-                        <Property name="text" type="java.lang.String" value="Envelope Transfer"/>
-                      </Properties>
                     </Component>
                     <Component class="javax.swing.JComboBox" name="envTransferFrom">
                       <Properties>
@@ -1714,14 +1668,6 @@
                         </Component>
                         <Component class="javax.swing.JPasswordField" name="gmailPassword">
                         </Component>
-                        <Component class="javax.swing.JToggleButton" name="serverToggleButton">
-                          <Properties>
-                            <Property name="text" type="java.lang.String" value="Start Server"/>
-                          </Properties>
-                          <Events>
-                            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="serverToggleButtonActionPerformed"/>
-                          </Events>
-                        </Component>
                         <Component class="javax.swing.JLabel" name="jLabel8">
                           <Properties>
                             <Property name="text" type="java.lang.String" value="Password:"/>
@@ -1741,6 +1687,14 @@
                           <Properties>
                             <Property name="text" type="java.lang.String" value="(Once server is running, send commands to that address via text or email)"/>
                           </Properties>
+                        </Component>
+                        <Component class="javax.swing.JToggleButton" name="serverToggleButton">
+                          <Properties>
+                            <Property name="text" type="java.lang.String" value="Start Server"/>
+                          </Properties>
+                          <Events>
+                            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="serverToggleButtonActionPerformed"/>
+                          </Events>
                         </Component>
                       </SubComponents>
                     </Container>
