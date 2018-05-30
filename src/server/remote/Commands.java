@@ -185,7 +185,7 @@ public class Commands {
         private String accounts() {
             String response = "ACCOUNTS:";
             for(int i = 0; i < mc.getAccountCount()-1; i++) {
-                response += "\n " + mc.getAccountName(i) + " " + mc.getAccountAmount(i);
+                response += "\n  " + mc.getAccountName(i) + " " + mc.getAccountAmount(i);
             }
             response += "\nTOTAL: " + mc.getAccountAmount(mc.getAccountCount()-1);
             return response;
@@ -194,7 +194,11 @@ public class Commands {
         private String categories() {
             String response = "CATEGORIES:";
             for(int i = 0; i < mc.getEnvelopeCCount()-1; i++) {
-                response += "\n " + mc.getEnvelopeCName(i) + " " + mc.getEnvelopeCAmount(i);
+                if (mc.isEnvelope(i)) {
+                    response += "\n  " + mc.getEnvelopeCName(i) + " " + mc.getEnvelopeCAmount(i);
+                } else {
+                    response += "\n" + mc.getEnvelopeCName(i) + " " + mc.getEnvelopeCAmount(i);
+                }
             }
             response += "\nTOTAL: " + mc.getEnvelopeCAmount(mc.getEnvelopeCCount()-1);
             return response;
@@ -203,7 +207,7 @@ public class Commands {
         private String envelopes() {
             String response = "ENVELOPES:";
             for(int i = 0; i < mc.getEnvelopeUCount()-1; i++) {
-                response += "\n " + mc.getEnvelopeUName(i) + " " + mc.getEnvelopeUAmount(i);
+                response += "\n  " + mc.getEnvelopeUName(i) + " " + mc.getEnvelopeUAmount(i);
             }
             response += "\nTOTAL: " + mc.getEnvelopeUAmount(mc.getEnvelopeUCount()-1);
             return response;
