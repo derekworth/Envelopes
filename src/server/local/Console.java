@@ -32,7 +32,7 @@ import server.remote.GmailCommunicator;
  */
 public class Console extends javax.swing.JFrame {
     
-    private static final String VER = "2018-05-29";
+    private static final String VER = "2018-06-12";
 
     private final Console thisConsole = this;
     private final String TITLE = "Envelopes";
@@ -67,13 +67,12 @@ public class Console extends javax.swing.JFrame {
             @Override
             public void run() {
                 long start = System.currentTimeMillis();
-                int count = 1;
                 while (serverIsOn) {
                     try {
                         if (gc.receive()) {
                             updateAll();
                         }
-                        TimeUnit.SECONDS.sleep(6);
+                        TimeUnit.SECONDS.sleep(3);
                         gmailServerStatus.setText("run-time ~ " + Utilities.getDuration((System.currentTimeMillis() - start) / 1000));
                     } catch (InterruptedException ex) {
                     }
