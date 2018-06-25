@@ -1,5 +1,8 @@
 package server.remote;
 
+import com.sun.mail.iap.ProtocolException;
+import com.sun.mail.imap.IMAPFolder;
+import com.sun.mail.imap.protocol.IMAPProtocol;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.LinkedList;
@@ -25,6 +28,25 @@ import model.ModelController;
  */
 public class GmailCommunicator {
     
+    private boolean srvKeepAliveIsOn;
+    private IMAPFolder folder;
+    
+    private class KeepAliveRunnable implements Runnable {
+        @Override
+        public void run() {
+            try {
+                if(!srvKeepAliveIsOn && folder != null) {
+                    srvKeepAliveIsOn = true;
+                    Thread.sleep(480000); // 8 minutes
+                    pushNOOP();
+                    srvKeepAliveIsOn = false;
+                }
+            } catch (InterruptedException e) {
+                srvKeepAliveIsOn = false;
+            }
+        }
+    }
+    
     private static final String[] TEXT_EXTENSIONS = {
         "cingularme.com", "email.uscc.net", "message.alltel.com", 
         "messaging.nextel.com", "messaging.sprintpcs.com", "mms.att.net", 
@@ -33,6 +55,7 @@ public class GmailCommunicator {
     private final ModelController mc;
     
     public GmailCommunicator(ModelController mc) {
+        srvKeepAliveIsOn = false;
         this.mc = mc;
     }
     
@@ -133,8 +156,29 @@ public class GmailCommunicator {
         }
     }
     
+    public boolean isGmailConnected() {
+        return srvKeepAliveIsOn && folder != null;
+    }
+    
+    public void pushNOOP() {
+        try {
+            if( isGmailConnected() ) {
+                // Perform a NOOP just to keep alive the connection
+                folder.doCommand(new IMAPFolder.ProtocolCommand() {
+                    @Override
+                    public Object doCommand(IMAPProtocol p) throws ProtocolException {
+                        p.simpleCommand("NOOP", null);
+                        return null;
+                    }
+                });
+            }
+        } catch (MessagingException e) {
+            // Ignore, just aborting the thread...
+        }
+    }
+    
     public boolean receive() {
-        int count;
+        int count = 0;
         try {
             // Get a session.  Use a blank Properties object.
             Session session = Session.getInstance(new Properties());
@@ -145,47 +189,66 @@ public class GmailCommunicator {
             // Get "INBOX"
             Folder inbox = store.getFolder("Inbox");
             inbox.open(Folder.READ_WRITE);
-            count = inbox.getMessageCount();
-            // Process each email
-            for(int i = 1; i <= count; i++) {
-                // Get an email by its sequence number
-                Message m = inbox.getMessage(i);
-                // Get sender
-                String addr = Utilities.stripHeaderFromAddress(m.getFrom()[0].toString());
-                String date = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(m.getReceivedDate());
-                int index = mc.getEmailIndex(addr);
-                // Get commands (content/body of message)
-                String msg = formatMessage(processPart(m));
-                // process commands
-                if (mc.isEmailAuthenticated(addr)) {
-                    Commands commands = new Commands(mc, mc.getEmailUsername(index), date, msg);
-                    send(addr, commands.executeCommands());
-                } else {
-                    String[] tokens = msg.split(" ");
-                    String un, pw;
-                    if(tokens.length==2) {
-                        un = tokens[0];
-                        pw = tokens[1];
+            
+            if (inbox instanceof IMAPFolder) {
+                count = inbox.getMessageCount();
+                // Process each email
+                for(int i = 1; i <= count; i++) {
+                    // Get an email by its sequence number
+                    Message m = inbox.getMessage(i);
+                    // Get sender
+                    String addr = Utilities.stripHeaderFromAddress(m.getFrom()[0].toString());
+                    String date = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(m.getReceivedDate());
+                    int index = mc.getEmailIndex(addr);
+                    // Get commands (content/body of message)
+                    String msg = formatMessage(processPart(m));
+                    // process commands
+                    if (mc.isEmailAuthenticated(addr)) {
+                        Commands commands = new Commands(mc, mc.getEmailUsername(index), date, msg);
+                        send(addr, commands.executeCommands());
                     } else {
-                        un = "";
-                        pw = "";
-                    }
-                    
-                    if(authorize(addr, un, pw)) {
-                        send(addr, "Congratulations, you have been authenticated.");
-                    } else {
-                        int attemptCount = mc.getEmailAttempt(index);
-                        if (attemptCount >= ModelController.MAX_ATTEMPT) {
-                            send(addr, "You are permanently locked out. See system administrator for access.");
+                        String[] tokens = msg.split(" ");
+                        String un, pw;
+                        if(tokens.length==2) {
+                            un = tokens[0];
+                            pw = tokens[1];
                         } else {
-                            send(addr, "Invalid credentials. You have " + (ModelController.MAX_ATTEMPT - attemptCount) + " attempts remaining. Please send: <un> <pw>");
+                            un = "";
+                            pw = "";
+                        }
+
+                        if(authorize(addr, un, pw)) {
+                            send(addr, "Congratulations, you have been authenticated.");
+                        } else {
+                            int attemptCount = mc.getEmailAttempt(index);
+                            if (attemptCount >= ModelController.MAX_ATTEMPT) {
+                                send(addr, "You are permanently locked out. See system administrator for access.");
+                            } else {
+                                send(addr, "Invalid credentials. You have " + (ModelController.MAX_ATTEMPT - attemptCount) + " attempts remaining. Please send: <un> <pw>");
+                            }
                         }
                     }
+                    // delete messgage from sender
+                    m.setFlag(Flags.Flag.DELETED,true);
                 }
                 
-                // delete messgage from sender
-                m.setFlag(Flags.Flag.DELETED,true);
+                folder = (IMAPFolder) inbox;
+                
+                // keep alive thread help refresh the idle connection to the server
+                Thread t = new Thread(new KeepAliveRunnable(), "Keep Alive Idle Connection");
+                t.start();
+                
+                // listen for message
+                folder.idle(true);
+                
+                // shutdown "keep alive thread"
+                if(t.isAlive()) {
+                    t.interrupt();
+                }
+                
+                folder = null;
             }
+            
             inbox.close(true);
             store.close();
             return count>0;

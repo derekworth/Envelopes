@@ -16,9 +16,6 @@ import java.net.MalformedURLException;
 import java.net.ServerSocket;
 import java.net.URL;
 import java.util.LinkedList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
@@ -32,7 +29,7 @@ import server.remote.GmailCommunicator;
  */
 public class Console extends javax.swing.JFrame {
     
-    private static final String VER = "2018-06-12";
+    private static final String VER = "2018-06-24";
 
     private final Console thisConsole = this;
     private final String TITLE = "Envelopes";
@@ -41,15 +38,15 @@ public class Console extends javax.swing.JFrame {
     private int consoleLoginFailCount = 0;
     private int serverLoginFailCount = 0;
     private boolean serverIsOn;
-    ExecutorService exec;
+    private boolean serverRcvLoopIsOn;
+    private boolean serverTimerIsOn;
+    
     private String currUser;
 
     private static final String ALL = "-all-";
     private static final String NONE = "-none-";
     private static final String UNCAT = "uncategorized";
     private static final int DEFAULT_TRANS_COUNT = 250;
-
-    Runnable gmailServer;
 
     private ModelController mc;
     private GmailCommunicator gc;
@@ -59,26 +56,65 @@ public class Console extends javax.swing.JFrame {
     private EmailTableModel emailTM;
     
     private ServerSocket socket;
+    private Thread rcvThread, timerThread;
+    
+    private class RunTimeStatusRunnable implements Runnable {
+        @Override
+        public void run() {
+            if(!serverTimerIsOn) {
+                serverTimerIsOn = true;
+                gmailServerStatus.setText("Gmail server is now ON.");
+                long start = System.currentTimeMillis();
+                while(serverRcvLoopIsOn) {
+                    try {
+                        gmailServerStatus.setText("run-time ~ " + Utilities.getDuration((System.currentTimeMillis() - start) / 1000));
+                        Thread.sleep(1000); // 1 sec
+                    } catch (InterruptedException ex) {
+                        // do nothing
+                    }
+                }
+                gmailUsername.setEnabled(true);
+                gmailPassword.setEnabled(true);
+                serverToggleButton.setText("Start Server");
+                serverToggleButton.setSelected(false);
+                gmailServerStatus.setText("Gmail server is now OFF.");
+                serverTimerIsOn = false;
+            }
+        }
+    }
+    
+    private class ReceiveLoopRunnable implements Runnable {
+        @Override
+        public void run() {
+            if(!serverRcvLoopIsOn) {
+                serverRcvLoopIsOn = true;
+                serverToggleButton.setSelected(true);
+                serverToggleButton.setText("Stop Server");
+                serverLoginFailCount = 0;
+                gmailPassword.setEnabled(false);
+                gmailUsername.setEnabled(false);
+                
+                // keeps server runtime up-to-date
+                timerThread = new Thread(new RunTimeStatusRunnable(), "Run Timer");
+                timerThread.start();
+
+                // starts server (i.e. receive loop)
+                while (serverIsOn) {
+                    if (gc.receive()) {
+                        updateAll();
+                    }
+                }
+                
+                serverRcvLoopIsOn = false;
+            }
+        }
+    }
 
     public Console() {
         checkForLatestVersion();
-        
-        gmailServer = new Runnable() {
-            @Override
-            public void run() {
-                long start = System.currentTimeMillis();
-                while (serverIsOn) {
-                    try {
-                        if (gc.receive()) {
-                            updateAll();
-                        }
-                        TimeUnit.SECONDS.sleep(3);
-                        gmailServerStatus.setText("run-time ~ " + Utilities.getDuration((System.currentTimeMillis() - start) / 1000));
-                    } catch (InterruptedException ex) {
-                    }
-                }
-            }
-        };
+        serverIsOn = false;
+        serverRcvLoopIsOn = false;
+        serverTimerIsOn = false;
         
         try {
             // prevents multiple instances of console
@@ -134,20 +170,13 @@ public class Console extends javax.swing.JFrame {
                 emailTable.getColumnModel().getColumn(i).setCellRenderer(emailTM.getRenderer());
             }
             // set gmail credentials
-            exec = Executors.newSingleThreadExecutor();
             if (gc.isValidCredentials(mc.getGmailUsername(), mc.getGmailPassword())) {
                 gmailPassword.setText(mc.getGmailPassword());
                 gmailUsername.setText(mc.getGmailUsername());
                 // starts Gmail Server automatically on startup
-                serverToggleButton.setSelected(true);
-                // retrieve username and password from the text fields
                 serverIsOn = true;
-                exec.submit(gmailServer);
-                serverToggleButton.setText("Stop Server");
-                gmailServerStatus.setText("Gmail server is now ON.");
-                serverLoginFailCount = 0;
-                gmailPassword.setEnabled(false);
-                gmailUsername.setEnabled(false);
+                rcvThread = new Thread(new ReceiveLoopRunnable(), "Receive Loop");
+                rcvThread.start();
             }
             // populate transaction date fields
             transFromField.setText(Utilities.getDatestamp(-28));
@@ -610,16 +639,10 @@ public class Console extends javax.swing.JFrame {
             // update model
             mc.setGmailUsername(gmailUN);
             mc.setGmailPassword(gmailPW);
-            // update view
-            serverToggleButton.setText("Stop Server");
-            gmailServerStatus.setText("Gmail server is now ON.");
-            serverLoginFailCount = 0;
-            gmailUsername.setEnabled(false);
-            gmailPassword.setEnabled(false);
             // turn on server
             serverIsOn = true;
-            exec = Executors.newSingleThreadExecutor();
-            exec.submit(gmailServer);
+            rcvThread = new Thread(new ReceiveLoopRunnable(), "Receive Loop");
+            rcvThread.start();
         } else {
             serverToggleButton.setSelected(false);
             gmailServerStatus.setText("Error(" + ++serverLoginFailCount + "): invalid username and/or password.");
@@ -627,15 +650,9 @@ public class Console extends javax.swing.JFrame {
     }
     
     public final void shutdownServer() {
-        // update view
-        serverToggleButton.setText("Start Server");
-        serverToggleButton.setSelected(false);
-        gmailServerStatus.setText("Gmail server is now OFF.");
-        gmailUsername.setEnabled(true);
-        gmailPassword.setEnabled(true);
         // turn on server
         serverIsOn = false;
-        exec.shutdownNow();
+        gc.pushNOOP();
     }
 
     /**
@@ -1196,6 +1213,10 @@ public class Console extends javax.swing.JFrame {
                                 .addGap(24, 24, 24)
                                 .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                     .addGroup(transactionsPanelLayout.createSequentialGroup()
+                                        .addComponent(selectedEnvAmtLabel)
+                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                        .addComponent(selectedEnvAmt))
+                                    .addGroup(transactionsPanelLayout.createSequentialGroup()
                                         .addGroup(transactionsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                                             .addGroup(transactionsPanelLayout.createSequentialGroup()
                                                 .addComponent(jLabel2)
@@ -1217,11 +1238,7 @@ public class Console extends javax.swing.JFrame {
                                             .addGroup(transactionsPanelLayout.createSequentialGroup()
                                                 .addComponent(mergeEnvelopesList, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
                                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                                .addComponent(mergeEnvelopesButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
-                                    .addGroup(transactionsPanelLayout.createSequentialGroup()
-                                        .addComponent(selectedEnvAmtLabel)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addComponent(selectedEnvAmt))))
+                                                .addComponent(mergeEnvelopesButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))))
                             .addGroup(transactionsPanelLayout.createSequentialGroup()
                                 .addComponent(transactionQtyTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -1549,40 +1566,44 @@ public class Console extends javax.swing.JFrame {
                 .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(accountManagementPaneLayout.createSequentialGroup()
                         .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel10, javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(jLabel22, javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(jLabel21, javax.swing.GroupLayout.Alignment.TRAILING))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(updateUserDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addGroup(accountManagementPaneLayout.createSequentialGroup()
                                 .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(updateUserTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(updateUserPasswordField, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                    .addComponent(jLabel10, javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(jLabel22, javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(jLabel21, javax.swing.GroupLayout.Alignment.TRAILING))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(updateUserButton, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                    .addGroup(accountManagementPaneLayout.createSequentialGroup()
-                        .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel5, javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(jLabel6, javax.swing.GroupLayout.Alignment.TRAILING))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(addUserTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(addUserPasswordField, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(addUserButton, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addComponent(jLabel14)
-                    .addComponent(jLabel15)
-                    .addGroup(accountManagementPaneLayout.createSequentialGroup()
-                        .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(updateUserDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addGroup(accountManagementPaneLayout.createSequentialGroup()
+                                        .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                            .addComponent(updateUserTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                            .addComponent(updateUserPasswordField, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                        .addComponent(updateUserButton, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE))))
                             .addGroup(accountManagementPaneLayout.createSequentialGroup()
-                                .addComponent(jLabel29)
+                                .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(jLabel5, javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(jLabel6, javax.swing.GroupLayout.Alignment.TRAILING))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(removeUserDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addComponent(jLabel26))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(removeUserButton, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(addUserTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(addUserPasswordField, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(addUserButton, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(jLabel15)
+                            .addGroup(accountManagementPaneLayout.createSequentialGroup()
+                                .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addGroup(accountManagementPaneLayout.createSequentialGroup()
+                                        .addComponent(jLabel29)
+                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                        .addComponent(removeUserDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                    .addComponent(jLabel26))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(removeUserButton, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addGroup(accountManagementPaneLayout.createSequentialGroup()
+                        .addComponent(jLabel14)
+                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
         );
         accountManagementPaneLayout.setVerticalGroup(
             accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
