@@ -130,8 +130,11 @@ public class GmailCommunicator {
                 }
                 // End mail session
                 transport.close();
-            } catch (NoSuchProviderException ex) { /* DO NOTHING */
-            } catch (MessagingException ex) { /* DO NOTHING */ }
+            } catch (NoSuchProviderException ex) {
+                /* DO NOTHING */
+            } catch (MessagingException ex) {
+                /* DO NOTHING */
+            }
         }
     }
     
@@ -167,12 +170,14 @@ public class GmailCommunicator {
                 folder.doCommand(new IMAPFolder.ProtocolCommand() {
                     @Override
                     public Object doCommand(IMAPProtocol p) throws ProtocolException {
-                        p.simpleCommand("NOOP", null);
+                        if(p!=null) {
+                            p.simpleCommand("NOOP", null);
+                        }
                         return null;
                     }
                 });
             }
-        } catch (MessagingException e) {
+        } catch (MessagingException ex) {
             // Ignore, just aborting the thread...
         }
     }
@@ -198,7 +203,7 @@ public class GmailCommunicator {
                     Message m = inbox.getMessage(i);
                     // Get sender
                     String addr = Utilities.stripHeaderFromAddress(m.getFrom()[0].toString());
-                    String date = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(m.getReceivedDate());
+                    String date = new SimpleDateFormat("yyyy-MM-dd").format(m.getReceivedDate());
                     int index = mc.getEmailIndex(addr);
                     // Get commands (content/body of message)
                     String msg = formatMessage(processPart(m));
@@ -302,6 +307,7 @@ public class GmailCommunicator {
             }
         }
         catch (MessagingException | IOException ex) {
+            // DO NOTHING
         }
         return "";
     }

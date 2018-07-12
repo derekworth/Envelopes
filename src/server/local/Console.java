@@ -29,7 +29,7 @@ import server.remote.GmailCommunicator;
  */
 public class Console extends javax.swing.JFrame {
     
-    private static final String VER = "2018-06-23";
+    private static final String VER = "2018-07-11";
 
     private final Console thisConsole = this;
     private final String TITLE = "Envelopes";
@@ -2147,8 +2147,7 @@ public class Console extends javax.swing.JFrame {
                         reportProgressBar.setValue(curr * 100 / max);
 
                         writer.flush();
-                    } catch (IOException ex) {
-                        /* DO NOTHING */ }
+                    } catch (IOException ex) { /* DO NOTHING */ }
 
                     reportProgressBar.setValue(0);
                     snapshotButton.setEnabled(true);
@@ -2364,8 +2363,7 @@ public class Console extends javax.swing.JFrame {
                             reportProgressBar.setValue(curr * 100 / max);
                         }
                         writer.flush();
-                    } catch (IOException ex) {
-                        /* DO NOTHING */ }
+                    } catch (IOException ex) { /* DO NOTHING */ }
                     reportProgressBar.setValue(0);
                     snapshotButton.setEnabled(true);
                     allTransactionsButton.setEnabled(true);
