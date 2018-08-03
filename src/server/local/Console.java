@@ -29,7 +29,7 @@ import server.remote.GmailCommunicator;
  */
 public class Console extends javax.swing.JFrame {
     
-    private static final String VER = "2018-07-11";
+    private static final String VER = "2018-08-03";
 
     private final Console thisConsole = this;
     private final String TITLE = "Envelopes";

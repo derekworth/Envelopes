@@ -337,12 +337,8 @@ public class GmailCommunicator {
         for (int i = 0 ; i < msg.length(); i++){
             char letter = msg.charAt(i);
             // 13 = carriage return, 10 = new line
-            if(letter == 13) {
-                // do nothing (get rid of all carriage returns
-            } else if(letter == 10 && prevLetter != ',') {
-                tmp += ',';
-            } else if(letter == 10) {
-                // do nothing
+            if(letter == 13 || letter == 10 || (prevLetter == ',' && letter == ',') || (prevLetter == ',' && letter == ' ')) {
+                // do nothing (get rid of all carriage returns, new lines, and double commas)
             } else {
                 tmp += letter;
                 prevLetter = letter;
