@@ -22,6 +22,7 @@ import javax.swing.SwingUtilities;
 import misc.Utilities;
 import model.ModelController;
 import server.remote.GmailCommunicator;
+import server.remote.IMCommunicator;
 
 /**
  *
@@ -50,6 +51,7 @@ public class Console extends javax.swing.JFrame {
 
     private ModelController mc;
     private GmailCommunicator gc;
+    private IMCommunicator imc;
     private EnvelopesTableModel envelopesTM;
     private AccountsTableModel accountsTM;
     private TransactionsTableModel transactionsTM;
@@ -173,11 +175,16 @@ public class Console extends javax.swing.JFrame {
             if (gc.isValidCredentials(mc.getGmailUsername(), mc.getGmailPassword())) {
                 gmailPassword.setText(mc.getGmailPassword());
                 gmailUsername.setText(mc.getGmailUsername());
-                // starts Gmail Server automatically on startup
-                serverIsOn = true;
-                rcvThread = new Thread(new ReceiveLoopRunnable(), "Receive Loop");
-                rcvThread.start();
+//                // starts Gmail Server automatically on startup
+//                serverIsOn = true;
+//                rcvThread = new Thread(new ReceiveLoopRunnable(), "Receive Loop");
+//                rcvThread.start();
             }
+            // initialize IMCommunicator server
+            imc = new IMCommunicator(this, mc);
+            // start listening for incoming client connections
+            imc.listen();
+            
             // populate transaction date fields
             transFromField.setText(Utilities.getDatestamp(-28));
             transToField.setText(Utilities.getDatestamp(0));
@@ -606,6 +613,7 @@ public class Console extends javax.swing.JFrame {
             updateUserDropdowns();
             // shutdown server while logged in
             shutdownServer();
+            imc.stopListening();
         } else { // failed login
             // set sign in settings
             loginToggleButton.setSelected(false);
@@ -625,6 +633,7 @@ public class Console extends javax.swing.JFrame {
         updateUserDropdowns();
         // attempt to start server while logged out
         attemptStartServer();
+        imc.listen();
     }
     
     public final void attemptStartServer() {
@@ -1566,44 +1575,40 @@ public class Console extends javax.swing.JFrame {
                 .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(accountManagementPaneLayout.createSequentialGroup()
                         .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jLabel10, javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(jLabel22, javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(jLabel21, javax.swing.GroupLayout.Alignment.TRAILING))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(updateUserDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addGroup(accountManagementPaneLayout.createSequentialGroup()
                                 .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(jLabel10, javax.swing.GroupLayout.Alignment.TRAILING)
-                                    .addComponent(jLabel22, javax.swing.GroupLayout.Alignment.TRAILING)
-                                    .addComponent(jLabel21, javax.swing.GroupLayout.Alignment.TRAILING))
+                                    .addComponent(updateUserTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(updateUserPasswordField, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(updateUserDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addGroup(accountManagementPaneLayout.createSequentialGroup()
-                                        .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                            .addComponent(updateUserTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                            .addComponent(updateUserPasswordField, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addComponent(updateUserButton, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                            .addGroup(accountManagementPaneLayout.createSequentialGroup()
-                                .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(jLabel5, javax.swing.GroupLayout.Alignment.TRAILING)
-                                    .addComponent(jLabel6, javax.swing.GroupLayout.Alignment.TRAILING))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(addUserTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(addUserPasswordField, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(addUserButton, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addComponent(jLabel15)
-                            .addGroup(accountManagementPaneLayout.createSequentialGroup()
-                                .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addGroup(accountManagementPaneLayout.createSequentialGroup()
-                                        .addComponent(jLabel29)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addComponent(removeUserDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                    .addComponent(jLabel26))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(removeUserButton, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                .addComponent(updateUserButton, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE))))
                     .addGroup(accountManagementPaneLayout.createSequentialGroup()
-                        .addComponent(jLabel14)
-                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
+                        .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jLabel5, javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(jLabel6, javax.swing.GroupLayout.Alignment.TRAILING))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(addUserTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(addUserPasswordField, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(addUserButton, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jLabel15)
+                    .addGroup(accountManagementPaneLayout.createSequentialGroup()
+                        .addGroup(accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(accountManagementPaneLayout.createSequentialGroup()
+                                .addComponent(jLabel29)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(removeUserDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(jLabel26))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(removeUserButton, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jLabel14))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         accountManagementPaneLayout.setVerticalGroup(
             accountManagementPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -2262,41 +2267,41 @@ public class Console extends javax.swing.JFrame {
                         twelveMths[i][0] = date;
                         switch (Integer.parseInt(date.substring(5, 7))) {
                             case 2:
-                                twelveMths[i][1] = "(Jan";
-                                break;
+                            twelveMths[i][1] = "(Jan";
+                            break;
                             case 3:
-                                twelveMths[i][1] = "(Feb";
-                                break;
+                            twelveMths[i][1] = "(Feb";
+                            break;
                             case 4:
-                                twelveMths[i][1] = "(Mar";
-                                break;
+                            twelveMths[i][1] = "(Mar";
+                            break;
                             case 5:
-                                twelveMths[i][1] = "(Apr";
-                                break;
+                            twelveMths[i][1] = "(Apr";
+                            break;
                             case 6:
-                                twelveMths[i][1] = "(May";
-                                break;
+                            twelveMths[i][1] = "(May";
+                            break;
                             case 7:
-                                twelveMths[i][1] = "(Jun";
-                                break;
+                            twelveMths[i][1] = "(Jun";
+                            break;
                             case 8:
-                                twelveMths[i][1] = "(Jul";
-                                break;
+                            twelveMths[i][1] = "(Jul";
+                            break;
                             case 9:
-                                twelveMths[i][1] = "(Aug";
-                                break;
+                            twelveMths[i][1] = "(Aug";
+                            break;
                             case 10:
-                                twelveMths[i][1] = "(Sep";
-                                break;
+                            twelveMths[i][1] = "(Sep";
+                            break;
                             case 11:
-                                twelveMths[i][1] = "(Oct";
-                                break;
+                            twelveMths[i][1] = "(Oct";
+                            break;
                             case 12:
-                                twelveMths[i][1] = "(Nov";
-                                break;
+                            twelveMths[i][1] = "(Nov";
+                            break;
                             default:
-                                twelveMths[i][1] = "(Dec";
-                                break;
+                            twelveMths[i][1] = "(Dec";
+                            break;
                         }
                         twelveMths[i][1] += " " + date.substring(2, 4) + ")";
                         curr++;
@@ -2530,59 +2535,58 @@ public class Console extends javax.swing.JFrame {
 
         switch (intervalTypeDropdown.getSelectedIndex()) {
             case 0:
-                // monthly
-                // enforces 6 to 1200 months
-                if (dur < 6) {
-                    intervalCountTextField.setText("6");
-                } else if (dur > 1200) {
-                    intervalCountTextField.setText("1200");
-                } else {
-                    intervalCountTextField.setText(Integer.toString(dur));
-                }
-                break;
+            // monthly
+            // enforces 6 to 1200 months
+            if (dur < 6) {
+                intervalCountTextField.setText("6");
+            } else if (dur > 1200) {
+                intervalCountTextField.setText("1200");
+            } else {
+                intervalCountTextField.setText(Integer.toString(dur));
+            }
+            break;
             case 1:
-                // weekly (every 7 days)
-                // enforces 4 to 5200 weeks
-                if (dur < 4) {
-                    intervalCountTextField.setText("4");
-                } else if (dur > 5200) {
-                    intervalCountTextField.setText("5200");
-                } else {
-                    intervalCountTextField.setText(Integer.toString(dur));
-                }
-                break;
+            // weekly (every 7 days)
+            // enforces 4 to 5200 weeks
+            if (dur < 4) {
+                intervalCountTextField.setText("4");
+            } else if (dur > 5200) {
+                intervalCountTextField.setText("5200");
+            } else {
+                intervalCountTextField.setText(Integer.toString(dur));
+            }
+            break;
             default:
-                // daily
-                // enforces 7 to 36500 days
-                if (dur < 7) {
-                    intervalCountTextField.setText("7");
-                } else if (dur > 36500) {
-                    intervalCountTextField.setText("36500");
-                } else {
-                    intervalCountTextField.setText(Integer.toString(dur));
-                }
-                break;
+            // daily
+            // enforces 7 to 36500 days
+            if (dur < 7) {
+                intervalCountTextField.setText("7");
+            } else if (dur > 36500) {
+                intervalCountTextField.setText("36500");
+            } else {
+                intervalCountTextField.setText(Integer.toString(dur));
+            }
+            break;
         }
-
     }//GEN-LAST:event_intervalCountTextFieldFocusLost
 
     private void intervalTypeDropdownActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_intervalTypeDropdownActionPerformed
         switch (intervalTypeDropdown.getSelectedIndex()) {
             case 0:
-                // monthly
-                intervalTagLabel.setText("months");
-                intervalCountTextField.setText("12");
-                break;
+            // monthly
+            intervalTagLabel.setText("months");
+            intervalCountTextField.setText("12");
+            break;
             case 1:
-                // weekly (every 7 days)
-                intervalTagLabel.setText("weeks");
-                intervalCountTextField.setText("52");
-                break;
+            // weekly (every 7 days)
+            intervalTagLabel.setText("weeks");
+            intervalCountTextField.setText("52");
+            break;
             default:
-                // daily
-                intervalTagLabel.setText("days");
-                intervalCountTextField.setText("365");
-                break;
+            // daily
+            intervalTagLabel.setText("days");
+            intervalCountTextField.setText("365");
+            break;
         }
     }//GEN-LAST:event_intervalTypeDropdownActionPerformed
 
@@ -2593,10 +2597,6 @@ public class Console extends javax.swing.JFrame {
             shutdownServer();
         }
     }//GEN-LAST:event_serverToggleButtonActionPerformed
-
-    private void updateUserButtonFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_updateUserButtonFocusLost
-        usersMessage.setText("");
-    }//GEN-LAST:event_updateUserButtonFocusLost
 
     private void updateUserButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_updateUserButtonActionPerformed
         String oldUsername = (String) updateUserDropdown.getSelectedItem();
@@ -2653,6 +2653,10 @@ public class Console extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_updateUserButtonActionPerformed
 
+    private void updateUserButtonFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_updateUserButtonFocusLost
+        usersMessage.setText("");
+    }//GEN-LAST:event_updateUserButtonFocusLost
+
     private void removeUserButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeUserButtonActionPerformed
         String username = (String) removeUserDropdown.getSelectedItem();
         mc.disableUser(username);
@@ -2704,6 +2708,13 @@ public class Console extends javax.swing.JFrame {
         updateEmailTable();
     }//GEN-LAST:event_blockEmailActionPerformed
 
+    private void transactionQtyTextFieldKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_transactionQtyTextFieldKeyPressed
+        if (evt.getKeyCode() == 10) { // <enter> is pressed
+            validateTransactionFields();
+            updateSelected();
+        }
+    }//GEN-LAST:event_transactionQtyTextFieldKeyPressed
+
     private void mergeEnvelopesButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_mergeEnvelopesButtonActionPerformed
         String mergeFromEnvName = (String) transEnvelopeDropdown.getSelectedItem();
         String mergeToEnvName = (String) mergeEnvelopesList.getSelectedItem();
@@ -2711,9 +2722,9 @@ public class Console extends javax.swing.JFrame {
         if (mergeFromEnvName != null && mergeToEnvName != null && !mergeFromEnvName.equalsIgnoreCase(mergeToEnvName) && !mergeFromEnvName.equalsIgnoreCase(ALL)) {
             // give user second chance to back out of the merger
             String msg = "WARNING: merging two envelopes CANNOT be undone.\n"
-                    + "Are you sure you want to move all transactions\n"
-                    + "from '" + mergeFromEnvName + "' into '" + mergeToEnvName + "',\n"
-                    + "and then remove '" + mergeFromEnvName + "'?";
+            + "Are you sure you want to move all transactions\n"
+            + "from '" + mergeFromEnvName + "' into '" + mergeToEnvName + "',\n"
+            + "and then remove '" + mergeFromEnvName + "'?";
             String title = "Merge Envelopes";
             int yes = 0;
             int opt = JOptionPane.showConfirmDialog(this, msg, title, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
@@ -2802,10 +2813,10 @@ public class Console extends javax.swing.JFrame {
         String to = (String) envTransferTo.getSelectedItem();
 
         if (Utilities.isDate(date)
-                && Utilities.isValidDescription(desc)
-                && Utilities.isValidAmount(amt)
-                && !from.equalsIgnoreCase(to)
-                && !currUser.equalsIgnoreCase("")) {
+            && Utilities.isValidDescription(desc)
+            && Utilities.isValidAmount(amt)
+            && !from.equalsIgnoreCase(to)
+            && !currUser.equalsIgnoreCase("")) {
             mc.addTransfer(date, desc, amt, from, to, currUser);
             updateEnvelopeTable();
             updateTransactionTable();
@@ -2825,10 +2836,10 @@ public class Console extends javax.swing.JFrame {
         String to = (String) acctTransferTo.getSelectedItem();
 
         if (Utilities.isDate(date)
-                && Utilities.isValidDescription(desc)
-                && Utilities.isValidAmount(amt)
-                && !from.equalsIgnoreCase(to)
-                && !currUser.equalsIgnoreCase("")) {
+            && Utilities.isValidDescription(desc)
+            && Utilities.isValidAmount(amt)
+            && !from.equalsIgnoreCase(to)
+            && !currUser.equalsIgnoreCase("")) {
             mc.addTransfer(date, desc, amt, from, to, currUser);
             updateAccountTable();
             updateTransactionTable();
@@ -2848,9 +2859,9 @@ public class Console extends javax.swing.JFrame {
         String env = (String) newTransEnvDropdown.getSelectedItem();
 
         if (Utilities.isDate(date)
-                && Utilities.isValidDescription(desc)
-                && Utilities.isValidAmount(amt)
-                && !currUser.equalsIgnoreCase("")) {
+            && Utilities.isValidDescription(desc)
+            && Utilities.isValidAmount(amt)
+            && !currUser.equalsIgnoreCase("")) {
             mc.addTransaction(date, desc, amt, acct, currUser, env);
             updateAccountTable();
             updateEnvelopeTable();
@@ -2944,6 +2955,14 @@ public class Console extends javax.swing.JFrame {
         validateTransactionFields();
         updateSelected();
     }//GEN-LAST:event_dateRangeCheckBoxActionPerformed
+
+    private void transactionsTablePropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_transactionsTablePropertyChange
+        if (evt.getPropertyName().equalsIgnoreCase("tableCellEditor") && evt.getNewValue()==null) {
+            updateSelected();
+            updateEnvelopeTable();
+            updateAccountTable();
+        }
+    }//GEN-LAST:event_transactionsTablePropertyChange
 
     private void addCategoryButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addCategoryButtonActionPerformed
         // get name from textfield
@@ -3110,21 +3129,6 @@ public class Console extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_accountsTablePropertyChange
 
-    private void transactionQtyTextFieldKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_transactionQtyTextFieldKeyPressed
-        if (evt.getKeyCode() == 10) { // <enter> is pressed
-            validateTransactionFields();
-            updateSelected();
-        }
-    }//GEN-LAST:event_transactionQtyTextFieldKeyPressed
-
-    private void transactionsTablePropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_transactionsTablePropertyChange
-        if (evt.getPropertyName().equalsIgnoreCase("tableCellEditor") && evt.getNewValue()==null) {
-            updateSelected();
-            updateEnvelopeTable();
-            updateAccountTable();
-        }
-    }//GEN-LAST:event_transactionsTablePropertyChange
-
     /**
      * @param args the command line arguments
      */
@@ -3159,10 +3163,10 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JScrollPane EnvelopesScrollPane;
     private javax.swing.JMenuItem aboutMenuItem;
     private javax.swing.JPanel accountManagementPane;
-    public javax.swing.JTable accountsTable;
+    private javax.swing.JTable accountsTable;
     private javax.swing.JButton acctTransferButton;
-    public javax.swing.JComboBox acctTransferFrom;
-    public javax.swing.JComboBox acctTransferTo;
+    private javax.swing.JComboBox acctTransferFrom;
+    private javax.swing.JComboBox acctTransferTo;
     private javax.swing.JButton addAccountButton;
     private javax.swing.JButton addCategoryButton;
     private javax.swing.JButton addEnvelopeButton;
@@ -3175,18 +3179,18 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JLabel amountLabel;
     private javax.swing.JButton blockEmail;
     private javax.swing.JButton budgetWorksheetButton;
-    public javax.swing.JCheckBox categorizedCheckBox;
+    private javax.swing.JCheckBox categorizedCheckBox;
     private javax.swing.JLabel dateLabel;
-    public javax.swing.JCheckBox dateRangeCheckBox;
-    public javax.swing.JComboBox emailAddressDropdown;
+    private javax.swing.JCheckBox dateRangeCheckBox;
+    private javax.swing.JComboBox emailAddressDropdown;
     private javax.swing.JPanel emailPane;
-    public javax.swing.JTable emailTable;
-    public javax.swing.JComboBox emailUserDropdown;
+    private javax.swing.JTable emailTable;
+    private javax.swing.JComboBox emailUserDropdown;
     private javax.swing.JButton envTransferButton;
-    public javax.swing.JComboBox envTransferFrom;
-    public javax.swing.JComboBox envTransferTo;
+    private javax.swing.JComboBox envTransferFrom;
+    private javax.swing.JComboBox envTransferTo;
     private javax.swing.JPanel envelopesTab;
-    public javax.swing.JTable envelopesTable;
+    private javax.swing.JTable envelopesTable;
     private javax.swing.JMenuItem exitMenuItem;
     private javax.swing.JButton exportTransactionsButton;
     private javax.swing.JMenu fileMenu;
@@ -3194,7 +3198,7 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JPasswordField gmailPassword;
     private javax.swing.JLabel gmailServerStatus;
     private javax.swing.JTextField gmailUsername;
-    public javax.swing.JCheckBox hideTransfersToggleButton;
+    private javax.swing.JCheckBox hideTransfersToggleButton;
     private javax.swing.JTextField intervalCountTextField;
     private javax.swing.JLabel intervalTagLabel;
     private javax.swing.JComboBox intervalTypeDropdown;
@@ -3237,19 +3241,19 @@ public class Console extends javax.swing.JFrame {
     public javax.swing.JComboBox loginUserDropdown;
     private javax.swing.JMenuBar menuBar;
     private javax.swing.JButton mergeEnvelopesButton;
-    public javax.swing.JComboBox mergeEnvelopesList;
+    private javax.swing.JComboBox mergeEnvelopesList;
     private javax.swing.JLabel message;
     private javax.swing.JTextField newAccountField;
     private javax.swing.JTextField newCategoryField;
     private javax.swing.JTextField newEnvelopeField;
-    public javax.swing.JComboBox newTransAcctDropdown;
-    public javax.swing.JComboBox newTransEnvDropdown;
+    private javax.swing.JComboBox newTransAcctDropdown;
+    private javax.swing.JComboBox newTransEnvDropdown;
     private javax.swing.JButton newTransactionButton;
     private javax.swing.JButton removeAccountButton;
     private javax.swing.JButton removeCategoryButton;
     private javax.swing.JButton removeEnvelopeButton;
     private javax.swing.JButton removeUserButton;
-    public javax.swing.JComboBox removeUserDropdown;
+    private javax.swing.JComboBox removeUserDropdown;
     private javax.swing.JProgressBar reportProgressBar;
     private javax.swing.JPanel reportsPanel;
     private javax.swing.JMenuItem resetDatabaseMenuItem;
@@ -3264,11 +3268,11 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JPanel summaryPanel;
     private javax.swing.JScrollPane summaryScrollPane;
     private javax.swing.JLabel toLabel;
-    public javax.swing.JComboBox transAccountDropdown;
-    public javax.swing.JComboBox transCategoryDropdown;
-    public javax.swing.JComboBox transEnvelopeDropdown;
-    public javax.swing.JTextField transFromField;
-    public javax.swing.JTextField transToField;
+    private javax.swing.JComboBox transAccountDropdown;
+    private javax.swing.JComboBox transCategoryDropdown;
+    private javax.swing.JComboBox transEnvelopeDropdown;
+    private javax.swing.JTextField transFromField;
+    private javax.swing.JTextField transToField;
     private javax.swing.JTextField transactionAmtField;
     private javax.swing.JTextField transactionDateField;
     private javax.swing.JTextField transactionDescriptionField;
@@ -3277,12 +3281,12 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JPanel transactionsPanel;
     private javax.swing.JButton transactionsRefreshButton;
     private javax.swing.JScrollPane transactionsScrollPane;
-    public javax.swing.JTable transactionsTable;
+    private javax.swing.JTable transactionsTable;
     private javax.swing.JScrollPane transactionsTableScrollPane;
     private javax.swing.JLabel trendReportDirectionsLabel;
     private javax.swing.JTextField trendTextField;
     private javax.swing.JButton updateUserButton;
-    public javax.swing.JComboBox updateUserDropdown;
+    private javax.swing.JComboBox updateUserDropdown;
     private javax.swing.JPasswordField updateUserPasswordField;
     private javax.swing.JTextField updateUserTextField;
     private javax.swing.JPasswordField userPassword;
