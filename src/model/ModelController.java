@@ -1192,6 +1192,9 @@ public final class ModelController {
     }
     
     public String getPassword(String username) {
+        if(getUser(username)==null) {
+            return null;
+        }
         return getUser(username).getPassword();
     }
     

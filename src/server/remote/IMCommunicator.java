@@ -35,6 +35,9 @@ public class IMCommunicator {
             cmds = msg.substring(un.length() + msgHash1.length() + 2);
             // authenticate
             String pwHash = mc.getPassword(un);
+            if(pwHash==null) {
+                return "Access denied. Check credentials and try again.";
+            }
             String msgHash2 = Utilities.getHash(pwHash + un + " " + cmds);
             if(msgHash1.equalsIgnoreCase(msgHash2)) { // msg integrity and authenticity check
                 // interpret cmds
@@ -60,7 +63,7 @@ public class IMCommunicator {
                 @Override
                 public void run() {
                     while (isListening) {
-                        //System.out.println("Connection closed, listening...");
+                        //System.out.println("======================\nConnection closed, listening...");
                         try (
                             ServerSocket serverSocket = new ServerSocket(portNumber);
                             // wait for client connection
@@ -75,15 +78,21 @@ public class IMCommunicator {
                             String msg = "";
                             while ((inputLine = in.readLine()) != null) {
                                 msg = msg + " " + inputLine + "\n";
+                                //System.out.println(inputLine);
                                 if(inputLine.contains("`")) break;
                             }
+                            //System.out.println("--done reading, now time to write--");
                             msg = msg.trim();
-                            msg = msg.substring(0, msg.length()-1); // remove ` at end
-                            //System.out.println("msg rcv'd: '" + msg + "'");
-                            String result = processRequest(msg);
-                            //System.out.println("TO CLIENT:\n" + result);
-                            out.println(result + "`");
-                            con.updateAll();
+                            if(msg.length()>0) {
+                                msg = msg.substring(0, msg.length()-1); // remove ` at end
+                                //System.out.println("msg rcv'd: '" + msg + "'");
+                                String result = processRequest(msg);
+                                //System.out.println("TO CLIENT:\n" + result);
+                                out.println(result + "`");
+                                //System.out.println("--end data sent--");
+                                con.updateAll();
+                            }
+                            //System.out.println("Disconnected!");
                         } catch (IOException e) {
                             //System.out.println("Exception caught when trying to listen on port " + portNumber + " or listening for a connection");
                             //System.out.println(e.getMessage());
