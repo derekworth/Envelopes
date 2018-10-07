@@ -4,6 +4,8 @@ import misc.Utilities;
 import model.ModelController;
 import java.io.*;
 import java.net.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Created on 2018-09-15
@@ -54,6 +56,13 @@ public class IMCommunicator {
     
     public void stopListening() {
         isListening = false;
+        // TODO: clear the socket
+        try {
+            Socket tmp = new Socket("127.0.0.1", portNumber);
+            tmp.close();
+        } catch (IOException ex) {
+            Logger.getLogger(IMCommunicator.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
     
     public void listen() {
