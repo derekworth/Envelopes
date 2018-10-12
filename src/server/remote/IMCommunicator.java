@@ -13,8 +13,6 @@ import java.util.logging.Logger;
  */
 public class IMCommunicator {
     private final int portNumber = 8456;
-    private PrintWriter out;
-    private BufferedReader in;
     private boolean isListening;
 
     private final server.local.Console con;
