@@ -210,7 +210,7 @@ public class Console extends javax.swing.JFrame {
     
     private void checkForLatestVersion() {
         try {
-            URL oracle = new URL("https://github.com/derekworth/Famliy-Envelopes/blob/master/README.md");
+            URL oracle = new URL("https://github.com/derekworth/Text-Envelopes/blob/master/README.md");
             try (BufferedReader in = new BufferedReader( new InputStreamReader(oracle.openStream()) )) {
                 String inputLine;
                 while ((inputLine = in.readLine()) != null) {
@@ -227,7 +227,7 @@ public class Console extends javax.swing.JFrame {
                 int yes = 0;
                 int opt = JOptionPane.showConfirmDialog(this, msg, title, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
                 if (opt == yes) {
-                    saveUrl("Envelopes.jar","https://github.com/derekworth/Famliy-Envelopes/blob/master/Envelopes.jar?raw=true");
+                    saveUrl("Envelopes.jar","https://github.com/derekworth/Text-Envelopes/blob/master/Envelopes.jar?raw=true");
                     System.exit(0);
                 }
                 
