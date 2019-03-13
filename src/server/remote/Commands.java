@@ -318,17 +318,27 @@ public class Commands {
         
         private String help() {
             return "USAGES:\n"
-                    + "--create--\n"
-                    + " new acc/cat/env <name>\n"
-                    + " new env <name> (cat)\n"
-                    + " new user <name> <password>\n"
+                    + " (optional), [1 or more], <replace>\n"
+                    
+                    + "\n--add new transaction--\n"
                     + " <acct> [<env> <amt> (desc), ...]\n"
-                    + "--view--\n"
+                    
+                    + "\n--add transfer--\n"
+                    + " <from> <to> <amt> (desc)\n"
+                    
+                    + "\n--add new account/category/envelope/user--\n"
+                    + " new acc/cat/env <name>\n"
+                    + " new user <name> <password>\n"
+                    
+                    + "\n--add new categorized envelope--\n"
+                    + " new env <name> (cat)\n"
+                    
+                    + "\n--view amounts/transactions--\n"
                     + " accounts/categories/envelopes/users\n"
                     + " <acc/cat/env>\n"
-                    + " history (<acc>/<cat>/<env>) (<qty>/<date> <date>)\n"
-                    + "--modify--\n"
-                    + " <from> <to> <amt> (desc)\n"
+                    + " history (<acc>/<env>) (<qty>/<date> <date>)\n"
+                    
+                    + "\n--modify--\n"
                     + " rename acc/cat/env/user <old> <new>\n"
                     + " remove acc/cat/env/user <name>\n"
                     + " change password <pw>\n"
