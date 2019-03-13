@@ -30,7 +30,7 @@ import server.remote.IMCommunicator;
  */
 public class Console extends javax.swing.JFrame {
     
-    private static final String VER = "2019-03-13";
+    private static final String VER = "2019-03-12";
 
     private final Console thisConsole = this;
     private final String TITLE = "Envelopes";
@@ -2028,11 +2028,11 @@ public class Console extends javax.swing.JFrame {
                 + "resides, and Envelopes where you want your money to go. As\n"
                 + "money comes and goes, text or email commands to the Gmail\n"
                 + "address you specified and this application will respond with\n"
-                + "updates.\n"
+                + "updates. Additionally, search for 'Envelopes' in the Apple App\n"
+                + "Store.\n"
                 + "\n"
                 + "NOTE: If this is your first time logging in, Admin password\n"
-                + "is 'password'. For command usage format, text/email 'help' to\n"
-                + "your specified Gmail account.");
+                + "is 'password'. Send 'help' for command usage format.");
     }//GEN-LAST:event_aboutMenuItemActionPerformed
 
     private void exitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exitMenuItemActionPerformed
