@@ -320,7 +320,7 @@ public class Commands {
             return "USAGES:\n"
                     + " (optional), [1 or more], <replace>\n"
                     
-                    + "\n--add new transaction--\n"
+                    + "\n--add new transaction(s)--\n"
                     + " <acct> [<env> <amt> (desc), ...]\n"
                     
                     + "\n--add transfer--\n"
