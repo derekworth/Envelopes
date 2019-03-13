@@ -232,6 +232,7 @@ public class Commands {
             case "password":      return PASSWORD;
             case "remove":        return REMOVE;
             case "rename":        return RENAME;
+            case "uncategorized": return CAT;
             case "user":          return USER;
             case "users":         return USERS;
             default:              return WORD;

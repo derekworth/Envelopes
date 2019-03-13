@@ -30,7 +30,7 @@ import server.remote.IMCommunicator;
  */
 public class Console extends javax.swing.JFrame {
     
-    private static final String VER = "2018-10-12";
+    private static final String VER = "2019-03-13";
 
     private final Console thisConsole = this;
     private final String TITLE = "Envelopes";
@@ -1428,7 +1428,7 @@ public class Console extends javax.swing.JFrame {
 
         jTabbedPane.addTab("Envelopes", envelopesTab);
 
-        emailPane.setBorder(javax.swing.BorderFactory.createTitledBorder(javax.swing.BorderFactory.createEtchedBorder(), "EMAIL LOGINS", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Arial", 1, 18))); // NOI18N
+        emailPane.setBorder(javax.swing.BorderFactory.createTitledBorder(javax.swing.BorderFactory.createEtchedBorder(), "EMAIL LOGINS (*Obsolete)", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Arial", 1, 18))); // NOI18N
 
         emailTable.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
@@ -1657,7 +1657,7 @@ public class Console extends javax.swing.JFrame {
                 .addContainerGap(44, Short.MAX_VALUE))
         );
 
-        jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder(javax.swing.BorderFactory.createEtchedBorder(), "GMAIL SERVER", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Arial", 1, 18))); // NOI18N
+        jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder(javax.swing.BorderFactory.createEtchedBorder(), "GMAIL SERVER (*Obsolete)", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Arial", 1, 18))); // NOI18N
 
         jLabel9.setText("Create a Gmail account specifically for this program and enter it below.");
 
@@ -1883,6 +1883,8 @@ public class Console extends javax.swing.JFrame {
                         .addComponent(accountManagementPane, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap(152, Short.MAX_VALUE))
         );
+
+        jPanel1.getAccessibleContext().setAccessibleDescription("");
 
         jScrollPane1.setViewportView(jPanel2);
 
@@ -3163,10 +3165,10 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JScrollPane EnvelopesScrollPane;
     private javax.swing.JMenuItem aboutMenuItem;
     private javax.swing.JPanel accountManagementPane;
-    private javax.swing.JTable accountsTable;
+    public javax.swing.JTable accountsTable;
     private javax.swing.JButton acctTransferButton;
-    private javax.swing.JComboBox acctTransferFrom;
-    private javax.swing.JComboBox acctTransferTo;
+    public javax.swing.JComboBox acctTransferFrom;
+    public javax.swing.JComboBox acctTransferTo;
     private javax.swing.JButton addAccountButton;
     private javax.swing.JButton addCategoryButton;
     private javax.swing.JButton addEnvelopeButton;
@@ -3179,18 +3181,18 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JLabel amountLabel;
     private javax.swing.JButton blockEmail;
     private javax.swing.JButton budgetWorksheetButton;
-    private javax.swing.JCheckBox categorizedCheckBox;
+    public javax.swing.JCheckBox categorizedCheckBox;
     private javax.swing.JLabel dateLabel;
-    private javax.swing.JCheckBox dateRangeCheckBox;
-    private javax.swing.JComboBox emailAddressDropdown;
+    public javax.swing.JCheckBox dateRangeCheckBox;
+    public javax.swing.JComboBox emailAddressDropdown;
     private javax.swing.JPanel emailPane;
-    private javax.swing.JTable emailTable;
-    private javax.swing.JComboBox emailUserDropdown;
+    public javax.swing.JTable emailTable;
+    public javax.swing.JComboBox emailUserDropdown;
     private javax.swing.JButton envTransferButton;
-    private javax.swing.JComboBox envTransferFrom;
-    private javax.swing.JComboBox envTransferTo;
+    public javax.swing.JComboBox envTransferFrom;
+    public javax.swing.JComboBox envTransferTo;
     private javax.swing.JPanel envelopesTab;
-    private javax.swing.JTable envelopesTable;
+    public javax.swing.JTable envelopesTable;
     private javax.swing.JMenuItem exitMenuItem;
     private javax.swing.JButton exportTransactionsButton;
     private javax.swing.JMenu fileMenu;
@@ -3198,7 +3200,7 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JPasswordField gmailPassword;
     private javax.swing.JLabel gmailServerStatus;
     private javax.swing.JTextField gmailUsername;
-    private javax.swing.JCheckBox hideTransfersToggleButton;
+    public javax.swing.JCheckBox hideTransfersToggleButton;
     private javax.swing.JTextField intervalCountTextField;
     private javax.swing.JLabel intervalTagLabel;
     private javax.swing.JComboBox intervalTypeDropdown;
@@ -3241,19 +3243,19 @@ public class Console extends javax.swing.JFrame {
     public javax.swing.JComboBox loginUserDropdown;
     private javax.swing.JMenuBar menuBar;
     private javax.swing.JButton mergeEnvelopesButton;
-    private javax.swing.JComboBox mergeEnvelopesList;
+    public javax.swing.JComboBox mergeEnvelopesList;
     private javax.swing.JLabel message;
     private javax.swing.JTextField newAccountField;
     private javax.swing.JTextField newCategoryField;
     private javax.swing.JTextField newEnvelopeField;
-    private javax.swing.JComboBox newTransAcctDropdown;
-    private javax.swing.JComboBox newTransEnvDropdown;
+    public javax.swing.JComboBox newTransAcctDropdown;
+    public javax.swing.JComboBox newTransEnvDropdown;
     private javax.swing.JButton newTransactionButton;
     private javax.swing.JButton removeAccountButton;
     private javax.swing.JButton removeCategoryButton;
     private javax.swing.JButton removeEnvelopeButton;
     private javax.swing.JButton removeUserButton;
-    private javax.swing.JComboBox removeUserDropdown;
+    public javax.swing.JComboBox removeUserDropdown;
     private javax.swing.JProgressBar reportProgressBar;
     private javax.swing.JPanel reportsPanel;
     private javax.swing.JMenuItem resetDatabaseMenuItem;
@@ -3268,11 +3270,11 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JPanel summaryPanel;
     private javax.swing.JScrollPane summaryScrollPane;
     private javax.swing.JLabel toLabel;
-    private javax.swing.JComboBox transAccountDropdown;
-    private javax.swing.JComboBox transCategoryDropdown;
-    private javax.swing.JComboBox transEnvelopeDropdown;
-    private javax.swing.JTextField transFromField;
-    private javax.swing.JTextField transToField;
+    public javax.swing.JComboBox transAccountDropdown;
+    public javax.swing.JComboBox transCategoryDropdown;
+    public javax.swing.JComboBox transEnvelopeDropdown;
+    public javax.swing.JTextField transFromField;
+    public javax.swing.JTextField transToField;
     private javax.swing.JTextField transactionAmtField;
     private javax.swing.JTextField transactionDateField;
     private javax.swing.JTextField transactionDescriptionField;
@@ -3281,12 +3283,12 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JPanel transactionsPanel;
     private javax.swing.JButton transactionsRefreshButton;
     private javax.swing.JScrollPane transactionsScrollPane;
-    private javax.swing.JTable transactionsTable;
+    public javax.swing.JTable transactionsTable;
     private javax.swing.JScrollPane transactionsTableScrollPane;
     private javax.swing.JLabel trendReportDirectionsLabel;
     private javax.swing.JTextField trendTextField;
     private javax.swing.JButton updateUserButton;
-    private javax.swing.JComboBox updateUserDropdown;
+    public javax.swing.JComboBox updateUserDropdown;
     private javax.swing.JPasswordField updateUserPasswordField;
     private javax.swing.JTextField updateUserTextField;
     private javax.swing.JPasswordField userPassword;
