@@ -37,7 +37,7 @@ public class Commands {
     public static final char MULTI         = 'W';
     public static final char EMPTY         = 'X';
     
-    public static final int HISTORY_LENGTH = 40;
+    public static final int HISTORY_LENGTH = 45;
     
     String currAcct, un, date, commandsInput;
     LinkedList<String> commandsResult;
