@@ -37,6 +37,8 @@ public class Commands {
     public static final char MULTI         = 'W';
     public static final char EMPTY         = 'X';
     
+    public static final int HISTORY_LENGTH = 40;
+    
     String currAcct, un, date, commandsInput;
     LinkedList<String> commandsResult;
     Command headCommand, tailCommand;
@@ -355,7 +357,7 @@ public class Commands {
                          + " | " + mc.getTransactionAmountString(i)
                          + " | " + mc.getTransactionAccount(i)
                          + " | " + mc.getTransactionEnvelope(i)
-                         + " | " + Utilities.shortenString(mc.getTransactionDesc(i), 20);
+                         + " | " + Utilities.shortenString(mc.getTransactionDesc(i), HISTORY_LENGTH);
             }
             return response;
         }
@@ -370,7 +372,7 @@ public class Commands {
                          + " | " + mc.getTransactionAmountString(i)
                          + " | " + mc.getTransactionAccount(i)
                          + " | " + mc.getTransactionEnvelope(i)
-                         + " | " + Utilities.shortenString(mc.getTransactionDesc(i), 20);
+                         + " | " + Utilities.shortenString(mc.getTransactionDesc(i), HISTORY_LENGTH);
             }
             return response;
         }
@@ -417,7 +419,7 @@ public class Commands {
                          + " | " + mc.getTransactionAmountString(i)
                          + " | " + mc.getTransactionAccount(i)
                          + " | " + mc.getTransactionEnvelope(i)
-                         + " | " + Utilities.shortenString(mc.getTransactionDesc(i), 20);
+                         + " | " + Utilities.shortenString(mc.getTransactionDesc(i), HISTORY_LENGTH);
             }
             return response;
         }
@@ -432,7 +434,7 @@ public class Commands {
                          + " | " + mc.getTransactionAmountString(i)
                          + " | " + mc.getTransactionAccount(i)
                          + " | " + mc.getTransactionEnvelope(i)
-                         + " | " + Utilities.shortenString(mc.getTransactionDesc(i), 20);
+                         + " | " + Utilities.shortenString(mc.getTransactionDesc(i), HISTORY_LENGTH);
             }
             return response;
         }
@@ -481,7 +483,7 @@ public class Commands {
                          + " | " + mc.getTransactionAmountString(i)
                          + " | " + mc.getTransactionAccount(i)
                          + " | " + mc.getTransactionEnvelope(i)
-                         + " | " + Utilities.shortenString(mc.getTransactionDesc(i), 20);
+                         + " | " + Utilities.shortenString(mc.getTransactionDesc(i), HISTORY_LENGTH);
             }
             return response;
         }
@@ -496,7 +498,7 @@ public class Commands {
                          + " | " + mc.getTransactionAmountString(i)
                          + " | " + mc.getTransactionAccount(i)
                          + " | " + mc.getTransactionEnvelope(i)
-                         + " | " + Utilities.shortenString(mc.getTransactionDesc(i), 20);
+                         + " | " + Utilities.shortenString(mc.getTransactionDesc(i), HISTORY_LENGTH);
             }
             return response;
         }
@@ -612,6 +614,21 @@ public class Commands {
                     + " " + oldAcctAmt + " >> " + mc.getAccountAmount(currAcct);
         }
         
+        private String histDateDate(String from, String to) {
+            mc.showTransactionsByDateRange("-ALL", "-ALL", from, to, false);
+            String response = "TRANSACTIONS:"
+                    + "\ndate | user | amount | account | envelope | description";
+            for(int i = 0; i < mc.getTransactionCount(); i++) {
+                response += "\n" + mc.getTransactionDate(i)
+                         + " | " + mc.getTransactionUser(i)
+                         + " | " + mc.getTransactionAmountString(i)
+                         + " | " + mc.getTransactionAccount(i)
+                         + " | " + mc.getTransactionEnvelope(i)
+                         + " | " + Utilities.shortenString(mc.getTransactionDesc(i), HISTORY_LENGTH);
+            }
+            return response;
+        }
+        
         private String histAcctDateDate(String acct, String from, String to) {
             mc.showTransactionsByDateRange(acct, "-ALL", from, to, false);
             String response = "ACCOUNT (" + acct + ") TRANSACTIONS:"
@@ -622,7 +639,7 @@ public class Commands {
                          + " | " + mc.getTransactionAmountString(i)
                          + " | " + mc.getTransactionAccount(i)
                          + " | " + mc.getTransactionEnvelope(i)
-                         + " | " + Utilities.shortenString(mc.getTransactionDesc(i), 20);
+                         + " | " + Utilities.shortenString(mc.getTransactionDesc(i), HISTORY_LENGTH);
             }
             return response;
         }
@@ -637,7 +654,7 @@ public class Commands {
                          + " | " + mc.getTransactionAmountString(i)
                          + " | " + mc.getTransactionAccount(i)
                          + " | " + mc.getTransactionEnvelope(i)
-                         + " | " + Utilities.shortenString(mc.getTransactionDesc(i), 20);
+                         + " | " + Utilities.shortenString(mc.getTransactionDesc(i), HISTORY_LENGTH);
             }
             return response;
         }
@@ -760,6 +777,7 @@ public class Commands {
                     case ENV        + "" + EXP                              : return envExp(getToken(1).getPossibilities(), getToken(2).getPossibilities());
                     case CHANGE     + "" + PASSWORD + "" + WORD             : return chgPwWord(getToken(3).getPossibilities());
                     case HISTORY    + "" + ACCT     + "" + QTY              : return histAcctQty(getToken(2).getPossibilities(), Integer.parseInt(getToken(3).getPossibilities()));
+                    case HISTORY    + "" + DATE     + "" + DATE             : return histDateDate(getToken(2).getPossibilities(), getToken(3).getPossibilities());
                     case HISTORY    + "" + ENV      + "" + QTY              : return histEnvQty(getToken(2).getPossibilities(), Integer.parseInt(getToken(3).getPossibilities()));
                     case NEW        + "" + ACCOUNT  + "" + WORD             : return newAcctWord(getToken(3).getPossibilities());
                     case NEW        + "" + CATEGORY + "" + WORD             : return newCatWord(getToken(3).getPossibilities());
