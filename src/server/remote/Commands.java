@@ -1047,6 +1047,11 @@ public class Commands {
                                                 }
                                             }
                                         }
+                                        // checks for date
+                                        if(Utilities.isDate(input)) {
+                                            possibilities.add(input);
+                                            tokenType = DATE;
+                                        }
                                         break;
                                     case NEW:
                                     case REMOVE:
@@ -1107,6 +1112,12 @@ public class Commands {
                                             tokenType = QTY;
                                         }
                                     } catch(NumberFormatException e1) { }
+                                    // checks for date
+                                    if(Utilities.isDate(input)) {
+                                        possibilities.add(input);
+                                        tokenType = DATE;
+                                    }
+                                } else if(prev.tokenType==DATE) {
                                     // checks for date
                                     if(Utilities.isDate(input)) {
                                         possibilities.add(input);
