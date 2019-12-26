@@ -30,7 +30,7 @@ import server.remote.IMCommunicator;
  */
 public class Console extends javax.swing.JFrame {
     
-    private static final String VER = "2019-12-01";
+    private static final String VER = "2019-12-26";
 
     private final Console thisConsole = this;
     private final String TITLE = "Envelopes";

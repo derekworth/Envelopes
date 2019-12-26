@@ -42,7 +42,7 @@ public class IMCommunicator {
             if(msgHash1.equalsIgnoreCase(msgHash2)) { // msg integrity and authenticity check
                 // interpret cmds
                 Commands commands = new Commands(mc, un, Utilities.getDatestamp(0), cmds);
-                // TODO: respond
+                // respond
                 return commands.executeCommands();
             } else {
                 return "Access denied. Check credentials and try again.";

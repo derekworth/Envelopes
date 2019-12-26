@@ -38,6 +38,7 @@ public class Commands {
     public static final char EMPTY         = 'X';
     
     public static final int HISTORY_LENGTH = 45;
+    public static final int TRANS_LENGTH = 45;
     
     String currAcct, un, date, commandsInput;
     LinkedList<String> commandsResult;
@@ -56,7 +57,7 @@ public class Commands {
         if(Utilities.isDate(date)) {
             this.date = date;
         } else  {
-            this.date = Utilities.getTimestamp().substring(0, 10);
+            this.date = Utilities.getDatestamp(0);
         }
         commandsResult = new LinkedList();
         commandsSize = 0;
@@ -72,19 +73,6 @@ public class Commands {
     }
     
     // PUBLIC METHODS
-    
-    public void preprocessCommands() {
-        String cmdType = "";
-        
-        
-        switch(cmdType) {
-            case ENV            + "" + EXP                              : return ;
-            case ACCT           + "" + ENV      + "" + EXP              : return ;
-            case ENV            + "" + EXP      + "" + WORD             : return ;
-            case ACCT           + "" + ENV      + "" + EXP  + "" + WORD : return ;
-            default:
-        }
-    }
     
     public String executeCommands() {
         if(un==null) {
@@ -323,17 +311,16 @@ public class Commands {
                     + " (optional), [1 or more], <replace>\n"
                     
                     + "\n--add new transaction(s)--\n"
-                    + " <acct> [<env> <amt> (desc), ...]\n"
+                    + " (date) <acct> [<env> <amt> (desc), ...]\n"
                     
-                    + "\n--add transfer--\n"
-                    + " <from> <to> <amt> (desc)\n"
+                    + "\n--add new transfer--\n"
+                    + " <from acc> <to acc> <amt>\n"
+                    + " <from env> <to env> <amt>\n"
                     
                     + "\n--add new account/category/envelope/user--\n"
                     + " new acc/cat/env <name>\n"
-                    + " new user <name> <password>\n"
-                    
-                    + "\n--add new categorized envelope--\n"
                     + " new env <name> (cat)\n"
+                    + " new user <name> <password>\n"
                     
                     + "\n--view amounts/transactions--\n"
                     + " accounts/categories/envelopes/users\n"
@@ -458,7 +445,7 @@ public class Commands {
             mc.addTransaction(date, desc, exp, currAcct, un, env);
             return "UPDATE:\n"
                     + " amt: "  + Utilities.amountToString(Utilities.amountToInteger(exp)) + "\n"
-                    + " desc: " + Utilities.shortenString(desc, 16) + "\n"
+                    + " desc: " + Utilities.shortenString(desc, TRANS_LENGTH) + "\n"
                     + "ENV: '" + env + "'\n"
                     + " " + oldEnvAmt + " >> " + mc.getEnvelopeAmount(env) + "\n"
                     + "ACCT: '" + currAcct + "'\n"
@@ -567,13 +554,31 @@ public class Commands {
         
         private String acctEnvExp(String acct, String env, String exp) {
             currAcct = acct;
+            date = Utilities.getDatestamp(0);
             String oldEnvAmt  = mc.getEnvelopeAmount(env);
             String oldAcctAmt = mc.getAccountAmount(currAcct);
             String desc = getSplitDesc() + "<no description specified>";
             mc.addTransaction(date, desc, exp, currAcct, un, env);
             return "UPDATE:\n"
                     + " amt: "  + Utilities.amountToString(Utilities.amountToInteger(exp)) + "\n"
-                    + " desc: " + Utilities.shortenString(desc, 16) + "\n"
+                    + " desc: " + Utilities.shortenString(desc, TRANS_LENGTH) + "\n"
+                    + "ENV: '" + env + "'\n"
+                    + " " + oldEnvAmt + " >> " + mc.getEnvelopeAmount(env) + "\n"
+                    + "ACCT: '" + currAcct + "'\n"
+                    + " " + oldAcctAmt + " >> " + mc.getAccountAmount(currAcct);
+        }
+        
+        private String dateAcctEnvExp(String tDate, String acct, String env, String exp) {
+            currAcct = acct;
+            date = tDate;
+            String oldEnvAmt  = mc.getEnvelopeAmount(env);
+            String oldAcctAmt = mc.getAccountAmount(currAcct);
+            String desc = getSplitDesc() + "<no description specified>";
+            mc.addTransaction(date, desc, exp, currAcct, un, env);
+            return "UPDATE:\n"
+                    + " date: " + date + "\n"
+                    + " amt: "  + Utilities.amountToString(Utilities.amountToInteger(exp)) + "\n"
+                    + " desc: " + Utilities.shortenString(desc, TRANS_LENGTH) + "\n"
                     + "ENV: '" + env + "'\n"
                     + " " + oldEnvAmt + " >> " + mc.getEnvelopeAmount(env) + "\n"
                     + "ACCT: '" + currAcct + "'\n"
@@ -607,7 +612,7 @@ public class Commands {
             mc.addTransaction(date, desc, exp, currAcct, un, env);
             return "UPDATE:\n"
                     + " amt: "  + Utilities.amountToString(Utilities.amountToInteger(exp)) + "\n"
-                    + " desc: " + Utilities.shortenString(desc, 16) + "\n"
+                    + " desc: " + Utilities.shortenString(desc, TRANS_LENGTH) + "\n"
                     + "ENV: '" + env + "'\n"
                     + " " + oldEnvAmt + " >> " + mc.getEnvelopeAmount(env) + "\n"
                     + "ACCT: '" + currAcct + "'\n"
@@ -713,6 +718,7 @@ public class Commands {
         
         private String acctEnvExpWord(String acct, String env, String exp) {
             currAcct = acct;
+            date = Utilities.getDatestamp(0);
             String oldEnvAmt  = mc.getEnvelopeAmount(env);
             String oldAcctAmt = mc.getAccountAmount(currAcct);           
             // gets description from remaining tokens
@@ -731,7 +737,36 @@ public class Commands {
             mc.addTransaction(date, desc, exp, currAcct, un, env);
             return "UPDATE:\n"
                     + " amt: "  + Utilities.amountToString(Utilities.amountToInteger(exp)) + "\n"
-                    + " desc: " + Utilities.shortenString(desc, 16) + "\n"
+                    + " desc: " + Utilities.shortenString(desc, TRANS_LENGTH) + "\n"
+                    + "ENV: '" + env + "'\n"
+                    + " " + oldEnvAmt + " >> " + mc.getEnvelopeAmount(env) + "\n"
+                    + "ACCT: '" + currAcct + "'\n"
+                    + " " + oldAcctAmt + " >> " + mc.getAccountAmount(currAcct);
+        }
+        
+        private String dateAcctEnvExpWord(String tDate, String acct, String env, String exp) {
+            currAcct = acct;
+            date = tDate;
+            String oldEnvAmt  = mc.getEnvelopeAmount(env);
+            String oldAcctAmt = mc.getAccountAmount(currAcct);           
+            // gets description from remaining tokens
+            Token curr = getToken(5);
+            String desc = getSplitDesc();
+            boolean first = true;
+            while(curr!=null) {
+                if(first) {
+                    desc += curr.getPossibilities();
+                    first = false;
+                } else {
+                    desc += " " + curr.getPossibilities();
+                }
+                curr = curr.next;
+            }
+            mc.addTransaction(date, desc, exp, currAcct, un, env);
+            return "UPDATE:\n"
+                    + " date: " + date + "\n"
+                    + " amt: "  + Utilities.amountToString(Utilities.amountToInteger(exp)) + "\n"
+                    + " desc: " + Utilities.shortenString(desc, TRANS_LENGTH) + "\n"
                     + "ENV: '" + env + "'\n"
                     + " " + oldEnvAmt + " >> " + mc.getEnvelopeAmount(env) + "\n"
                     + "ACCT: '" + currAcct + "'\n"
@@ -761,45 +796,47 @@ public class Commands {
                 }
                 // processes command
                 switch(cmdType) {
-                    case ACCOUNTS   + ""                                    : return accounts();
-                    case CATEGORIES + ""                                    : return categories();
-                    case ENVELOPES  + ""                                    : return envelopes();
-                    case HELP       + ""                                    : return help();
-                    case HISTORY    + ""                                    : return history();
-                    case HISTORY    + "" + QTY                              : return historyQty(Integer.parseInt(getToken(2).getPossibilities()));
-                    case USERS      + ""                                    : return users();
-                    case ACCT       + ""                                    : return acct(getToken(1).getPossibilities());
-                    case CAT        + ""                                    : return cat(getToken(1).getPossibilities());
-                    case ENV        + ""                                    : return env(getToken(1).getPossibilities());
-                    case HISTORY    + "" + ACCT                             : return historyAcct(getToken(2).getPossibilities());
-                    case HISTORY    + "" + ENV                              : return historyEnv(getToken(2).getPossibilities());
-                    case ENV        + "" + CAT                              : return envCat(getToken(1).getPossibilities(), getToken(2).getPossibilities());
-                    case ENV        + "" + EXP                              : return envExp(getToken(1).getPossibilities(), getToken(2).getPossibilities());
-                    case CHANGE     + "" + PASSWORD + "" + WORD             : return chgPwWord(getToken(3).getPossibilities());
-                    case HISTORY    + "" + ACCT     + "" + QTY              : return histAcctQty(getToken(2).getPossibilities(), Integer.parseInt(getToken(3).getPossibilities()));
-                    case HISTORY    + "" + DATE     + "" + DATE             : return histDateDate(getToken(2).getPossibilities(), getToken(3).getPossibilities());
-                    case HISTORY    + "" + ENV      + "" + QTY              : return histEnvQty(getToken(2).getPossibilities(), Integer.parseInt(getToken(3).getPossibilities()));
-                    case NEW        + "" + ACCOUNT  + "" + WORD             : return newAcctWord(getToken(3).getPossibilities());
-                    case NEW        + "" + CATEGORY + "" + WORD             : return newCatWord(getToken(3).getPossibilities());
-                    case NEW        + "" + ENVELOPE + "" + WORD             : return newEnvWord(getToken(3).getPossibilities());
-                    case REMOVE     + "" + ACCOUNT  + "" + WORD             : return remAcctWord(getToken(3).getPossibilities());
-                    case REMOVE     + "" + CATEGORY + "" + WORD             : return remCatWord(getToken(3).getPossibilities());
-                    case REMOVE     + "" + ENVELOPE + "" + WORD             : return remEnvWord(getToken(3).getPossibilities());
-                    case REMOVE     + "" + USER     + "" + WORD             : return remUsrWord(getToken(3).getPossibilities());
-                    case ACCT       + "" + ACCT     + "" + EXP              : return acctAcctExp(getToken(1).getPossibilities(),getToken(2).getPossibilities(),getToken(3).getPossibilities());
-                    case ACCT       + "" + ENV      + "" + EXP              : return acctEnvExp(getToken(1).getPossibilities(), getToken(2).getPossibilities(), getToken(3).getPossibilities());
-                    case ENV        + "" + ENV      + "" + EXP              : return envEnvExp(getToken(1).getPossibilities(), getToken(2).getPossibilities(), getToken(3).getPossibilities());
-                    case ENV        + "" + EXP      + "" + WORD             : return envExpWord(getToken(1).getPossibilities(), getToken(2).getPossibilities());
-                    case HISTORY    + "" + ACCT     + "" + DATE + "" + DATE : return histAcctDateDate(getToken(2).getPossibilities(), getToken(3).getPossibilities(), getToken(4).getPossibilities());
-                    case HISTORY    + "" + ENV      + "" + DATE + "" + DATE : return histEnvDateDate(getToken(2).getPossibilities(), getToken(3).getPossibilities(), getToken(4).getPossibilities());
-                    case NEW        + "" + ENVELOPE + "" + WORD + "" + CAT  : return newEnvWordCat(getToken(3).getPossibilities(), getToken(4).getPossibilities());
-                    case NEW        + "" + USER     + "" + WORD + "" + WORD : return newUsrWordWord(getToken(3).getPossibilities(), getToken(4).getPossibilities());
-                    case RENAME     + "" + ACCOUNT  + "" + WORD + "" + WORD : return renAcctWordWord(getToken(3).getPossibilities(), getToken(4).getPossibilities());
-                    case RENAME     + "" + CATEGORY + "" + WORD + "" + WORD : return renCatWordWord(getToken(3).getPossibilities(), getToken(4).getPossibilities());
-                    case RENAME     + "" + ENVELOPE + "" + WORD + "" + WORD : return renEnvWordWord(getToken(3).getPossibilities(), getToken(4).getPossibilities());
-                    case RENAME     + "" + USER     + "" + WORD + "" + WORD : return renUsrWordWord(getToken(3).getPossibilities(), getToken(4).getPossibilities());
-                    case ACCT       + "" + ENV      + "" + EXP  + "" + WORD : return acctEnvExpWord(getToken(1).getPossibilities(), getToken(2).getPossibilities(), getToken(3).getPossibilities());
-                    default:                                                      return "Invalid command. Send 'help' for usages.";
+                    case ACCOUNTS   + ""                                                : return accounts();
+                    case CATEGORIES + ""                                                : return categories();
+                    case ENVELOPES  + ""                                                : return envelopes();
+                    case HELP       + ""                                                : return help();
+                    case HISTORY    + ""                                                : return history();
+                    case HISTORY    + "" + QTY                                          : return historyQty(Integer.parseInt(getToken(2).getPossibilities()));
+                    case USERS      + ""                                                : return users();
+                    case ACCT       + ""                                                : return acct(getToken(1).getPossibilities());
+                    case CAT        + ""                                                : return cat(getToken(1).getPossibilities());
+                    case ENV        + ""                                                : return env(getToken(1).getPossibilities());
+                    case HISTORY    + "" + ACCT                                         : return historyAcct(getToken(2).getPossibilities());
+                    case HISTORY    + "" + ENV                                          : return historyEnv(getToken(2).getPossibilities());
+                    case ENV        + "" + CAT                                          : return envCat(getToken(1).getPossibilities(), getToken(2).getPossibilities());
+                    case ENV        + "" + EXP                                          : return envExp(getToken(1).getPossibilities(), getToken(2).getPossibilities());
+                    case CHANGE     + "" + PASSWORD + "" + WORD                         : return chgPwWord(getToken(3).getPossibilities());
+                    case HISTORY    + "" + ACCT     + "" + QTY                          : return histAcctQty(getToken(2).getPossibilities(), Integer.parseInt(getToken(3).getPossibilities()));
+                    case HISTORY    + "" + DATE     + "" + DATE                         : return histDateDate(getToken(2).getPossibilities(), getToken(3).getPossibilities());
+                    case HISTORY    + "" + ENV      + "" + QTY                          : return histEnvQty(getToken(2).getPossibilities(), Integer.parseInt(getToken(3).getPossibilities()));
+                    case NEW        + "" + ACCOUNT  + "" + WORD                         : return newAcctWord(getToken(3).getPossibilities());
+                    case NEW        + "" + CATEGORY + "" + WORD                         : return newCatWord(getToken(3).getPossibilities());
+                    case NEW        + "" + ENVELOPE + "" + WORD                         : return newEnvWord(getToken(3).getPossibilities());
+                    case REMOVE     + "" + ACCOUNT  + "" + WORD                         : return remAcctWord(getToken(3).getPossibilities());
+                    case REMOVE     + "" + CATEGORY + "" + WORD                         : return remCatWord(getToken(3).getPossibilities());
+                    case REMOVE     + "" + ENVELOPE + "" + WORD                         : return remEnvWord(getToken(3).getPossibilities());
+                    case REMOVE     + "" + USER     + "" + WORD                         : return remUsrWord(getToken(3).getPossibilities());
+                    case ACCT       + "" + ACCT     + "" + EXP                          : return acctAcctExp(getToken(1).getPossibilities(),getToken(2).getPossibilities(),getToken(3).getPossibilities());
+                    case ACCT       + "" + ENV      + "" + EXP                          : return acctEnvExp(getToken(1).getPossibilities(), getToken(2).getPossibilities(), getToken(3).getPossibilities());
+                    case ENV        + "" + ENV      + "" + EXP                          : return envEnvExp(getToken(1).getPossibilities(), getToken(2).getPossibilities(), getToken(3).getPossibilities());
+                    case ENV        + "" + EXP      + "" + WORD                         : return envExpWord(getToken(1).getPossibilities(), getToken(2).getPossibilities());
+                    case DATE       + "" + ACCT     + "" + ENV  + "" + EXP              : return dateAcctEnvExp(getToken(1).getPossibilities(), getToken(2).getPossibilities(), getToken(3).getPossibilities(), getToken(4).getPossibilities());
+                    case HISTORY    + "" + ACCT     + "" + DATE + "" + DATE             : return histAcctDateDate(getToken(2).getPossibilities(), getToken(3).getPossibilities(), getToken(4).getPossibilities());
+                    case HISTORY    + "" + ENV      + "" + DATE + "" + DATE             : return histEnvDateDate(getToken(2).getPossibilities(), getToken(3).getPossibilities(), getToken(4).getPossibilities());
+                    case NEW        + "" + ENVELOPE + "" + WORD + "" + CAT              : return newEnvWordCat(getToken(3).getPossibilities(), getToken(4).getPossibilities());
+                    case NEW        + "" + USER     + "" + WORD + "" + WORD             : return newUsrWordWord(getToken(3).getPossibilities(), getToken(4).getPossibilities());
+                    case RENAME     + "" + ACCOUNT  + "" + WORD + "" + WORD             : return renAcctWordWord(getToken(3).getPossibilities(), getToken(4).getPossibilities());
+                    case RENAME     + "" + CATEGORY + "" + WORD + "" + WORD             : return renCatWordWord(getToken(3).getPossibilities(), getToken(4).getPossibilities());
+                    case RENAME     + "" + ENVELOPE + "" + WORD + "" + WORD             : return renEnvWordWord(getToken(3).getPossibilities(), getToken(4).getPossibilities());
+                    case RENAME     + "" + USER     + "" + WORD + "" + WORD             : return renUsrWordWord(getToken(3).getPossibilities(), getToken(4).getPossibilities());
+                    case ACCT       + "" + ENV      + "" + EXP  + "" + WORD             : return acctEnvExpWord(getToken(1).getPossibilities(), getToken(2).getPossibilities(), getToken(3).getPossibilities());
+                    case DATE       + "" + ACCT     + "" + ENV  + "" + EXP  + "" + WORD : return dateAcctEnvExpWord(getToken(1).getPossibilities(), getToken(2).getPossibilities(), getToken(3).getPossibilities(), getToken(4).getPossibilities());
+                    default                                                             : return "Invalid command. Send 'help' for usages.";
                 }
             }
         }
@@ -836,10 +873,11 @@ public class Commands {
             tokenCount++;
             
             // removes extra [WORD] types from end
-            if(!commandType.startsWith(ENV + "" + EXP + "" + WORD) &&               // simplifies [ENV][EXP][WORD]<more [WORD]'s>...
-               !commandType.startsWith(ACCT + "" + ACCT + "" + EXP + "" + WORD) &&  // simplifies [ACCT][ACCT][EXP][WORD]<more [WORD]'s>...
-               !commandType.startsWith(ACCT + "" + ENV  + "" + EXP + "" + WORD) &&  // simplifies [ACCT][ENV] [EXP][WORD]<more [WORD]'s>...
-               !commandType.startsWith(ENV  + "" + ENV  + "" + EXP + "" + WORD) ) { // simplifies [ENV] [ENV] [EXP][WORD]<more [WORD]'s>...
+            if(!commandType.startsWith(ENV  + "" + EXP  + "" + WORD) &&                       // simplifies [ENV] [EXP] [WORD]            <more [WORD]'s>...
+               !commandType.startsWith(ACCT + "" + ACCT + "" + EXP + "" + WORD) &&            // simplifies [ACCT][ACCT][EXP] [WORD]      <more [WORD]'s>...
+               !commandType.startsWith(ACCT + "" + ENV  + "" + EXP + "" + WORD) &&            // simplifies [ACCT][ENV] [EXP] [WORD]      <more [WORD]'s>...
+               !commandType.startsWith(ENV  + "" + ENV  + "" + EXP + "" + WORD) &&            // simplifies [ENV] [ENV] [EXP] [WORD]      <more [WORD]'s>...
+               !commandType.startsWith(DATE + "" + ACCT + "" + ENV + "" + EXP + "" + WORD)) { // simplifies [DATE][ACCT][ENV] [EXP] [WORD]<more [WORD]'s>...
                 commandType += tmp.getTokenType();
             }
             
@@ -866,6 +904,12 @@ public class Commands {
                                 input = input.toLowerCase();
                                 // possible reserve words for first token
                                 String[] res1 = {"accounts", "categories", "change", "envelopes", "help", "history", "new", "remove", "rename", "users", "uncategorized"};
+                                // checks for date
+                                if(Utilities.isDate(input)) {
+                                    possibilities.add(input);
+                                    tokenType = DATE;
+                                    break out;
+                                }
                                 // adds any reserve words that match given commandsInput
                                 for(String str : res1) {
                                     if(str.startsWith(input)) {
@@ -878,7 +922,7 @@ public class Commands {
                                         }
                                     }
                                 }
-                                // gets any accounts, categories, or envelopes that match given commandsInput
+                                // checks for envelopes
                                 for(String name : mc.getEnvelopeNames()) {
                                     if(name.startsWith(input)) {
                                         // change type to envelope
@@ -891,6 +935,7 @@ public class Commands {
                                         }
                                     }
                                 }
+                                // checks for accounts
                                 for(String name : mc.getAccountNames()) {
                                     if(name.startsWith(input)) {
                                         // change type to account
@@ -903,6 +948,7 @@ public class Commands {
                                         }
                                     }
                                 }
+                                // checks for categories
                                 for(String name : mc.getCategoryNames()) {
                                     if(name.startsWith(input)) {
                                         // change type to category
@@ -1072,6 +1118,20 @@ public class Commands {
                                             }
                                         }
                                         break;
+                                    case DATE:
+                                        // check for account
+                                        for(String name : mc.getAccountNames()) {
+                                            if(name.startsWith(input)) {
+                                                // change type to account
+                                                tokenType = ACCT;
+                                                possibilities.add(name);
+                                                if(name.equalsIgnoreCase(input)) {
+                                                    possibilities.clear();
+                                                    possibilities.add(input);
+                                                    break out;
+                                                }
+                                            }
+                                        }
                                     default:
                                         break;
                                 }
@@ -1102,6 +1162,19 @@ public class Commands {
                                         tokenType = EXP;
                                         break out;
                                     } catch (NumberFormatException e) { }
+                                    // checks for envelopes
+                                    for(String name : mc.getEnvelopeNames()) {
+                                        if(name.startsWith(input)) {
+                                            possibilities.add(name);
+                                            // change type to envelope
+                                            tokenType = ENV;
+                                            if(name.equalsIgnoreCase(input)) {
+                                                possibilities.clear();
+                                                possibilities.add(input);
+                                                break out;
+                                            }
+                                        }
+                                    }
                                 } else if(prev.tokenType==CAT) {
                                     input = input.toLowerCase();
                                     // checks for quantity
@@ -1133,7 +1206,7 @@ public class Commands {
                                         possibilities.add(input);
                                         tokenType = DATE;
                                     }
-                                } else if(prev.tokenType==WORD && prev.prev.tokenType==ENVELOPE && prev.prev.prev.tokenType==NEW) {
+                                } else if(prev.prev.prev.tokenType==NEW && prev.prev.tokenType==ENVELOPE && prev.tokenType==WORD) {
                                     input = input.toLowerCase();
                                     // checks for categories
                                     for(String name : mc.getCategoryNames()) {
@@ -1146,7 +1219,16 @@ public class Commands {
                                             break out;
                                         }
                                     }
-                                }   break;
+                                } else if(prev.prev.prev.tokenType==DATE && prev.prev.tokenType==ACCT && prev.tokenType==ENV) {
+                                    // checks for expression
+                                    try {
+                                        Double.parseDouble(input);
+                                        possibilities.add(input);
+                                        tokenType = EXP;
+                                        break out;
+                                    } catch (NumberFormatException e) { }
+                                }
+                                break;
                             default:
                                 break;
                         }
