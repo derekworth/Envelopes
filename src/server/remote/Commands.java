@@ -108,6 +108,14 @@ public class Commands {
                         splitAmts.put(splitID, Utilities.amountToInteger(curr.getToken(3).getPossibilities()));
                         splitCnts.put(splitID, 1);
                         break;
+                    case DATE + "" + ACCT + "" + ENV + "" + EXP :
+                    case DATE + "" + ACCT + "" + ENV + "" + EXP  + "" + WORD :
+                        prevSplit = true;
+                        splitID++; // increment to new split ID
+                        splits[index] = splitID; // store split ID
+                        splitAmts.put(splitID, Utilities.amountToInteger(curr.getToken(4).getPossibilities()));
+                        splitCnts.put(splitID, 1);
+                        break;
                     default:
                         splits[index] = -1; // command not part of a split
                         prevSplit = false;
