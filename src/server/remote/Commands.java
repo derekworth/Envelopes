@@ -805,6 +805,7 @@ public class Commands {
                         currAcct = null;
                 }
                 // processes command
+                System.out.println(cmdType + "\n");
                 switch(cmdType) {
                     case ACCOUNTS   + ""                                                : return accounts();
                     case CATEGORIES + ""                                                : return categories();
@@ -911,7 +912,6 @@ public class Commands {
                         switch (tokenCount) {
                             case 0:
                                 // this is the first token
-                                input = input.toLowerCase();
                                 // possible reserve words for first token
                                 String[] res1 = {"accounts", "categories", "change", "envelopes", "help", "history", "new", "remove", "rename", "users", "uncategorized"};
                                 // checks for date
@@ -922,19 +922,19 @@ public class Commands {
                                 }
                                 // adds any reserve words that match given commandsInput
                                 for(String str : res1) {
-                                    if(str.startsWith(input)) {
+                                    if(str.startsWith(input.toLowerCase())) {
                                         possibilities.add(str);
                                         tokenType = getReserveWordType(possibilities.peek());
                                         if(str.equalsIgnoreCase(input)) {
                                             possibilities.clear();
-                                            possibilities.add(input);
+                                            possibilities.add(str);
                                             break out;
                                         }
                                     }
                                 }
                                 // checks for envelopes
                                 for(String name : mc.getEnvelopeNames()) {
-                                    if(name.startsWith(input)) {
+                                    if(name.startsWith(input.toLowerCase())) {
                                         // change type to envelope
                                         tokenType = ENV;
                                         possibilities.add(name);
@@ -947,7 +947,7 @@ public class Commands {
                                 }
                                 // checks for accounts
                                 for(String name : mc.getAccountNames()) {
-                                    if(name.startsWith(input)) {
+                                    if(name.startsWith(input.toLowerCase())) {
                                         // change type to account
                                         tokenType = ACCT;
                                         possibilities.add(name);
@@ -960,13 +960,13 @@ public class Commands {
                                 }
                                 // checks for categories
                                 for(String name : mc.getCategoryNames()) {
-                                    if(name.startsWith(input)) {
+                                    if(name.startsWith(input.toLowerCase())) {
                                         // change type to category
                                         tokenType = CAT;
                                         possibilities.add(name);
                                         if(name.equalsIgnoreCase(input)) {
                                             possibilities.clear();
-                                            possibilities.add(name.toLowerCase());
+                                            possibilities.add(name);
                                             break out;
                                         }
                                     }
@@ -976,10 +976,9 @@ public class Commands {
                                 // this is the second token
                                 switch (prev.tokenType) {
                                     case ACCT:
-                                        input = input.toLowerCase();
                                         // checks for accounts
                                         for(String name : mc.getAccountNames()) {
-                                            if(name.startsWith(input)) {
+                                            if(name.startsWith(input.toLowerCase())) {
                                                 possibilities.add(name);
                                                 // change type to account
                                                 tokenType = ACCT;
@@ -992,7 +991,7 @@ public class Commands {
                                         }
                                         // checks for envelopes
                                         for(String name : mc.getEnvelopeNames()) {
-                                            if(name.startsWith(input)) {
+                                            if(name.startsWith(input.toLowerCase())) {
                                                 possibilities.add(name);
                                                 // change type to envelope
                                                 tokenType = ENV;
@@ -1006,23 +1005,22 @@ public class Commands {
                                         break;
                                     case ENV:
                                         {
-                                            input = input.toLowerCase();
                                             // checks for categories
                                             for(String name : mc.getCategoryNames()) {
-                                                if(name.startsWith(input)) {
+                                                if(name.startsWith(input.toLowerCase())) {
                                                     possibilities.add(name);
                                                     // change type to envelope
                                                     tokenType = CAT;
                                                     if(name.equalsIgnoreCase(input)) {
                                                         possibilities.clear();
-                                                        possibilities.add(name.toLowerCase());
+                                                        possibilities.add(name);
                                                         break out;
                                                     }
                                                 }
                                             }
                                             // checks for envelopes
                                             for(String name : mc.getEnvelopeNames()) {
-                                                if(name.startsWith(input)) {
+                                                if(name.startsWith(input.toLowerCase())) {
                                                     possibilities.add(name);
                                                     // change type to envelope
                                                     tokenType = ENV;
@@ -1042,13 +1040,12 @@ public class Commands {
                                             break;
                                         }
                                     case CHANGE:
-                                        input = input.toLowerCase();
-                                        if("password".startsWith(input)) {
+                                        if("password".startsWith(input.toLowerCase())) {
                                             possibilities.add("password");
                                             tokenType = PASSWORD;
                                             if("password".equalsIgnoreCase(input)) {
                                                 possibilities.clear();
-                                                possibilities.add(input);
+                                                possibilities.add("password");
                                                 break out;
                                             }
                                         }
@@ -1063,10 +1060,9 @@ public class Commands {
                                                 break out;
                                             }
                                         } catch(NumberFormatException e1) {}
-                                        input = input.toLowerCase();
                                         // checks for accounts
                                         for(String name : mc.getAccountNames()) {
-                                            if(name.startsWith(input)) {
+                                            if(name.startsWith(input.toLowerCase())) {
                                                 possibilities.add(name);
                                                 // change type to account
                                                 tokenType = ACCT;
@@ -1079,20 +1075,20 @@ public class Commands {
                                         }
                                         // checks for categories
                                         for(String name : mc.getCategoryNames()) {
-                                            if(name.startsWith(input)) {
+                                            if(name.startsWith(input.toLowerCase())) {
                                                 // change type to category
                                                 tokenType = CAT;
                                                 possibilities.add(name);
                                                 if(name.equalsIgnoreCase(input)) {
                                                     possibilities.clear();
-                                                    possibilities.add(name.toLowerCase());
+                                                    possibilities.add(name);
                                                     break out;
                                                 }
                                             }
                                         }
                                         // checks for envelopes
                                         for(String name : mc.getEnvelopeNames()) {
-                                            if(name.startsWith(input)) {
+                                            if(name.startsWith(input.toLowerCase())) {
                                                 possibilities.add(name);
                                                 // change type to envelope
                                                 tokenType = ENV;
@@ -1112,17 +1108,16 @@ public class Commands {
                                     case NEW:
                                     case REMOVE:
                                     case RENAME:
-                                        input = input.toLowerCase();
                                         // possible reserve words
                                         String[] res2 = {"account", "category", "envelope", "user"};
                                         // adds any reserve words that match given commandsInput
                                         for(String str : res2) {
-                                            if(str.startsWith(input)) {
+                                            if(str.startsWith(input.toLowerCase())) {
                                                 possibilities.add(str);
                                                 tokenType = getReserveWordType(possibilities.peek());
                                                 if(str.equalsIgnoreCase(input)) {
                                                     possibilities.clear();
-                                                    possibilities.add(input);
+                                                    possibilities.add(str);
                                                     break out;
                                                 }
                                             }
@@ -1130,8 +1125,9 @@ public class Commands {
                                         break;
                                     case DATE:
                                         // check for account
+                                        System.out.println(input);
                                         for(String name : mc.getAccountNames()) {
-                                            if(name.startsWith(input)) {
+                                            if(name.startsWith(input.toLowerCase())) {
                                                 // change type to account
                                                 tokenType = ACCT;
                                                 possibilities.add(name);
@@ -1157,7 +1153,6 @@ public class Commands {
                                             tokenType = DATE;
                                             break out;
                                         }
-                                        input = input.toLowerCase();
                                         // checks for quantity
                                         try {
                                             int qty = Integer.parseInt(input);
@@ -1176,7 +1171,7 @@ public class Commands {
                                         } catch (NumberFormatException e) { }
                                         // checks for envelopes
                                         for(String name : mc.getEnvelopeNames()) {
-                                            if(name.startsWith(input)) {
+                                            if(name.startsWith(input.toLowerCase())) {
                                                 possibilities.add(name);
                                                 // change type to envelope
                                                 tokenType = ENV;
@@ -1188,7 +1183,6 @@ public class Commands {
                                             }
                                         }
                                     case CAT:
-                                        input = input.toLowerCase();
                                         // checks for quantity
                                         try {
                                             int qty = Integer.parseInt(input);
@@ -1223,7 +1217,6 @@ public class Commands {
                                         tokenType = DATE;
                                     }
                                 } else if(prev.prev.prev.tokenType==NEW && prev.prev.tokenType==ENVELOPE && prev.tokenType==WORD) {
-                                    input = input.toLowerCase();
                                     // checks for categories
                                     for(String name : mc.getCategoryNames()) {
                                         possibilities.add(name);
@@ -1231,7 +1224,7 @@ public class Commands {
                                         tokenType = CAT;
                                         if(name.equalsIgnoreCase(input)) {
                                             possibilities.clear();
-                                            possibilities.add(name.toLowerCase());
+                                            possibilities.add(name);
                                             break out;
                                         }
                                     }
