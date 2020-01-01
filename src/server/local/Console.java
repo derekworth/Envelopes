@@ -30,7 +30,7 @@ import server.remote.IMCommunicator;
  */
 public class Console extends javax.swing.JFrame {
     
-    private static final String VER = "2019-12-26";
+    private static final String VER = "2020-01-01";
 
     private final Console thisConsole = this;
     private final String TITLE = "Envelopes";
@@ -2246,7 +2246,7 @@ public class Console extends javax.swing.JFrame {
                     // Get 12 most recent months:
                     String[][] twelveMths = new String[12][2];
                     // finds next month based off today's date
-                    int mth = ((Integer.parseInt(Utilities.getDatestamp(0).substring(5, 7))) % 12) + 1;
+                    int mth = ((Integer.parseInt(Utilities.getDatestamp(0).substring(5, 7))) + 1) % 12;
                     // finds the year of next month
                     int yr = Integer.parseInt(Utilities.getDatestamp(0).substring(0, 4));
                     if (mth == 1) {
@@ -2263,49 +2263,53 @@ public class Console extends javax.swing.JFrame {
                                 mth--;  // decrease month, same year
                             }
                         } else {
-                            date = Integer.toString(yr) + "-" + Integer.toString(mth) + "-01"; // two digit month (10-11)
+                            date = Integer.toString(yr) + "-" + Integer.toString(mth) + "-01"; // two digit month (10-12)
                             mth--;      // decrease month, same year
                         }
                         twelveMths[i][0] = date;
                         switch (Integer.parseInt(date.substring(5, 7))) {
                             case 2:
-                            twelveMths[i][1] = "(Jan";
-                            break;
+                                twelveMths[i][1] = "(Jan";
+                                break;
                             case 3:
-                            twelveMths[i][1] = "(Feb";
-                            break;
+                                twelveMths[i][1] = "(Feb";
+                                break;
                             case 4:
-                            twelveMths[i][1] = "(Mar";
-                            break;
+                                twelveMths[i][1] = "(Mar";
+                                break;
                             case 5:
-                            twelveMths[i][1] = "(Apr";
-                            break;
+                                twelveMths[i][1] = "(Apr";
+                                break;
                             case 6:
-                            twelveMths[i][1] = "(May";
-                            break;
+                                twelveMths[i][1] = "(May";
+                                break;
                             case 7:
-                            twelveMths[i][1] = "(Jun";
-                            break;
+                                twelveMths[i][1] = "(Jun";
+                                break;
                             case 8:
-                            twelveMths[i][1] = "(Jul";
-                            break;
+                                twelveMths[i][1] = "(Jul";
+                                break;
                             case 9:
-                            twelveMths[i][1] = "(Aug";
-                            break;
+                                twelveMths[i][1] = "(Aug";
+                                break;
                             case 10:
-                            twelveMths[i][1] = "(Sep";
-                            break;
+                                twelveMths[i][1] = "(Sep";
+                                break;
                             case 11:
-                            twelveMths[i][1] = "(Oct";
-                            break;
+                                twelveMths[i][1] = "(Oct";
+                                break;
                             case 12:
-                            twelveMths[i][1] = "(Nov";
-                            break;
+                                twelveMths[i][1] = "(Nov";
+                                break;
                             default:
-                            twelveMths[i][1] = "(Dec";
-                            break;
+                                twelveMths[i][1] = "(Dec";
+                                break;
                         }
-                        twelveMths[i][1] += " " + date.substring(2, 4) + ")";
+                        if(date.substring(5,7).equalsIgnoreCase("01")) {
+                            twelveMths[i][1] += " " + (Integer.parseInt(date.substring(2, 4))-1) + ")";
+                        } else {
+                            twelveMths[i][1] += " " + date.substring(2, 4) + ")";
+                        }
                         curr++;
                         reportProgressBar.setValue(curr * 100 / max);
                     }

@@ -319,7 +319,7 @@ public class Commands {
                     + " (optional), [1 or more], <replace>\n"
                     
                     + "\n--add new transaction(s)--\n"
-                    + " (date) <acct> [<env> <amt> (desc), ...]\n"
+                    + " (date) <acc> [<env> <amt> (desc), ...]\n"
                     
                     + "\n--add new transfer--\n"
                     + " <from acc> <to acc> <amt>\n"
@@ -401,7 +401,8 @@ public class Commands {
         }
         
         private String env(String env) {
-            return "ENVELOPE:" + "\n " + env.toLowerCase() + " " + mc.getEnvelopeAmount(env);
+            env = env.toLowerCase();
+            return "ENVELOPE:" + "\n " + env + " " + mc.getEnvelopeAmount(env);
         }
         
         private String historyAcct(String acct) {
@@ -443,6 +444,7 @@ public class Commands {
         }
         
         private String envExp(String env, String exp) {
+            env = env.toLowerCase();
             if(currAcct==null) {
                 return "Account not specified for transaction: '" + env + " " + Utilities.amountToString(Utilities.amountToInteger(exp)) + "'\n"
                         + "Specify account at least once: <acct> [<env> <amt> (desc), ...]";
@@ -938,7 +940,7 @@ public class Commands {
                                         possibilities.add(name);
                                         if(name.equalsIgnoreCase(input)) {
                                             possibilities.clear();
-                                            possibilities.add(input);
+                                            possibilities.add(name);
                                             break out;
                                         }
                                     }
@@ -951,7 +953,7 @@ public class Commands {
                                         possibilities.add(name);
                                         if(name.equalsIgnoreCase(input)) {
                                             possibilities.clear();
-                                            possibilities.add(input);
+                                            possibilities.add(name);
                                             break out;
                                         }
                                     }
@@ -964,7 +966,7 @@ public class Commands {
                                         possibilities.add(name);
                                         if(name.equalsIgnoreCase(input)) {
                                             possibilities.clear();
-                                            possibilities.add(input);
+                                            possibilities.add(name.toLowerCase());
                                             break out;
                                         }
                                     }
@@ -983,7 +985,7 @@ public class Commands {
                                                 tokenType = ACCT;
                                                 if(name.equalsIgnoreCase(input)) {
                                                     possibilities.clear();
-                                                    possibilities.add(input);
+                                                    possibilities.add(name);
                                                     break out;
                                                 }
                                             }
@@ -996,7 +998,7 @@ public class Commands {
                                                 tokenType = ENV;
                                                 if(name.equalsIgnoreCase(input)) {
                                                     possibilities.clear();
-                                                    possibilities.add(input);
+                                                    possibilities.add(name);
                                                     break out;
                                                 }
                                             }
@@ -1013,7 +1015,7 @@ public class Commands {
                                                     tokenType = CAT;
                                                     if(name.equalsIgnoreCase(input)) {
                                                         possibilities.clear();
-                                                        possibilities.add(input);
+                                                        possibilities.add(name.toLowerCase());
                                                         break out;
                                                     }
                                                 }
@@ -1026,7 +1028,7 @@ public class Commands {
                                                     tokenType = ENV;
                                                     if(name.equalsIgnoreCase(input)) {
                                                         possibilities.clear();
-                                                        possibilities.add(input);
+                                                        possibilities.add(name);
                                                         break out;
                                                     }
                                                 }
@@ -1070,7 +1072,7 @@ public class Commands {
                                                 tokenType = ACCT;
                                                 if(name.equalsIgnoreCase(input)) {
                                                     possibilities.clear();
-                                                    possibilities.add(input);
+                                                    possibilities.add(name);
                                                     break out;
                                                 }
                                             }
@@ -1083,7 +1085,7 @@ public class Commands {
                                                 possibilities.add(name);
                                                 if(name.equalsIgnoreCase(input)) {
                                                     possibilities.clear();
-                                                    possibilities.add(input);
+                                                    possibilities.add(name.toLowerCase());
                                                     break out;
                                                 }
                                             }
@@ -1096,7 +1098,7 @@ public class Commands {
                                                 tokenType = ENV;
                                                 if(name.equalsIgnoreCase(input)) {
                                                     possibilities.clear();
-                                                    possibilities.add(input);
+                                                    possibilities.add(name);
                                                     break out;
                                                 }
                                             }
@@ -1135,7 +1137,7 @@ public class Commands {
                                                 possibilities.add(name);
                                                 if(name.equalsIgnoreCase(input)) {
                                                     possibilities.clear();
-                                                    possibilities.add(input);
+                                                    possibilities.add(name);
                                                     break out;
                                                 }
                                             }
@@ -1146,64 +1148,70 @@ public class Commands {
                                 break;
                             case 2:
                                 // this is the third token
-                                if(prev.tokenType==ACCT || prev.tokenType==ENV) {
-                                    // checks for date
-                                    if(Utilities.isDate(input)) {
-                                        possibilities.add(input);
-                                        tokenType = DATE;
-                                        break out;
-                                    }
-                                    input = input.toLowerCase();
-                                    // checks for quantity
-                                    try {
-                                        int qty = Integer.parseInt(input);
-                                        if(qty>=0 && prev.prev.tokenType==HISTORY) {
+                                switch (prev.tokenType) {
+                                    case ACCT:
+                                    case ENV:
+                                        // checks for date
+                                        if(Utilities.isDate(input)) {
                                             possibilities.add(input);
-                                            tokenType = QTY;
+                                            tokenType = DATE;
                                             break out;
                                         }
-                                    } catch(NumberFormatException e1) { }
-                                    // checks for expression
-                                    try {
-                                        Double.parseDouble(input);
-                                        possibilities.add(input);
-                                        tokenType = EXP;
-                                        break out;
-                                    } catch (NumberFormatException e) { }
-                                    // checks for envelopes
-                                    for(String name : mc.getEnvelopeNames()) {
-                                        if(name.startsWith(input)) {
-                                            possibilities.add(name);
-                                            // change type to envelope
-                                            tokenType = ENV;
-                                            if(name.equalsIgnoreCase(input)) {
-                                                possibilities.clear();
+                                        input = input.toLowerCase();
+                                        // checks for quantity
+                                        try {
+                                            int qty = Integer.parseInt(input);
+                                            if(qty>=0 && prev.prev.tokenType==HISTORY) {
                                                 possibilities.add(input);
+                                                tokenType = QTY;
                                                 break out;
                                             }
-                                        }
-                                    }
-                                } else if(prev.tokenType==CAT) {
-                                    input = input.toLowerCase();
-                                    // checks for quantity
-                                    try {
-                                        int qty = Integer.parseInt(input);
-                                        if(qty>=0 && prev.prev.tokenType==HISTORY) {
+                                        } catch(NumberFormatException e1) { }
+                                        // checks for expression
+                                        try {
+                                            Double.parseDouble(input);
                                             possibilities.add(input);
-                                            tokenType = QTY;
+                                            tokenType = EXP;
+                                            break out;
+                                        } catch (NumberFormatException e) { }
+                                        // checks for envelopes
+                                        for(String name : mc.getEnvelopeNames()) {
+                                            if(name.startsWith(input)) {
+                                                possibilities.add(name);
+                                                // change type to envelope
+                                                tokenType = ENV;
+                                                if(name.equalsIgnoreCase(input)) {
+                                                    possibilities.clear();
+                                                    possibilities.add(name);
+                                                    break out;
+                                                }
+                                            }
                                         }
-                                    } catch(NumberFormatException e1) { }
-                                    // checks for date
-                                    if(Utilities.isDate(input)) {
-                                        possibilities.add(input);
-                                        tokenType = DATE;
-                                    }
-                                } else if(prev.tokenType==DATE) {
-                                    // checks for date
-                                    if(Utilities.isDate(input)) {
-                                        possibilities.add(input);
-                                        tokenType = DATE;
-                                    }
+                                    case CAT:
+                                        input = input.toLowerCase();
+                                        // checks for quantity
+                                        try {
+                                            int qty = Integer.parseInt(input);
+                                            if(qty>=0 && prev.prev.tokenType==HISTORY) {
+                                                possibilities.add(input);
+                                                tokenType = QTY;
+                                            }
+                                        } catch(NumberFormatException e1) { }
+                                        // checks for date
+                                        if(Utilities.isDate(input)) {
+                                            possibilities.add(input);
+                                            tokenType = DATE;
+                                        }
+                                        break;
+                                    case DATE:
+                                        // checks for date
+                                        if(Utilities.isDate(input)) {
+                                            possibilities.add(input);
+                                            tokenType = DATE;
+                                        }
+                                        break;
+                                    default:
+                                        break;
                                 }
                                 break;
                             case 3:
@@ -1223,7 +1231,7 @@ public class Commands {
                                         tokenType = CAT;
                                         if(name.equalsIgnoreCase(input)) {
                                             possibilities.clear();
-                                            possibilities.add(input);
+                                            possibilities.add(name.toLowerCase());
                                             break out;
                                         }
                                     }
