@@ -45,12 +45,14 @@ public class Commands {
     Command headCommand, tailCommand;
     int commandsSize;
     ModelController mc;
+    private final server.local.Console con;
     
     
     
     // CONSTRUCTOR
     
-    public Commands(ModelController mc, String un, String date, String input) {
+    public Commands(server.local.Console con, ModelController mc, String un, String date, String input) {
+        this.con = con;
         currAcct = null;
         this.mc = mc;
         this.un = un;
@@ -437,6 +439,7 @@ public class Commands {
         
         private String envCat(String env, String cat) {
             if(mc.setEnvelopeCategory(env, cat)) {
+                con.updateAllTables();
                 return "Envelope (" + env + ") category successfully set to '" + cat + "'";
             } else {
                 return "Error: unable to update envelope (" + env + ") to '" + cat + "'";
@@ -453,6 +456,7 @@ public class Commands {
             String oldAcctAmt = mc.getAccountAmount(currAcct);
             String desc = getSplitDesc() + "<no description specified>";
             mc.addTransaction(date, desc, exp, currAcct, un, env);
+            con.updateAllTables();
             return "UPDATE:\n"
                     + " amt: "  + Utilities.amountToString(Utilities.amountToInteger(exp)) + "\n"
                     + " desc: " + Utilities.shortenString(desc, TRANS_LENGTH) + "\n"
@@ -502,6 +506,7 @@ public class Commands {
         
         private String newAcctWord(String name) {
             if(mc.addAccount(name)) {
+                con.updateAll();
                 return "Account '" + name + "' successfully created.";
             } else {
                 return "Error: could not create '" + name + "'.";
@@ -510,6 +515,7 @@ public class Commands {
         
         private String newCatWord(String name) {
             if(mc.addCategory(name)) {
+                con.updateAll();
                 return "Category '" + name + "' successfully created.";
             } else {
                 return "Error: could not create '" + name + "'.";
@@ -518,6 +524,7 @@ public class Commands {
         
         private String newEnvWord(String name) {
             if(mc.addEnvelope(name)) {
+                con.updateAll();
                 return "Envelope '" + name + "' successfully created.";
             } else {
                 return "Error: could not create '" + name + "'.";
@@ -526,6 +533,7 @@ public class Commands {
         
         private String remAcctWord(String name) {
             if(mc.disableAccount(name)) {
+                con.updateAll();
                 return "Account '" + name + "' successfully removed.";
             } else {
                 return "Account '" + name + "' must have a zero balance before removal. Remaining balance: " + mc.getAccountAmount(name);
@@ -534,6 +542,7 @@ public class Commands {
         
         private String remCatWord(String name) {
             if(mc.removeCategory(name)) {
+                con.updateAll();
                 return "Category '" + name + "' successfully removed.";
             } else {
                 return "ERROR: category '" + name + "' cannot be removed.";
@@ -542,6 +551,7 @@ public class Commands {
         
         private String remEnvWord(String name) {
             if(mc.removeEnvelope(name)) {
+                con.updateAll();
                 return "Envelope '" + name + "' successfully removed.";
             } else {
                 return "Envelope '" + name + "' cannot have any transactions before removal. Either merge with another envelope or remove transactions first.";
@@ -552,6 +562,7 @@ public class Commands {
             if(un.equalsIgnoreCase(name)) {
                 return "Error: you cannot remove yourself. Nice try;)";
             } else if(mc.disableUser(name)) {
+                con.updateAll();
                 return "User '" + name + "' successfully removed.";
             } else {
                 return "Error: user '" + name + "' cannot be removed.";
@@ -559,7 +570,9 @@ public class Commands {
         }
         
         private String acctAcctExp(String acctFrom, String acctTo, String exp) {
-            return mc.addTransfer(date, "transfer", exp, acctFrom, acctTo, un);
+            String result = mc.addTransfer(date, "transfer", exp, acctFrom, acctTo, un);
+            con.updateAllTables();
+            return result;
         }
         
         private String acctEnvExp(String acct, String env, String exp) {
@@ -569,6 +582,7 @@ public class Commands {
             String oldAcctAmt = mc.getAccountAmount(currAcct);
             String desc = getSplitDesc() + "<no description specified>";
             mc.addTransaction(date, desc, exp, currAcct, un, env);
+            con.updateAllTables();
             return "UPDATE:\n"
                     + " amt: "  + Utilities.amountToString(Utilities.amountToInteger(exp)) + "\n"
                     + " desc: " + Utilities.shortenString(desc, TRANS_LENGTH) + "\n"
@@ -585,6 +599,7 @@ public class Commands {
             String oldAcctAmt = mc.getAccountAmount(currAcct);
             String desc = getSplitDesc() + "<no description specified>";
             mc.addTransaction(date, desc, exp, currAcct, un, env);
+            con.updateAllTables();
             return "UPDATE:\n"
                     + " date: " + date + "\n"
                     + " amt: "  + Utilities.amountToString(Utilities.amountToInteger(exp)) + "\n"
@@ -596,7 +611,9 @@ public class Commands {
         }
         
         private String envEnvExp(String envFrom, String envTo, String exp) {
-            return mc.addTransfer(date, "transfer", exp, envFrom, envTo, un);
+            String result = mc.addTransfer(date, "transfer", exp, envFrom, envTo, un);
+            con.updateAllTables();
+            return result;
         }
         
         private String envExpWord(String env, String exp) {
@@ -620,6 +637,7 @@ public class Commands {
                 curr = curr.next;
             }
             mc.addTransaction(date, desc, exp, currAcct, un, env);
+            con.updateAllTables();
             return "UPDATE:\n"
                     + " amt: "  + Utilities.amountToString(Utilities.amountToInteger(exp)) + "\n"
                     + " desc: " + Utilities.shortenString(desc, TRANS_LENGTH) + "\n"
@@ -676,7 +694,9 @@ public class Commands {
         
         private String newEnvWordCat(String env, String cat) {
             if(mc.addEnvelope(env)) {
+                con.updateAll();
                 if(mc.setEnvelopeCategory(env, cat)) {
+                    con.updateAllTables();
                     return "Envelope '" + env + "' successfully created under category '" + cat + "'.";
                 } else {
                     return "Envelope '" + env + "' successfully created, but could not set category to '" + cat + "'.";
@@ -688,6 +708,7 @@ public class Commands {
         
         private String newUsrWordWord(String un, String pw) {
             if(mc.addUser(un, pw)) {
+                con.updateAllDropdowns();
                 return "User '" + un + "' successfully created.";
             } else {
                 return "ERROR: user '" + un + "' could not be created.";
@@ -696,6 +717,7 @@ public class Commands {
         
         private String renAcctWordWord(String oldName, String newName) {
             if(mc.renameAccount(oldName, newName)) {
+                con.updateAll();
                 return "Account '" + oldName + "' successfully renamed '" + newName + "'.";
             } else {
                 return "ERROR: account '" + oldName + "' could not be renamed to '" + newName + "'.";
@@ -704,6 +726,7 @@ public class Commands {
         
         private String renCatWordWord(String oldName, String newName) {
             if(mc.renameCategory(oldName, newName)) {
+                con.updateAll();
                 return "Category '" + oldName + "' successfully renamed '" + newName + "'.";
             } else {
                 return "ERROR: category '" + oldName + "' could not be renamed to '" + newName + "'.";
@@ -712,6 +735,7 @@ public class Commands {
         
         private String renEnvWordWord(String oldName, String newName) {
             if(mc.renameEnvelope(oldName, newName)) {
+                con.updateAll();
                 return "Envelope '" + oldName + "' successfully renamed '" + newName + "'.";
             } else {
                 return "ERROR: envelope '" + oldName + "' could not be renamed to '" + newName + "'.";
@@ -720,6 +744,7 @@ public class Commands {
         
         private String renUsrWordWord(String oldName, String newName) {
             if(mc.renameUser(oldName, newName)) {
+                con.updateAll();
                 return "User '" + oldName + "' successfully renamed '" + newName + "'.";
             } else {
                 return "ERROR: user '" + oldName + "' could not be renamed to '" + newName + "'.";
@@ -745,6 +770,7 @@ public class Commands {
                 curr = curr.next;
             }
             mc.addTransaction(date, desc, exp, currAcct, un, env);
+            con.updateAllTables();
             return "UPDATE:\n"
                     + " amt: "  + Utilities.amountToString(Utilities.amountToInteger(exp)) + "\n"
                     + " desc: " + Utilities.shortenString(desc, TRANS_LENGTH) + "\n"
@@ -773,6 +799,7 @@ public class Commands {
                 curr = curr.next;
             }
             mc.addTransaction(date, desc, exp, currAcct, un, env);
+            con.updateAllTables();
             return "UPDATE:\n"
                     + " date: " + date + "\n"
                     + " amt: "  + Utilities.amountToString(Utilities.amountToInteger(exp)) + "\n"

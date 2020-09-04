@@ -3,7 +3,10 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
+            <file>file:/Users/derekworth/NetBeansProjects/Envelopes/src/model/ModelController.java</file>
+            <file>file:/Users/derekworth/NetBeansProjects/Envelopes/src/server/remote/IMCommunicator.java</file>
             <file>file:/Users/derekworth/NetBeansProjects/Envelopes/src/server/remote/Commands.java</file>
+            <file>file:/Users/derekworth/NetBeansProjects/Envelopes/src/server/local/Console.java</file>
         </group>
     </open-files>
 </project-private>

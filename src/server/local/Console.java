@@ -21,7 +21,6 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import misc.Utilities;
 import model.ModelController;
-import server.remote.GmailCommunicator;
 import server.remote.IMCommunicator;
 
 /**
@@ -30,17 +29,13 @@ import server.remote.IMCommunicator;
  */
 public class Console extends javax.swing.JFrame {
     
-    private static final String VER = "2020-01-01";
+    private static final String VER = "2020-09-03";
 
     private final Console thisConsole = this;
     private final String TITLE = "Envelopes";
     private LinkedList<String> errorMsg = new LinkedList();
     private LinkedList<String> cmdHistory = new LinkedList();
     private int consoleLoginFailCount = 0;
-    private int serverLoginFailCount = 0;
-    private boolean serverIsOn;
-    private boolean serverRcvLoopIsOn;
-    private boolean serverTimerIsOn;
     
     private String currUser;
 
@@ -50,7 +45,6 @@ public class Console extends javax.swing.JFrame {
     private static final int DEFAULT_TRANS_COUNT = 250;
 
     private ModelController mc;
-    private GmailCommunicator gc;
     private IMCommunicator imc;
     private EnvelopesTableModel envelopesTM;
     private AccountsTableModel accountsTM;
@@ -58,65 +52,9 @@ public class Console extends javax.swing.JFrame {
     private EmailTableModel emailTM;
     
     private ServerSocket socket;
-    private Thread rcvThread, timerThread;
-    
-    private class RunTimeStatusRunnable implements Runnable {
-        @Override
-        public void run() {
-            if(!serverTimerIsOn) {
-                serverTimerIsOn = true;
-                gmailServerStatus.setText("Gmail server is now ON.");
-                long start = System.currentTimeMillis();
-                while(serverRcvLoopIsOn) {
-                    try {
-                        gmailServerStatus.setText("run-time ~ " + Utilities.getDuration((System.currentTimeMillis() - start) / 1000));
-                        Thread.sleep(1000); // 1 sec
-                    } catch (InterruptedException ex) {
-                        // do nothing
-                    }
-                }
-                gmailUsername.setEnabled(true);
-                gmailPassword.setEnabled(true);
-                serverToggleButton.setText("Start Server");
-                serverToggleButton.setSelected(false);
-                gmailServerStatus.setText("Gmail server is now OFF.");
-                serverTimerIsOn = false;
-            }
-        }
-    }
-    
-    private class ReceiveLoopRunnable implements Runnable {
-        @Override
-        public void run() {
-            if(!serverRcvLoopIsOn) {
-                serverRcvLoopIsOn = true;
-                serverToggleButton.setSelected(true);
-                serverToggleButton.setText("Stop Server");
-                serverLoginFailCount = 0;
-                gmailPassword.setEnabled(false);
-                gmailUsername.setEnabled(false);
-                
-                // keeps server runtime up-to-date
-                timerThread = new Thread(new RunTimeStatusRunnable(), "Run Timer");
-                timerThread.start();
-
-                // starts server (i.e. receive loop)
-                while (serverIsOn) {
-                    if (gc.receive()) {
-                        updateAll();
-                    }
-                }
-                
-                serverRcvLoopIsOn = false;
-            }
-        }
-    }
 
     public Console() {
         checkForLatestVersion();
-        serverIsOn = false;
-        serverRcvLoopIsOn = false;
-        serverTimerIsOn = false;
         
         try {
             // prevents multiple instances of console
@@ -126,8 +64,6 @@ public class Console extends javax.swing.JFrame {
             
             // initialize model controller
             mc = new ModelController();
-            // establish Gmail communicator
-            gc = new GmailCommunicator(mc);
             currUser = "";
             // initialize tables with model controller
             envelopesTM = new EnvelopesTableModel(mc);
@@ -157,28 +93,6 @@ public class Console extends javax.swing.JFrame {
             transactionsTable.getColumnModel().getColumn(4).setMaxWidth(120);
             for (int i = 0; i < transactionsTable.getColumnCount(); i++) {
                 transactionsTable.getColumnModel().getColumn(i).setCellRenderer(transactionsTM.getRenderer());
-            }
-            // initialize email table
-            emailTable.setModel(emailTM);
-            emailTable.getColumnModel().getColumn(0).setMaxWidth(180);
-            emailTable.getColumnModel().getColumn(0).setPreferredWidth(180);
-            emailTable.getColumnModel().getColumn(1).setMaxWidth(180);
-            emailTable.getColumnModel().getColumn(1).setPreferredWidth(180);
-            emailTable.getColumnModel().getColumn(2).setMaxWidth(60);
-            emailTable.getColumnModel().getColumn(2).setPreferredWidth(60);
-            emailTable.getColumnModel().getColumn(3).setMaxWidth(150);
-            emailTable.getColumnModel().getColumn(3).setPreferredWidth(80);
-            for (int i = 0; i < emailTable.getColumnCount(); i++) {
-                emailTable.getColumnModel().getColumn(i).setCellRenderer(emailTM.getRenderer());
-            }
-            // set gmail credentials
-            if (gc.isValidCredentials(mc.getGmailUsername(), mc.getGmailPassword())) {
-                gmailPassword.setText(mc.getGmailPassword());
-                gmailUsername.setText(mc.getGmailUsername());
-//                // starts Gmail Server automatically on startup
-//                serverIsOn = true;
-//                rcvThread = new Thread(new ReceiveLoopRunnable(), "Receive Loop");
-//                rcvThread.start();
             }
             // initialize IMCommunicator server
             imc = new IMCommunicator(this, mc);
@@ -267,7 +181,6 @@ public class Console extends javax.swing.JFrame {
         updateTransactionTable();
         updateAccountTable();
         updateEnvelopeTable();
-        updateEmailTable();
     }
 
     public final void updateAccountTable() {
@@ -299,15 +212,6 @@ public class Console extends javax.swing.JFrame {
         });
     }
 
-    public final void updateEmailTable() {
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                emailTable.updateUI();
-            }
-        });
-    }
-
     public final void allowEditing(boolean isAllowed) {
         accountsTM.setEditing(isAllowed);
         envelopesTM.setEditing(isAllowed);
@@ -322,7 +226,6 @@ public class Console extends javax.swing.JFrame {
         updateCategoryDropdowns();
         updateEnvelopeDropdowns();
         updateUserDropdowns();
-        updateEmailDropdown();
     }
 
     public final void updateAccountDropdowns() {
@@ -374,13 +277,10 @@ public class Console extends javax.swing.JFrame {
         loginUserDropdown.removeAllItems();
         removeUserDropdown.removeAllItems();
         updateUserDropdown.removeAllItems();
-        emailUserDropdown.removeAllItems();
         // populate dropdowns
         for (String un : mc.getUsernames()) {
             // add all users to login list
             loginUserDropdown.addItem(un);
-            // add all users to email list
-            emailUserDropdown.addItem(un);
             if (currUser.length() > 0) { // logged in
                 if (mc.isUserAdmin(currUser)) { // user is the admin
                     // add all users to update list
@@ -401,14 +301,6 @@ public class Console extends javax.swing.JFrame {
                     }
                 }
             }
-        }
-    }
-
-    public final void updateEmailDropdown() {
-        // reset dropdown
-        emailAddressDropdown.removeAllItems();
-        for (String addr : mc.getEmailAddresses()) {
-            emailAddressDropdown.addItem(addr);
         }
     }
 
@@ -548,9 +440,6 @@ public class Console extends javax.swing.JFrame {
         removeUserButton.setEnabled(isLoggedIn);
         acctTransferButton.setEnabled(isLoggedIn);
         envTransferButton.setEnabled(isLoggedIn);
-        allowEmail.setEnabled(isLoggedIn);
-        blockEmail.setEnabled(isLoggedIn);
-        serverToggleButton.setEnabled(!isLoggedIn);
 
         // fields
         userPassword.setEnabled(!isLoggedIn);
@@ -577,8 +466,6 @@ public class Console extends javax.swing.JFrame {
         acctTransferTo.setEnabled(isLoggedIn);
         envTransferFrom.setEnabled(isLoggedIn);
         envTransferTo.setEnabled(isLoggedIn);
-        emailAddressDropdown.setEnabled(isLoggedIn);
-        emailUserDropdown.setEnabled(isLoggedIn);
 
         // table editing
         allowEditing(isLoggedIn);
@@ -611,8 +498,6 @@ public class Console extends javax.swing.JFrame {
             loginToggleButton.setText("Sign Out");
             loginStatus.setText("Welcome " + currUser + "! You are now signed in.");
             updateUserDropdowns();
-            // shutdown server while logged in
-            shutdownServer();
             imc.stopListening();
         } else { // failed login
             // set sign in settings
@@ -631,37 +516,7 @@ public class Console extends javax.swing.JFrame {
         loginStatus.setText("You are now signed out.");
         cmdHistory.clear();
         updateUserDropdowns();
-        // attempt to start server while logged out
-        attemptStartServer();
         imc.listen();
-    }
-    
-    public final void attemptStartServer() {
-        // retrieve username and password from the text fields
-        String gmailUN, gmailPW = "";
-        gmailUN = gmailUsername.getText();
-        for (char c : gmailPassword.getPassword()) {
-            gmailPW += c;
-        }
-        // check if un & pw are valid
-        if (gc.isValidCredentials(gmailUN, gmailPW)) {
-            // update model
-            mc.setGmailUsername(gmailUN);
-            mc.setGmailPassword(gmailPW);
-            // turn on server
-            serverIsOn = true;
-            rcvThread = new Thread(new ReceiveLoopRunnable(), "Receive Loop");
-            rcvThread.start();
-        } else {
-            serverToggleButton.setSelected(false);
-            gmailServerStatus.setText("Error(" + ++serverLoginFailCount + "): invalid username and/or password.");
-        }
-    }
-    
-    public final void shutdownServer() {
-        // turn on server
-        serverIsOn = false;
-        gc.pushNOOP();
     }
 
     /**
@@ -741,15 +596,6 @@ public class Console extends javax.swing.JFrame {
         adminTab = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
         jPanel2 = new javax.swing.JPanel();
-        emailPane = new javax.swing.JPanel();
-        jScrollPane2 = new javax.swing.JScrollPane();
-        emailTable = new javax.swing.JTable();
-        emailAddressDropdown = new javax.swing.JComboBox();
-        blockEmail = new javax.swing.JButton();
-        emailUserDropdown = new javax.swing.JComboBox();
-        allowEmail = new javax.swing.JButton();
-        jLabel11 = new javax.swing.JLabel();
-        jLabel16 = new javax.swing.JLabel();
         accountManagementPane = new javax.swing.JPanel();
         addUserTextField = new javax.swing.JTextField();
         addUserPasswordField = new javax.swing.JPasswordField();
@@ -769,16 +615,6 @@ public class Console extends javax.swing.JFrame {
         jLabel26 = new javax.swing.JLabel();
         jLabel29 = new javax.swing.JLabel();
         jLabel10 = new javax.swing.JLabel();
-        jPanel1 = new javax.swing.JPanel();
-        jLabel9 = new javax.swing.JLabel();
-        jLabel7 = new javax.swing.JLabel();
-        gmailUsername = new javax.swing.JTextField();
-        gmailPassword = new javax.swing.JPasswordField();
-        jLabel8 = new javax.swing.JLabel();
-        gmailServerStatus = new javax.swing.JLabel();
-        jLabel20 = new javax.swing.JLabel();
-        jLabel23 = new javax.swing.JLabel();
-        serverToggleButton = new javax.swing.JToggleButton();
         usersMessage = new javax.swing.JLabel();
         reportsPanel = new javax.swing.JPanel();
         jLabel36 = new javax.swing.JLabel();
@@ -1428,86 +1264,6 @@ public class Console extends javax.swing.JFrame {
 
         jTabbedPane.addTab("Envelopes", envelopesTab);
 
-        emailPane.setBorder(javax.swing.BorderFactory.createTitledBorder(javax.swing.BorderFactory.createEtchedBorder(), "EMAIL LOGINS (*Obsolete)", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Arial", 1, 18))); // NOI18N
-
-        emailTable.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null}
-            },
-            new String [] {
-                "Title 1", "Title 2", "Title 3", "Title 4"
-            }
-        ));
-        emailTable.setFillsViewportHeight(true);
-        jScrollPane2.setViewportView(emailTable);
-
-        emailAddressDropdown.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
-
-        blockEmail.setText("Block");
-        blockEmail.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                blockEmailActionPerformed(evt);
-            }
-        });
-
-        emailUserDropdown.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
-
-        allowEmail.setText("Assign");
-        allowEmail.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                allowEmailActionPerformed(evt);
-            }
-        });
-
-        jLabel11.setText("Addr:");
-
-        jLabel16.setText("User:");
-
-        javax.swing.GroupLayout emailPaneLayout = new javax.swing.GroupLayout(emailPane);
-        emailPane.setLayout(emailPaneLayout);
-        emailPaneLayout.setHorizontalGroup(
-            emailPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(emailPaneLayout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(emailPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(emailPaneLayout.createSequentialGroup()
-                        .addGroup(emailPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(jLabel16)
-                            .addComponent(jLabel11))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(emailPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(emailPaneLayout.createSequentialGroup()
-                                .addComponent(emailUserDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(allowEmail))
-                            .addGroup(emailPaneLayout.createSequentialGroup()
-                                .addComponent(emailAddressDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(blockEmail)))
-                        .addGap(0, 0, Short.MAX_VALUE))
-                    .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 613, Short.MAX_VALUE))
-                .addContainerGap())
-        );
-        emailPaneLayout.setVerticalGroup(
-            emailPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(emailPaneLayout.createSequentialGroup()
-                .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 471, Short.MAX_VALUE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(emailPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(emailAddressDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(blockEmail)
-                    .addComponent(jLabel11))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(emailPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(emailUserDropdown, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(allowEmail)
-                    .addComponent(jLabel16))
-                .addGap(10, 10, 10))
-        );
-
         accountManagementPane.setBorder(javax.swing.BorderFactory.createTitledBorder(javax.swing.BorderFactory.createEtchedBorder(), "ACCOUNT MGMT", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Arial", 1, 18))); // NOI18N
 
         addUserButton.setText("Add");
@@ -1657,75 +1413,6 @@ public class Console extends javax.swing.JFrame {
                 .addContainerGap(44, Short.MAX_VALUE))
         );
 
-        jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder(javax.swing.BorderFactory.createEtchedBorder(), "GMAIL SERVER (*Obsolete)", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Arial", 1, 18))); // NOI18N
-
-        jLabel9.setText("Create a Gmail account specifically for this program and enter it below.");
-
-        jLabel7.setText("Username:");
-
-        jLabel8.setText("Password:");
-
-        gmailServerStatus.setText("Server is currently off.");
-
-        jLabel20.setText("@gmail.com");
-
-        jLabel23.setText("(Once server is running, send commands to that address via text or email)");
-
-        serverToggleButton.setText("Start Server");
-        serverToggleButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                serverToggleButtonActionPerformed(evt);
-            }
-        });
-
-        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
-        jPanel1.setLayout(jPanel1Layout);
-        jPanel1Layout.setHorizontalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel9, javax.swing.GroupLayout.PREFERRED_SIZE, 432, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(jLabel8)
-                            .addComponent(jLabel7))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(jPanel1Layout.createSequentialGroup()
-                                .addComponent(gmailUsername, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(jLabel20))
-                            .addComponent(gmailPassword, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(6, 6, 6)
-                        .addComponent(serverToggleButton, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addComponent(gmailServerStatus)
-                    .addComponent(jLabel23))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-        );
-        jPanel1Layout.setVerticalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addComponent(jLabel9)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jLabel23)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel7)
-                            .addComponent(gmailUsername, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jLabel20))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(gmailPassword, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jLabel8)))
-                    .addComponent(serverToggleButton, javax.swing.GroupLayout.PREFERRED_SIZE, 46, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(gmailServerStatus)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-        );
-
         usersMessage.setForeground(new java.awt.Color(255, 0, 0));
 
         reportsPanel.setBorder(javax.swing.BorderFactory.createTitledBorder(javax.swing.BorderFactory.createEtchedBorder(), "REPORTS", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Arial", 1, 18))); // NOI18N
@@ -1855,17 +1542,11 @@ public class Console extends javax.swing.JFrame {
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel2Layout.createSequentialGroup()
-                        .addComponent(usersMessage)
-                        .addGap(0, 0, Short.MAX_VALUE))
-                    .addGroup(jPanel2Layout.createSequentialGroup()
-                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(accountManagementPane, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(reportsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(emailPane, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                .addContainerGap())
+                    .addComponent(usersMessage)
+                    .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                        .addComponent(accountManagementPane, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(reportsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                .addContainerGap(649, Short.MAX_VALUE))
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -1873,18 +1554,11 @@ public class Console extends javax.swing.JFrame {
                 .addContainerGap()
                 .addComponent(usersMessage)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(emailPane, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addGroup(jPanel2Layout.createSequentialGroup()
-                        .addComponent(reportsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(accountManagementPane, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(152, Short.MAX_VALUE))
+                .addComponent(reportsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(accountManagementPane, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(304, Short.MAX_VALUE))
         );
-
-        jPanel1.getAccessibleContext().setAccessibleDescription("");
 
         jScrollPane1.setViewportView(jPanel2);
 
@@ -2017,19 +1691,14 @@ public class Console extends javax.swing.JFrame {
         JOptionPane.showMessageDialog(this,
                 "ENVELOPES\n"
                 + "\n"
-                + "Version: 3.0\n"
-                + "Released on: 2018-02-24\n"
+                + "Version: 3.1\n"
+                + "Released on: 2020-08-31\n"
                 + "Updated on: " + VER + "\n"
                 + "\n"
                 + "This application allows multiple users to share funds and keep\n"
-                + "track of spending in real-time and on the go. Simply setup a\n"
-                + "dedicated Gmail account, log into that account from the \"Admin\"\n"
-                + "tab and you're ready to go. Create Accounts where money actually\n"
-                + "resides, and Envelopes where you want your money to go. As\n"
-                + "money comes and goes, text or email commands to the Gmail\n"
-                + "address you specified and this application will respond with\n"
-                + "updates. Additionally, search for 'Envelopes' in the Apple App\n"
-                + "Store.\n"
+                + "track of spending in real-time and on the go. Currently, Envelopes\n"
+                + "is only availabe on the iPhone or in a desktop Client. I may\n"
+                + "someday decide to upgrade to Android.\n"
                 + "\n"
                 + "NOTE: If this is your first time logging in, Admin password\n"
                 + "is 'password'. Send 'help' for command usage format.");
@@ -2054,13 +1723,8 @@ public class Console extends javax.swing.JFrame {
         if (opt == yes) {
             // log user (admin) out
             logout();
-            // shutdown Gmail Server
-            shutdownServer();
             // reset database
             mc.resetDatabase();
-            // set sign in settings
-            gmailUsername.setText("");
-            gmailPassword.setText("");
             userPassword.setText("");
             // update all views
             updateAll();
@@ -2596,14 +2260,6 @@ public class Console extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_intervalTypeDropdownActionPerformed
 
-    private void serverToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_serverToggleButtonActionPerformed
-        if (serverToggleButton.isSelected()) {
-            attemptStartServer();
-        } else {
-            shutdownServer();
-        }
-    }//GEN-LAST:event_serverToggleButtonActionPerformed
-
     private void updateUserButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_updateUserButtonActionPerformed
         String oldUsername = (String) updateUserDropdown.getSelectedItem();
         String newUsername = updateUserTextField.getText();
@@ -2633,7 +2289,6 @@ public class Console extends javax.swing.JFrame {
                 }
                 mc.renameUser(oldUsername, newUsername);
                 updateUserDropdowns();
-                updateEmailTable();
                 updateUserTextField.setText("");
             } else {
                 usersMessage.setText("ERROR: username must begin with a letter and contain only letters and numbers.");
@@ -2652,7 +2307,6 @@ public class Console extends javax.swing.JFrame {
                 }
                 mc.renameUser(oldUsername, newUsername);
                 updateUserDropdowns();
-                updateEmailTable();
                 updateUserTextField.setText("");
                 updateUserPasswordField.setText("");
             }
@@ -2697,22 +2351,6 @@ public class Console extends javax.swing.JFrame {
             updateUserDropdowns();
         }
     }//GEN-LAST:event_addUserButtonActionPerformed
-
-    private void allowEmailActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_allowEmailActionPerformed
-        String addr = (String) emailAddressDropdown.getSelectedItem();
-        String usr = (String) emailUserDropdown.getSelectedItem();
-
-        if (mc.isEmailAlreadyAdded(addr) && mc.isUserEnabled(usr)) {
-            mc.setEmailUser(addr, usr);
-        }
-        updateEmailTable();
-    }//GEN-LAST:event_allowEmailActionPerformed
-
-    private void blockEmailActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_blockEmailActionPerformed
-        String addr = (String) emailAddressDropdown.getSelectedItem();
-        mc.blockEmail(addr);
-        updateEmailTable();
-    }//GEN-LAST:event_blockEmailActionPerformed
 
     private void transactionQtyTextFieldKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_transactionQtyTextFieldKeyPressed
         if (evt.getKeyCode() == 10) { // <enter> is pressed
@@ -3181,17 +2819,11 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JTextField addUserTextField;
     private javax.swing.JPanel adminTab;
     private javax.swing.JButton allTransactionsButton;
-    private javax.swing.JButton allowEmail;
     private javax.swing.JLabel amountLabel;
-    private javax.swing.JButton blockEmail;
     private javax.swing.JButton budgetWorksheetButton;
     public javax.swing.JCheckBox categorizedCheckBox;
     private javax.swing.JLabel dateLabel;
     public javax.swing.JCheckBox dateRangeCheckBox;
-    public javax.swing.JComboBox emailAddressDropdown;
-    private javax.swing.JPanel emailPane;
-    public javax.swing.JTable emailTable;
-    public javax.swing.JComboBox emailUserDropdown;
     private javax.swing.JButton envTransferButton;
     public javax.swing.JComboBox envTransferFrom;
     public javax.swing.JComboBox envTransferTo;
@@ -3201,26 +2833,19 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JButton exportTransactionsButton;
     private javax.swing.JMenu fileMenu;
     private javax.swing.JLabel fromLabel;
-    private javax.swing.JPasswordField gmailPassword;
-    private javax.swing.JLabel gmailServerStatus;
-    private javax.swing.JTextField gmailUsername;
     public javax.swing.JCheckBox hideTransfersToggleButton;
     private javax.swing.JTextField intervalCountTextField;
     private javax.swing.JLabel intervalTagLabel;
     private javax.swing.JComboBox intervalTypeDropdown;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel10;
-    private javax.swing.JLabel jLabel11;
     private javax.swing.JLabel jLabel14;
     private javax.swing.JLabel jLabel15;
-    private javax.swing.JLabel jLabel16;
     private javax.swing.JLabel jLabel18;
     private javax.swing.JLabel jLabel19;
     private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabel20;
     private javax.swing.JLabel jLabel21;
     private javax.swing.JLabel jLabel22;
-    private javax.swing.JLabel jLabel23;
     private javax.swing.JLabel jLabel25;
     private javax.swing.JLabel jLabel26;
     private javax.swing.JLabel jLabel27;
@@ -3232,14 +2857,9 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel37;
     private javax.swing.JLabel jLabel5;
     private javax.swing.JLabel jLabel6;
-    private javax.swing.JLabel jLabel7;
-    private javax.swing.JLabel jLabel8;
-    private javax.swing.JLabel jLabel9;
-    private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPopupMenu jPopupMenu1;
     private javax.swing.JScrollPane jScrollPane1;
-    private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JPopupMenu.Separator jSeparator3;
     private javax.swing.JTabbedPane jTabbedPane;
     private javax.swing.JLabel loginStatus;
@@ -3268,7 +2888,6 @@ public class Console extends javax.swing.JFrame {
     private javax.swing.JLabel selectedAcctAmtLabel;
     private javax.swing.JLabel selectedEnvAmt;
     private javax.swing.JLabel selectedEnvAmtLabel;
-    private javax.swing.JToggleButton serverToggleButton;
     private javax.swing.JButton setCategoryButton;
     private javax.swing.JButton snapshotButton;
     private javax.swing.JPanel summaryPanel;

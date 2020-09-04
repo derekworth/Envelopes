@@ -41,7 +41,7 @@ public class IMCommunicator {
             String msgHash2 = Utilities.getHash(pwHash + un + " " + cmds);
             if(msgHash1.equalsIgnoreCase(msgHash2)) { // msg integrity and authenticity check
                 // interpret cmds
-                Commands commands = new Commands(mc, un, Utilities.getDatestamp(0), cmds);
+                Commands commands = new Commands(con, mc, un, Utilities.getDatestamp(0), cmds);
                 // respond
                 return commands.executeCommands();
             } else {
@@ -97,7 +97,6 @@ public class IMCommunicator {
                                 //System.out.println("TO CLIENT:\n" + result);
                                 out.println(result + "`");
                                 //System.out.println("--end data sent--");
-                                con.updateAll();
                             }
                             //System.out.println("Disconnected!");
                         } catch (IOException e) {
