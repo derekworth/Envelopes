@@ -1691,8 +1691,8 @@ public class Console extends javax.swing.JFrame {
         JOptionPane.showMessageDialog(this,
                 "ENVELOPES\n"
                 + "\n"
-                + "Version: 3.1\n"
-                + "Released on: 2020-08-31\n"
+                + "Version: 3.0\n"
+                + "Released on: 2018-02-24\n"
                 + "Updated on: " + VER + "\n"
                 + "\n"
                 + "This application allows multiple users to share funds and keep\n"
