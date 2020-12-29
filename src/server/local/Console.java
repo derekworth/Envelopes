@@ -29,7 +29,7 @@ import server.remote.IMCommunicator;
  */
 public class Console extends javax.swing.JFrame {
     
-    private static final String VER = "2020-09-03";
+    private static final String VER = "2020-12-29";
 
     private final Console thisConsole = this;
     private final String TITLE = "Envelopes";
@@ -304,7 +304,7 @@ public class Console extends javax.swing.JFrame {
         }
     }
 
-    private void updateSelected() {
+    public void updateSelected() {
         String acctName = (String) transAccountDropdown.getSelectedItem();
         String envName = (String) transEnvelopeDropdown.getSelectedItem();
         boolean hideTx = hideTransfersToggleButton.isSelected();

@@ -356,6 +356,7 @@ public class Commands {
                          + " | " + mc.getTransactionEnvelope(i)
                          + " | " + Utilities.shortenString(mc.getTransactionDesc(i), HISTORY_LENGTH);
             }
+            con.updateSelected();
             return response;
         }
         
@@ -371,6 +372,7 @@ public class Commands {
                          + " | " + mc.getTransactionEnvelope(i)
                          + " | " + Utilities.shortenString(mc.getTransactionDesc(i), HISTORY_LENGTH);
             }
+            con.updateSelected();
             return response;
         }
         
@@ -419,6 +421,7 @@ public class Commands {
                          + " | " + mc.getTransactionEnvelope(i)
                          + " | " + Utilities.shortenString(mc.getTransactionDesc(i), HISTORY_LENGTH);
             }
+            con.updateSelected();
             return response;
         }
         
@@ -434,6 +437,7 @@ public class Commands {
                          + " | " + mc.getTransactionEnvelope(i)
                          + " | " + Utilities.shortenString(mc.getTransactionDesc(i), HISTORY_LENGTH);
             }
+            con.updateSelected();
             return response;
         }
         
@@ -486,6 +490,7 @@ public class Commands {
                          + " | " + mc.getTransactionEnvelope(i)
                          + " | " + Utilities.shortenString(mc.getTransactionDesc(i), HISTORY_LENGTH);
             }
+            con.updateSelected();
             return response;
         }
         
@@ -501,6 +506,7 @@ public class Commands {
                          + " | " + mc.getTransactionEnvelope(i)
                          + " | " + Utilities.shortenString(mc.getTransactionDesc(i), HISTORY_LENGTH);
             }
+            con.updateSelected();
             return response;
         }
         
@@ -659,6 +665,7 @@ public class Commands {
                          + " | " + mc.getTransactionEnvelope(i)
                          + " | " + Utilities.shortenString(mc.getTransactionDesc(i), HISTORY_LENGTH);
             }
+            con.updateSelected();
             return response;
         }
         
@@ -674,6 +681,7 @@ public class Commands {
                          + " | " + mc.getTransactionEnvelope(i)
                          + " | " + Utilities.shortenString(mc.getTransactionDesc(i), HISTORY_LENGTH);
             }
+            con.updateSelected();
             return response;
         }
         
@@ -689,6 +697,7 @@ public class Commands {
                          + " | " + mc.getTransactionEnvelope(i)
                          + " | " + Utilities.shortenString(mc.getTransactionDesc(i), HISTORY_LENGTH);
             }
+            con.updateSelected();
             return response;
         }
         
