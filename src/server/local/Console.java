@@ -22,6 +22,8 @@ import javax.swing.SwingUtilities;
 import misc.Utilities;
 import model.ModelController;
 import server.remote.IMCommunicator;
+import java.time.Duration;
+import java.time.Instant;
 
 /**
  *
@@ -29,7 +31,7 @@ import server.remote.IMCommunicator;
  */
 public class Console extends javax.swing.JFrame {
     
-    private static final String VER = "2020-12-29";
+    private static final String VER = "2022-11-22";
 
     private final Console thisConsole = this;
     private final String TITLE = "Envelopes";
@@ -50,6 +52,9 @@ public class Console extends javax.swing.JFrame {
     private AccountsTableModel accountsTM;
     private TransactionsTableModel transactionsTM;
     private EmailTableModel emailTM;
+    
+    private Instant startTime;
+    private boolean loggedIn = false;
     
     private ServerSocket socket;
 
@@ -499,6 +504,34 @@ public class Console extends javax.swing.JFrame {
             loginStatus.setText("Welcome " + currUser + "! You are now signed in.");
             updateUserDropdowns();
             imc.stopListening();
+            
+            // kick off timer to automatically log user out after 30min of no activity
+            Runnable autoLogout = new Runnable() {
+                @Override
+                public void run() {
+                    startTime = Instant.now();
+                    loggedIn = true;
+                    while(loggedIn){
+                        //check every second if logout timer has expired
+                        try {
+                            Thread.sleep(1000);
+                        } catch (InterruptedException ex) {}
+                        //get current time
+                        Instant currTime = Instant.now();
+                        //calculate time between start and current time
+                        Duration dur = Duration.between(startTime, currTime);
+                        long secondsPast = dur.abs().toSeconds();
+                        //timeout set to 30min
+                        if(secondsPast > 1800)
+                        {
+                            logout();
+                            break;
+                        }
+                    }
+                }
+            };
+            new Thread(autoLogout).start();
+            
         } else { // failed login
             // set sign in settings
             loginToggleButton.setSelected(false);
@@ -508,6 +541,7 @@ public class Console extends javax.swing.JFrame {
     }
     
     public final void logout() {
+        loggedIn = false;
         currUser = "";
         enabledLoginComponents(false);
         // set sign in settings
@@ -2601,6 +2635,8 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_dateRangeCheckBoxActionPerformed
 
     private void transactionsTablePropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_transactionsTablePropertyChange
+        //restart auto logout timer whenever user makes a change
+        startTime = Instant.now();
         if (evt.getPropertyName().equalsIgnoreCase("tableCellEditor") && evt.getNewValue()==null) {
             updateSelected();
             updateEnvelopeTable();
@@ -2711,6 +2747,8 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_categorizedCheckBoxActionPerformed
 
     private void envelopesTablePropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_envelopesTablePropertyChange
+        //restart auto logout timer whenever user makes a change
+        startTime = Instant.now();
         if (evt.getPropertyName().equalsIgnoreCase("tableCellEditor") && evt.getNewValue() == null) {
             updateEnvelopeDropdowns();
             updateEnvelopeTable();
@@ -2767,6 +2805,8 @@ public class Console extends javax.swing.JFrame {
     }//GEN-LAST:event_newAccountFieldKeyPressed
 
     private void accountsTablePropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_accountsTablePropertyChange
+        //restart auto logout timer whenever user makes a change
+        startTime = Instant.now();
         if (evt.getPropertyName().equalsIgnoreCase("tableCellEditor") && evt.getNewValue() == null) {
             updateAccountDropdowns();
             updateAccountTable();
